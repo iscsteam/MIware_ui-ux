@@ -1,6 +1,7 @@
+//layout.tsx
 import type { Metadata } from 'next'
 import './globals.css'
-import { ThemeProvider } from '@/components/theme-provider' // adjust path if needed
+import { ThemeProvider } from '@/components/theme-provider' 
 
 export const metadata: Metadata = {
   title: 'Mi Ware',

@@ -10,13 +10,15 @@ export default function WorkflowAutomationDashboard() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="workflow-theme">
       <WorkflowProvider>
-        <div className="flex h-screen flex-col overflow-hidden bg-background">
-          <TopMenu />
-          <div className="flex flex-1 overflow-hidden">
-            <NodePalette />
+        <div className="flex h-screen overflow-hidden bg-background">
+          {/* Sidebar takes full height */}
+          <NodePalette />
+          {/* Main content area with top menu, editor, and bottom panel */}
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <TopMenu />
             <WorkflowEditor />
+            <BottomPanel />
           </div>
-          <BottomPanel />
         </div>
       </WorkflowProvider>
     </ThemeProvider>
