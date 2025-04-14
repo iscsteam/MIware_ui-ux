@@ -10,13 +10,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Play,
-  FileText,
-  FileInput,
-  FileOutput,
-  Copy,
-  CheckCircle,
-} from "lucide-react"
+  PlayIcon,
+  DocumentTextIcon,
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
+  ClipboardIcon,
+  CheckCircleIcon,
+  ChevronRightIcon,
+  ChevronDownIcon,
+  PauseCircleIcon,
+} from '@heroicons/react/24/outline';
 import type { NodeType } from "./workflow-context"
 
 interface NodeTypeDefinition {
@@ -30,37 +33,37 @@ const nodeTypes: NodeTypeDefinition[] = [
   {
     type: "start",
     label: "Start",
-    icon: <Play className="h-4 w-4" />,
+    icon: <PlayIcon className="h-4 w-4" />,
     description: "Starting point of the workflow",
   },
   {
     type: "create-file",
     label: "Create File",
-    icon: <FileText className="h-4 w-4" />,
+    icon: <DocumentTextIcon className="h-4 w-4" />,
     description: "Creates a new file or directory",
   },
   {
     type: "read-file",
     label: "Read File",
-    icon: <FileInput className="h-4 w-4" />,
+    icon: <ClipboardIcon className="h-4 w-4" />,
     description: "Reads content from a file",
   },
   {
     type: "write-file",
     label: "Write File",
-    icon: <FileOutput className="h-4 w-4" />,
+    icon: <ClipboardIcon className="h-4 w-4" />,
     description: "Writes content to a file",
   },
-  {
-    type: "copy-file",
-    label: "Copy File",
-    icon: <Copy className="h-4 w-4" />,
-    description: "Copies a file or directory",
-  },
+  // {
+  //   type: "copy-file",
+  //   label: "Copy File",
+  //   icon: <Copy className="h-4 w-4" />,
+  //   description: "Copies a file or directory",
+  // },
   {
     type: "end",
-    label: "End",
-    icon: <CheckCircle className="h-4 w-4" />,
+    label: "demo",
+    icon: <ClipboardIcon className="h-4 w-4" />,
     description: "End point of the workflow",
   },
 ]

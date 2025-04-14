@@ -3,7 +3,20 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Play, FileText, FileInput, FileOutput, Copy, CheckCircle, ChevronRight, ChevronDown } from "lucide-react"
+import {
+  PlayIcon,
+  DocumentTextIcon,
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
+  ClipboardIcon,
+  CheckCircleIcon,
+  ChevronRightIcon,
+  ChevronDownIcon,
+  PauseCircleIcon,
+} from '@heroicons/react/24/outline';
+
+
+// import { Play, FileText, FileInput, FileOutput, Copy, CheckCircle, ChevronRight, ChevronDown } from "lucide-react"
 import type { NodeType } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -20,44 +33,51 @@ const nodeTypes: NodeTypeDefinition[] = [
   {
     type: "start",
     label: "Start",
-    icon: <Play className="h-4 w-4" />,
+    icon: <PlayIcon className="h-4 w-4 " />,    
     description: "Starting point of the workflow",
   },
   {
     type: "create-file",
     label: "Create File",
-    icon: <FileText className="h-4 w-4" />,
+    icon: <DocumentTextIcon className="h-4 w-4" />,
     description: "Creates a new file or directory",
   },
   {
     type: "read-file",
     label: "Read File",
-    icon: <FileInput className="h-4 w-4" />,
+    icon: <ClipboardIcon className="h-4 w-4" />,
     description: "Reads content from a file",
   },
   {
     type: "write-file",
     label: "Write File",
-    icon: <FileOutput className="h-4 w-4" />,
+    icon: <ClipboardIcon className="h-4 w-4" />,
     description: "Writes content to a file",
   },
   {
     type: "copy-file",
     label: "Copy File",
-    icon: <Copy className="h-4 w-4" />,
+    icon: <ClipboardIcon className="h-4 w-4" />,
     description: "Copies a file or directory",
   },
   {
     type: "end",
     label: "End",
-    icon: <CheckCircle className="h-4 w-4" />,
+    icon: <PauseCircleIcon className="h-4 w-4" />,
     description: "End point of the workflow",
   },
+  // {
+  //   type: "code",
+  //   label: "Code",
+  //   icon: <ClipboardIcon className="h-4 w-4" />,
+  //   description: "Represents a code operation",
+  // },
 ]
 
 // Define custom colors for each node type
 const nodeTypeStyles: Record<NodeType, string> = {
   start: "border-green-400 bg-green-50",
+ 
   "create-file": "border-blue-400 bg-blue-50",
   "read-file": "border-indigo-400 bg-indigo-50",
   "write-file": "border-purple-400 bg-purple-50",
@@ -85,7 +105,7 @@ export function NodePalette() {
         <CollapsibleTrigger asChild>
           <Button variant="ghost" className="flex w-full justify-between p-4">
             <span>File Operations</span>
-            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            {isOpen ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -113,7 +133,7 @@ export function NodePalette() {
   {nodeTypes.map((nodeType) => (
     <div
       key={nodeType.type}
-      className={`flex items-center gap-2 rounded-md border p-2 hover:shadow cursor-grab text-sm ${
+      className={`flex items-center gap-2 rounded-lg border p-2 hover:shadow cursor-grab text-sm ${
         nodeTypeStyles[nodeType.type] || "border-gray-300 bg-background"
       }`}
       draggable
