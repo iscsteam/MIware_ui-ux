@@ -24,13 +24,33 @@ interface NodePropertiesConfig {
 
 const nodePropertiesConfig: NodePropertiesConfig = {
   start: {
-    fields: [],
+    fields: [
+      {
+        name: "label",
+        label: "Node Label",
+        type: "text",
+        placeholder: "Start",
+      },
+    ],
   },
   end: {
-    fields: [],
+    fields: [
+      {
+        name: "label",
+        label: "Node Label",
+        type: "text",
+        placeholder: "End",
+      },
+    ],
   },
   "create-file": {
     fields: [
+      {
+        name: "label",
+        label: "Node Label",
+        type: "text",
+        placeholder: "Create File",
+      },
       {
         name: "filename",
         label: "File Name",
@@ -56,6 +76,12 @@ const nodePropertiesConfig: NodePropertiesConfig = {
   },
   "read-file": {
     fields: [
+      {
+        name: "label",
+        label: "Node Label",
+        type: "text",
+        placeholder: "Read File",
+      },
       {
         name: "filename",
         label: "File Name",
@@ -83,6 +109,12 @@ const nodePropertiesConfig: NodePropertiesConfig = {
   },
   "write-file": {
     fields: [
+      {
+        name: "label",
+        label: "Node Label",
+        type: "text",
+        placeholder: "Write File",
+      },
       {
         name: "filename",
         label: "File Name",
@@ -122,6 +154,12 @@ const nodePropertiesConfig: NodePropertiesConfig = {
   "copy-file": {
     fields: [
       {
+        name: "label",
+        label: "Node Label",
+        type: "text",
+        placeholder: "Copy File",
+      },
+      {
         name: "fromFilename",
         label: "Source File",
         type: "text",
@@ -147,6 +185,40 @@ const nodePropertiesConfig: NodePropertiesConfig = {
         name: "createNonExistingDirs",
         label: "Create non-existing directories",
         type: "boolean",
+      },
+    ],
+  },
+  code: {
+    fields: [
+      {
+        name: "label",
+        label: "Node Label",
+        type: "text",
+        placeholder: "Code",
+      },
+      {
+        name: "filename",
+        label: "Output File Name",
+        type: "text",
+        placeholder: "output.json",
+      },
+      {
+        name: "mode",
+        label: "Execution Mode",
+        type: "select",
+        options: ["runOnce", "runEach"],
+      },
+      {
+        name: "language",
+        label: "Language",
+        type: "select",
+        options: ["javascript", "python"],
+      },
+      {
+        name: "code",
+        label: "Code",
+        type: "textarea",
+        placeholder: "// Your code here",
       },
     ],
   },
@@ -193,7 +265,7 @@ export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProp
           <X className="h-4 w-4" />
         </Button>
       </div>
-  
+
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto py-4 pr-2 scrollbar-hide">
         <div className="mb-4">
@@ -205,17 +277,15 @@ export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProp
               .join(" ")}
           </div>
         </div>
-  
+
         {config?.fields.length === 0 ? (
-          <div className="text-sm text-muted-foreground">
-            This node type has no configurable properties.
-          </div>
+          <div className="text-sm text-muted-foreground">This node type has no configurable properties.</div>
         ) : (
           <div className="space-y-4">
             {config.fields.map((field) => (
               <div key={field.name} className="space-y-2">
                 <Label htmlFor={field.name}>{field.label}</Label>
-  
+
                 {field.type === "text" && (
                   <Input
                     id={field.name}
@@ -224,7 +294,7 @@ export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProp
                     onChange={(e) => handleChange(field.name, e.target.value)}
                   />
                 )}
-  
+
                 {field.type === "textarea" && (
                   <Textarea
                     id={field.name}
@@ -234,7 +304,7 @@ export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProp
                     rows={4}
                   />
                 )}
-  
+
                 {field.type === "boolean" && (
                   <div className="flex items-center space-x-2">
                     <Switch
@@ -245,7 +315,7 @@ export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProp
                     <Label htmlFor={field.name}>Enabled</Label>
                   </div>
                 )}
-  
+
                 {field.type === "select" && field.options && (
                   <Select
                     value={formData[field.name] || field.options[0]}
@@ -268,7 +338,7 @@ export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProp
           </div>
         )}
       </div>
-  
+
       {/* Footer */}
       <div className="border-t pt-4">
         <Button className="w-full" onClick={handleSave}>
@@ -276,5 +346,5 @@ export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProp
         </Button>
       </div>
     </div>
-  )  
+  )
 }

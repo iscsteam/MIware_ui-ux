@@ -80,7 +80,14 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       id: uuidv4(),
       type,
       position,
-      data: { active: true },
+      data: {
+        active: true,
+        label: type
+          .split("-")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" "),
+        filename: type === "start" || type === "end" ? "" : "Filename",
+      },
       status: "idle",
     }
 
