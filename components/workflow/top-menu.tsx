@@ -1,116 +1,62 @@
+// // top-menu.tsx(navbar.tsx)
 "use client"
 
 import { useState } from "react"
-import { Play, Save, Upload, RefreshCw } from "lucide-react"
+import { MessageSquare, Tag, Share2, Github } from "lucide-react"
 import { useWorkflow } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { ModeToggle } from "@/components/mode-toggle"
-import { ExecutionModal } from "./execution-modal"
+import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export function TopMenu() {
-  const { runWorkflow, saveWorkflow, loadWorkflow, clearWorkflow } = useWorkflow()
-  const [executionModalOpen, setExecutionModalOpen] = useState(false)
-
-  const handleLoadWorkflow = () => {
-    const input = document.createElement("input")
-    input.type = "file"
-    input.accept = ".json"
-
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (!file) return
-
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        try {
-          const content = e.target?.result as string
-          const data = JSON.parse(content)
-          loadWorkflow(data)
-        } catch (error) {
-          console.error("Failed to parse workflow file:", error)
-          alert("Failed to load workflow: Invalid file format")
-        }
-      }
-      reader.readAsText(file)
-    }
-
-    input.click()
-  }
-
-  const handleSaveWorkflow = () => {
-    const workflow = saveWorkflow()
-    const json = JSON.stringify(workflow, null, 2)
-    const blob = new Blob([json], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "workflow.json"
-    a.click()
-
-    URL.revokeObjectURL(url)
-  }
-
-  const handleRunWorkflow = () => {
-    setExecutionModalOpen(true)
-    runWorkflow()
-  }
+  const { runWorkflow } = useWorkflow()
+  const [isActive, setIsActive] = useState(true)
 
   return (
-    <div className="flex h-14 items-center justify-between border-b px-4">
+    <div className="flex h-14 items-center justify-between border-b px-4 bg-background">
       <div className="flex items-center gap-2">
-        <h1 className="text-xl font-semibold">Mi Ware</h1>
+        <Button variant="outline" size="sm">
+          <MessageSquare className="h-4 w-4 mr-1" />
+          Menu
+        </Button>
       </div>
 
-      <TooltipProvider>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
+        <Tabs defaultValue="editor">
+          <TabsList className="h-8">
+            <TabsTrigger value="editor" className="text-xs px-2">Studio</TabsTrigger>
+            <TabsTrigger value="executions" className="text-xs px-2">History</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      <div className="flex items-center gap-4">
+        {/* <div className="flex items-center gap-2">
+          <span className="text-sm">Inactive</span>
+          <Switch checked={isActive} onCheckedChange={setIsActive} />
+        </div> */}
+        
+        <Button variant="outline" size="sm">
+          <Share2 className="h-4 w-4 mr-1" />
+          Share
+        </Button>
+        
+        <span className="text-xs text-muted-foreground">Saved</span>
+        
+        {/* <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={handleRunWorkflow}>
-                <Play className="h-4 w-4" />
+              <Button variant="outline" size="sm">
+                <Github className="h-4 w-4 mr-1" />
+                Star
+                <span className="ml-1 text-xs">51,309</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Run Workflow</TooltipContent>
+            <TooltipContent>Star on GitHub</TooltipContent>
           </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={handleSaveWorkflow}>
-                <Save className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Save Workflow</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={handleLoadWorkflow}>
-                <Upload className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Load Workflow</TooltipContent>
-          </Tooltip>
- 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={() => clearWorkflow()}>
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Reset Workflow</TooltipContent>
-          </Tooltip>
-
-          <ModeToggle />
-        </div>
-      </TooltipProvider>
-
-      {/* Execution modal for the entire workflow */}
-      <ExecutionModal
-        isOpen={executionModalOpen}
-        onClose={() => setExecutionModalOpen(false)}
-        nodeId={null} // null means show all logs
-      />
+        </TooltipProvider> */}
+      </div>
     </div>
   )
 }
