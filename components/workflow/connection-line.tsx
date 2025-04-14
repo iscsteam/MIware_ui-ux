@@ -3,7 +3,6 @@ import { useState } from "react";
 import type { WorkflowNode, NodeConnection } from "./workflow-context";
 import { Plus, Trash } from "lucide-react";
 
-
 interface ConnectionLineProps {
   connection: NodeConnection;
   sourceNode: WorkflowNode;
@@ -78,6 +77,7 @@ export function ConnectionLine({
         d={path}
         stroke={getConnectionColor()}
         strokeWidth="2"
+        strokeDasharray="6 2"
         fill="none"
         className="connection-line"
       />
@@ -87,52 +87,46 @@ export function ConnectionLine({
         d={path}
         stroke="transparent"
         strokeWidth="15"
-        fill="none"  
+        fill="none"
         className="cursor-pointer"
         style={{ pointerEvents: "stroke" }}
       />
 
       {/* Buttons shown on hover */}
       {isHovered && (
-  <g className="connection-buttons" style={{ pointerEvents: "auto" }}>
-    {/* Insert Button */}
-    <foreignObject
-      x={midX - 10}
-      y={midY - 10}
-      width={20}
-      height={20}
-      onClick={handleInsertNode}
-      style={{ cursor: "pointer" }}
-    >
-      <div
-        className="w-full h-full bg-green-100 border border-green-300 rounded flex items-center justify-center"
-      >
-        <Plus size={14} className="text-green-700" />
-      </div>
-    </foreignObject>
+        <g className="connection-buttons" style={{ pointerEvents: "auto" }}>
+          {/* Insert Button */}
+          <foreignObject
+            x={midX - 10}
+            y={midY - 10}
+            width={20}
+            height={20}
+            onClick={handleInsertNode}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="w-full h-full bg-green-100 border border-green-300 rounded flex items-center justify-center">
+              <Plus size={14} className="text-green-700" />
+            </div>
+          </foreignObject>
 
-    {/* Delete Button */}
-    <foreignObject
-      x={midX + 15}
-      y={midY - 10}
-      width={20}
-      height={20}
-      onClick={(e) => {
-        e.stopPropagation();
-        onDelete();
-      }}
-      style={{ cursor: "pointer" }}
-    >
-      <div
-        className="w-full h-full bg-red-100 border border-red-300 rounded flex items-center justify-center"
-      >
-        <Trash size={14} className="text-red-700" />
-      </div>
-    </foreignObject>
-  </g>
-)}
-
-      
+          {/* Delete Button */}
+          <foreignObject
+            x={midX + 15}
+            y={midY - 10}
+            width={20}
+            height={20}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="w-full h-full bg-red-100 border border-red-300 rounded flex items-center justify-center">
+              <Trash size={14} className="text-red-700" />
+            </div>
+          </foreignObject>
+        </g>
+      )}
     </g>
   );
 }

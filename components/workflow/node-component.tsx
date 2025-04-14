@@ -143,8 +143,8 @@ export function NodeComponent({
   };
 
   const getNodeBackgroundColor = () => {
-    if (node.type === "start") return "bg-green-200";
-    if (node.type === "end") return "bg-red-200";
+    if (node.type === "start") return "bg-green-500";
+    if (node.type === "end") return "bg-red-400";
     return "bg-white";
   };
 
@@ -155,7 +155,7 @@ export function NodeComponent({
     >
       {/* Node action buttons - only visible on hover */}
       <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-[100px] flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="flex bg-gray-200 rounded-md shadow-sm">
+        <div className="flex bg-gray-200 rounded-md shadow-lg">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -231,7 +231,7 @@ export function NodeComponent({
         ref={nodeRef}
         className={`flex flex-col rounded-md border ${
           selected ? "border-green-500" : "border-gray-300"
-        } ${getNodeBackgroundColor()} shadow-md transition-all w-[100px] h-[100px] ${
+        } ${getNodeBackgroundColor()} shadow-2xl transition-all w-[100px] h-[100px] ${
           pendingConnection && pendingConnection.sourceId === node.id
             ? "border-blue-500"
             : ""
