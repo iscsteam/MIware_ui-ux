@@ -1,3 +1,4 @@
+//page.tsx
 "use client"
 import { WorkflowEditor } from "@/components/workflow/workflow-editor"
 import { NodePalette } from "@/components/workflow/node-palette"

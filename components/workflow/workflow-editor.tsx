@@ -1,29 +1,19 @@
+// //workflow-editor.tsx
 "use client"
 
 import type React from "react"
-
 import { useRef, useState, useEffect, useCallback } from "react"
 import { useWorkflow, type NodeType, type WorkflowNode, type NodeConnection } from "./workflow-context"
 import { NodeComponent } from "./node-component"
 import { ConnectionLine } from "./connection-line"
 import { NodePropertiesPanel } from "./node-properties-panel"
-import { NodePaletteModal } from "./node-palette-modal"
 import { ExecutionModal } from "./execution-modal"
+import { SideModal } from "./sidemodal"
+import { Plus } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export function WorkflowEditor() {
-  const {
-    nodes,
-    connections,
-    selectedNodeId,
-    pendingConnection,
-    setPendingConnection,
-    addNode,
-    updateNode,
-    selectNode,
-    removeConnection,
-    executeNode,
-    addConnection,
-  } = useWorkflow()
+  const {nodes,connections,selectedNodeId,pendingConnection,setPendingConnection,addNode,updateNode,selectNode,removeConnection,executeNode,addConnection,} = useWorkflow()
 
   const canvasRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -31,13 +21,9 @@ export function WorkflowEditor() {
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 })
   const [canvasScale, setCanvasScale] = useState(1)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-
-  // State for node palette modal
-  const [nodePaletteOpen, setNodePaletteOpen] = useState(false)
+  const [sideModalOpen, setSideModalOpen] = useState(false)
   const [insertPosition, setInsertPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const [connectionToSplit, setConnectionToSplit] = useState<NodeConnection | null>(null)
-
-  // State for execution modal
   const [executionModalOpen, setExecutionModalOpen] = useState(false)
   const [executingNodeId, setExecutingNodeId] = useState<string | null>(null)
 
@@ -139,7 +125,7 @@ export function WorkflowEditor() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setPendingConnection(null)
-        setNodePaletteOpen(false)
+        setSideModalOpen(false)
       }
     }
 
@@ -190,29 +176,39 @@ export function WorkflowEditor() {
   const handleInsertNode = useCallback((connection: NodeConnection, position: { x: number; y: number }) => {
     setConnectionToSplit(connection)
     setInsertPosition(position)
-    setNodePaletteOpen(true)
+    setSideModalOpen(true)
   }, [])
 
   // Handle node selection from palette for insertion
   const handleNodeTypeSelect = useCallback(
     (nodeType: NodeType) => {
-      if (!connectionToSplit) return
+      if (connectionToSplit) {
+        // Create the new node
+        const newNodeId = addNode(nodeType, insertPosition)
 
-      // Create the new node
-      const newNodeId = addNode(nodeType, insertPosition)
+        // Create connections from source to new node and from new node to target
+        addConnection(connectionToSplit.sourceId, newNodeId)
+        addConnection(newNodeId, connectionToSplit.targetId)
 
-      // Create connections from source to new node and from new node to target
-      addConnection(connectionToSplit.sourceId, newNodeId)
-      addConnection(newNodeId, connectionToSplit.targetId)
+        // Remove the original connection
+        removeConnection(connectionToSplit.id)
 
-      // Remove the original connection
-      removeConnection(connectionToSplit.id)
-
-      // Close the palette and reset state
-      setNodePaletteOpen(false)
-      setConnectionToSplit(null)
+        // Reset state
+        setConnectionToSplit(null)
+      } else {
+        // Add node in the center of the canvas if no position specified
+        const canvasRect = canvasRef.current?.getBoundingClientRect()
+        if (canvasRect) {
+          const centerX = (canvasRect.width / 2) / canvasScale - canvasOffset.x
+          const centerY = (canvasRect.height / 2) / canvasScale - canvasOffset.y
+          addNode(nodeType, { x: centerX, y: centerY })
+        }
+      }
+      
+      // Close the side modal
+      setSideModalOpen(false)
     },
-    [connectionToSplit, insertPosition, addNode, addConnection, removeConnection],
+    [connectionToSplit, insertPosition, addNode, addConnection, removeConnection, canvasScale, canvasOffset],
   )
 
   // Handle executing a single node
@@ -227,8 +223,25 @@ export function WorkflowEditor() {
     [executeNode],
   )
 
+  // Toggle Side Modal
+  const toggleSideModal = useCallback(() => {
+    setSideModalOpen(prev => !prev)
+  }, [])
+
   return (
     <div className="relative flex-1 overflow-hidden bg-blue">
+      {/* Add Button in top-right corner */}
+      <div className="absolute top-4 right-4 z-10">
+        <Button 
+          onClick={toggleSideModal}
+          variant="outline" 
+          size="icon" 
+          className="rounded-full bg-white shadow-md hover:bg-gray-100"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+
       <div
         ref={canvasRef}
         className="h-full w-full overflow-hidden"
@@ -253,17 +266,6 @@ export function WorkflowEditor() {
             </defs>
             <rect width="100%" height="100%" fill="url(#grid)" />
           </svg>
-          {/* Dots Background */}
-          {/* <svg className="absolute h-full w-full" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="dot-grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                  <circle cx="1" cy="1" r="1.2" fill="rgba(38, 37, 37, 0.2)" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#dot-grid)" />
-          </svg> */}
-
-
           {/* Connections */}
           <svg className="absolute h-full w-full pointer-events-none">
             {connections.map((connection) => {
@@ -319,10 +321,10 @@ export function WorkflowEditor() {
       {/* Properties panel */}
       {selectedNodeId && <NodePropertiesPanel nodeId={selectedNodeId} onClose={() => selectNode(null)} />}
 
-      {/* Node palette modal for inserting nodes */}
-      <NodePaletteModal
-        isOpen={nodePaletteOpen}
-        onClose={() => setNodePaletteOpen(false)}
+      {/* Side modal for adding nodes */}
+      <SideModal
+        isOpen={sideModalOpen}
+        onClose={() => setSideModalOpen(false)}
         onSelectNodeType={handleNodeTypeSelect}
       />
 
