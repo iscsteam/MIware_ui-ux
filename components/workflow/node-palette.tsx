@@ -19,9 +19,6 @@ export function NodePalette() {
                 <span className="font-bold tracking-wide">MI-WARE</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">MI-WARE Dashboard</p>
-            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
         
@@ -31,14 +28,11 @@ export function NodePalette() {
               <Button 
                 size="icon" 
                 variant="ghost" 
-                className="rounded-full bg-gray-50 hover:bg-rose-50 hover:text-rose-600 transition-all duration-200 shadow-sm"
+                className=" bg-gray-50 hover:bg-rose-50 hover:text-rose-600 transition-all duration-200 shadow-sm"
               >
                 <Plus className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">Add New Node</p>
-            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>

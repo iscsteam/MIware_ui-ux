@@ -236,7 +236,7 @@ export function WorkflowEditor() {
           onClick={toggleSideModal}
           variant="outline" 
           size="icon" 
-          className="rounded-full bg-white shadow-md hover:bg-gray-100"
+          className=" bg-white shadow-md hover:bg-gray-100"
         >
           <Plus className="h-4 w-4" />
         </Button>
