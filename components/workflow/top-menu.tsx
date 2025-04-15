@@ -10,8 +10,22 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export function TopMenu() {
-  const { runWorkflow } = useWorkflow()
+  const { runWorkflow, saveWorkflow} = useWorkflow()
   const [isActive, setIsActive] = useState(true)
+
+  const handleSaveWorkflow = () => {
+    const workflow = saveWorkflow()
+    const json = JSON.stringify(workflow, null, 2)
+    const blob = new Blob([json], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "workflow.json"
+    a.click()
+
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="flex h-14 items-center justify-between border-b px-4 bg-background">
@@ -42,8 +56,9 @@ export function TopMenu() {
           Share
         </Button>
         
-        <span className="text-xs text-muted-foreground">Saved</span>
-        
+        <Button variant="outline" size="sm" onClick={handleSaveWorkflow}>
+        <span className="text-xs">Save</span>
+        </Button>
         {/* <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
