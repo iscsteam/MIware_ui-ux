@@ -16,17 +16,17 @@ import type { NodeType } from "./workflow-context"
 
 export function getNodeIcon(type: NodeType) {
   switch (type) {
-    case "start":
+    case "START":
       return <PlayIcon className="h-10 w-10" />
-    case "create-file":
+    case "CREATE":
       return <DocumentTextIcon className="h-10 w-10" />
-    case "read-file":
+    case "READ":
       return <FileInput className="h-10 w-10" />
-    case "write-file":
+    case "WRITE":
       return <FileOutput className="h-10 w-10" />
-    case "copy-file":
+    case "COPY":
       return <ClipboardIcon className="h-10 w-10" />
-    case "end":
+    case "END":
       return <PauseCircleIcon className="h-10 w-10" />
     // case "code":
     //   return <Code className="h-10 w-10 text-orange-400" />
@@ -34,3 +34,7 @@ export function getNodeIcon(type: NodeType) {
       return <Filter className="h-10 w-10" />
   }
 }
+
+
+
+

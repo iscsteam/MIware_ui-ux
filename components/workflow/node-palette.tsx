@@ -1,8 +1,9 @@
-
+// // //node-plaette.jsx(sidebar.jsx)
 "use client"
 
 import type React from "react"
 import { useState } from "react"
+import { Plus, Play, FileText, FileInput, FileOutput, Copy, CheckCircle, ChevronRight, ChevronDown, HelpCircle } from "lucide-react"
 import {
   PlayIcon,
   DocumentTextIcon,
@@ -14,9 +15,6 @@ import {
   ChevronDownIcon,
   PauseCircleIcon,
 } from '@heroicons/react/24/outline';
-
-
-// import { Play, FileText, FileInput, FileOutput, Copy, CheckCircle, ChevronRight, ChevronDown } from "lucide-react"
 import type { NodeType } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -31,63 +29,57 @@ interface NodeTypeDefinition {
 // Define node types with icons and descriptions
 const nodeTypes: NodeTypeDefinition[] = [
   {
-    type: "start",
+    type: "START",
     label: "Start",
-    icon: <PlayIcon className="h-4 w-4 " />,    
+    icon: <PlayIcon className="h-4 w-4" />,
     description: "Starting point of the workflow",
   },
   {
-    type: "create-file",
+    type: "CREATE",
     label: "Create File",
-    icon: <DocumentTextIcon className="h-4 w-4" />,
+    icon: <FileText className="h-4 w-4" />,
     description: "Creates a new file or directory",
   },
   {
-    type: "read-file",
+    type: "READ",
     label: "Read File",
-    icon: <ClipboardIcon className="h-4 w-4" />,
+    icon: <FileInput className="h-4 w-4" />,
     description: "Reads content from a file",
   },
   {
-    type: "write-file",
+    type: "WRITE",
     label: "Write File",
-    icon: <ClipboardIcon className="h-4 w-4" />,
+    icon: <FileOutput className="h-4 w-4" />,
     description: "Writes content to a file",
   },
   {
-    type: "copy-file",
+    type: "COPY",
     label: "Copy File",
-    icon: <ClipboardIcon className="h-4 w-4" />,
+    icon: <Copy className="h-4 w-4" />,
     description: "Copies a file or directory",
   },
   {
-    type: "end",
+    type: "END",
     label: "End",
     icon: <PauseCircleIcon className="h-4 w-4" />,
     description: "End point of the workflow",
   },
-  // {
-  //   type: "code",
-  //   label: "Code",
-  //   icon: <ClipboardIcon className="h-4 w-4" />,
-  //   description: "Represents a code operation",
-  // },
 ]
 
 // Define custom colors for each node type
 const nodeTypeStyles: Record<NodeType, string> = {
-  start: "border-green-400 bg-green-50",
- 
-  "create-file": "border-blue-400 bg-blue-50",
-  "read-file": "border-indigo-400 bg-indigo-50",
-  "write-file": "border-purple-400 bg-purple-50",
-  "copy-file": "border-yellow-400 bg-yellow-50",
-  end: "border-red-400 bg-red-50",
-  code: "border-gray-400 bg-gray-50",
+  START: "border-green-400 bg-green-50",
+  "CREATE": "border-blue-400 bg-blue-50",
+  "READ": "border-indigo-400 bg-indigo-50",
+  "WRITE": "border-purple-400 bg-purple-50",
+  "COPY": "border-yellow-400 bg-yellow-50",
+  END: "border-red-400 bg-red-50",
+  // CODE: "border-gray-400 bg-gray-50",
 }
 
 export function NodePalette() {
   const [isOpen, setIsOpen] = useState(true)
+  const [isHelpOpen, setIsHelpOpen] = useState(false)
 
   const handleDragStart = (e: React.DragEvent, nodeType: NodeType) => {
     e.dataTransfer.setData("nodeType", nodeType)
@@ -95,63 +87,75 @@ export function NodePalette() {
   }
 
   return (
-    <div className="w-64 border-r bg-background">
-      <div className="p-4 border-b">
-        <h2 className="text-lg font-semibold">Node Palette</h2>
-        <p className="text-sm text-muted-foreground">Drag nodes to the canvas</p>
+    <div className="w-64 border-r bg-background flex flex-col h-full shadow-sm">
+      {/* MI-WARE logo and plus button in sidebar header */}
+      <div className="flex items-center justify-between p-4 border-b">
+       {/* <Button variant="default" className="text-black-500 bg-white-500 hover:none rounded-md flex items-center gap-2"> */}
+          <h1 className="font-bold text-lg" >MI-WARE</h1>
+        {/* </Button> */}
+        
+        <Button variant="ghost" size="sm" className="hover:bg-gray-100">
+          <Plus className="h-4 w-4" />
+        </Button>
       </div>
 
-      <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" className="flex w-full justify-between p-4">
-            <span>File Operations</span>
-            {isOpen ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          {/* <div className="space-y-1 p-2">
-            {nodeTypes.map((nodeType) => (
-              <div
-                key={nodeType.type}
-                className={`flex items-center gap-3 rounded-md border p-3 hover:shadow-md cursor-grab ${
-                  nodeTypeStyles[nodeType.type] || "border-gray-300 bg-background"
-                }`}
-                draggable
-                onDragStart={(e) => handleDragStart(e, nodeType.type)}
-              >
-                <div className="flex h-8 w-8 text-grey-400 items-center justify-center rounded-md border bg-white">
-                  {nodeType.icon}
+      <div className="flex-grow overflow-y-auto">
+        <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="flex w-full justify-between p-4 hover:bg-gray-100">
+              <span className="font-medium">File Operations</span>
+              {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="space-y-2 p-2">
+              {nodeTypes.map((nodeType) => (
+                <div
+                  key={nodeType.type}
+                  className={`flex items-center gap-2 rounded-md border p-2 hover:shadow-md cursor-grab text-sm transition-all ${
+                    nodeTypeStyles[nodeType.type] || "border-gray-300 bg-background"
+                  }`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, nodeType.type)}
+                >
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md border bg-white shadow-sm">
+                    {nodeType.icon}
+                  </div>
+                  <div className="leading-tight">
+                    <div className="font-medium text-sm">{nodeType.label}</div>
+                    <div className="text-xs text-muted-foreground">{nodeType.description}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-medium">{nodeType.label}</div>
-                  <div className="text-xs text-muted-foreground">{nodeType.description}</div>
-                </div>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
+      {/* Help button at the bottom of sidebar, styled to match the image you shared */}
+      <div className="border-t mt-auto">
+        <Collapsible open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="ghost" 
+              className="w-full flex items-center justify-between px-4 py-3 text-gray-600 hover:bg-gray-100"
+            >
+              <div className="flex items-center gap-2">
+                <HelpCircle className="h-5 w-5" />
+                <span className="font-normal">Help</span>
               </div>
-            ))}
-          </div> */}
-          <div className="space-y-1 p-2">
-  {nodeTypes.map((nodeType) => (
-    <div
-      key={nodeType.type}
-      className={`flex items-center gap-2 rounded-lg border p-2 hover:shadow cursor-grab text-sm ${
-        nodeTypeStyles[nodeType.type] || "border-gray-300 bg-background"
-      }`}
-      draggable
-      onDragStart={(e) => handleDragStart(e, nodeType.type)}
-    >
-      <div className="flex h-6 w-6 items-center justify-center rounded-md border bg-white">
-        {nodeType.icon}
+              <ChevronDown className={`h-4 w-4 transition-transform ${isHelpOpen ? 'rotate-180' : ''}`} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="px-4 py-2 text-sm text-gray-600 space-y-2">
+              <Button variant="ghost" className="w-full justify-start text-left pl-7 py-1.5 hover:bg-gray-100">Documentation</Button>
+              <Button variant="ghost" className="w-full justify-start text-left pl-7 py-1.5 hover:bg-gray-100">Tutorials</Button>
+              <Button variant="ghost" className="w-full justify-start text-left pl-7 py-1.5 hover:bg-gray-100">Support</Button>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
-      <div className="leading-tight">
-        <div className="font-medium text-sm">{nodeType.label}</div>
-        <div className="text-xs text-muted-foreground">{nodeType.description}</div>
-      </div>
-    </div>
-  ))}
-</div>
-
-        </CollapsibleContent>
-      </Collapsible>
     </div>
   )
 }

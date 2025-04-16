@@ -31,25 +31,25 @@ interface NodeTypeDefinition {
 
 const nodeTypes: NodeTypeDefinition[] = [
   {
-    type: "start",
+    type: "START",
     label: "Start",
     icon: <PlayIcon className="h-4 w-4" />,
     description: "Starting point of the workflow",
   },
   {
-    type: "create-file",
+    type: "CREATE",
     label: "Create File",
     icon: <DocumentTextIcon className="h-4 w-4" />,
     description: "Creates a new file or directory",
   },
   {
-    type: "read-file",
+    type: "READ",
     label: "Read File",
     icon: <ClipboardIcon className="h-4 w-4" />,
     description: "Reads content from a file",
   },
   {
-    type: "write-file",
+    type: "WRITE",
     label: "Write File",
     icon: <ClipboardIcon className="h-4 w-4" />,
     description: "Writes content to a file",
@@ -61,7 +61,7 @@ const nodeTypes: NodeTypeDefinition[] = [
   //   description: "Copies a file or directory",
   // },
   {
-    type: "end",
+    type: "END",
     label: "demo",
     icon: <ClipboardIcon className="h-4 w-4" />,
     description: "End point of the workflow",

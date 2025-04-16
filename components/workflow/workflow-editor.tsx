@@ -1,3 +1,81 @@
+// // // src/pages/workflow.tsx
+// import React, { useState } from 'react';
+// import WorkflowNode from './workflownode'; // Adjust path
+// import SchemaModal from './SchemaModal'; // Adjust path
+// import { WorkflowNodeData } from './workflow-context'; // Adjust path
+// import {NodeType} from "./workflow-context";
+
+// // Example nodes data typed with WorkflowNodeData
+// const initialNodes: WorkflowNodeData[] = [
+//   { id: 'node-start', type: 'START', position: { x: 50, y: 50 } },
+//   { id: 'node-read-1', type: 'READ', position: { x: 200, y: 150 } },
+//   { id: 'node-write-1', type: 'WRITE', position: { x: 400, y: 150 } },
+//   { id: 'node-copy-1', type: 'COPY', position: { x: 200, y: 300 } },
+//   { id: 'node-stop', type: 'END', position: { x: 600, y: 250 } },
+// ];
+
+// // Use React.FC for the page component type
+// const WorkflowPage: React.FC = () => {
+//   // State with explicit types
+//   const [nodes, setNodes] = useState<WorkflowNodeData[]>(initialNodes);
+//   const [selectedNodeType, setSelectedNodeType] = useState<NodeType | null>(null);
+//   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+
+//   // Handler function with typed parameters
+//   const handleNodeClick = (nodeId: string, nodeType: NodeType) => {
+//     console.log(`Node clicked: ID=${nodeId}, Type=${nodeType}`);
+//     setSelectedNodeType(nodeType);
+//     setIsModalOpen(true);
+//   };
+
+//   // Handler function with type
+//   const handleCloseModal = (): void => {
+//     setIsModalOpen(false);
+//     setSelectedNodeType(null); // Reset selected type when closing
+//   };
+
+//   return (
+//     <div className="container mx-auto p-4 min-h-screen">
+//       <h1 className="text-3xl font-bold mb-6">Workflow Editor</h1>
+
+//       {/* Canvas Area */}
+//       <div className="relative border border-dashed border-gray-400 h-[600px] bg-gray-50 p-4 overflow-auto"> {/* Added overflow */}
+//         {nodes.map((node) => (
+//           // Applying basic absolute positioning
+//           <div
+//              key={node.id}
+//              style={{ position: 'absolute', left: `${node.position.x}px`, top: `${node.position.y}px` }}
+//           >
+//              <WorkflowNode
+//                id={node.id}
+//                type={node.type}
+//               //  onClick={handleNodeClick} // Pass the typed handler
+//               onClick={(e) => handleNodeClick(node.id, node.type)} // Pass the typed handler}
+
+
+//              />
+//           </div>
+//         ))}
+//       </div>
+
+//       {/* Render the Modal conditionally, passing typed props */}
+//       {isModalOpen && (
+//         <SchemaModal
+//           // nodeType={selectedNodeType}
+//           // onClose={handleCloseModal}
+//           // nodeType={selectedNodeType as NodeType} // Casting to NodeType type
+//           nodeType={ selectedNodeType as NodeType } // Casting to NodeType type
+//           onClose={handleCloseModal}
+//         />
+//       )}
+//     </div>
+//   );
+// };
+
+// export default WorkflowPage;
+
+
+
 "use client"
 
 import type React from "react"
