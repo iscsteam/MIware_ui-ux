@@ -8,10 +8,18 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ExecutionModal } from "./execution-modal"
 
 export function TopMenu() {
   const { runWorkflow, saveWorkflow} = useWorkflow()
   const [isActive, setIsActive] = useState(true)
+  const [executionModalOpen, setExecutionModalOpen] = useState(false)
+
+
+  const handleRunWorkflow = () => {
+    setExecutionModalOpen(true)
+    runWorkflow()
+  }
 
   const handleSaveWorkflow = () => {
     const workflow = saveWorkflow()
@@ -50,7 +58,9 @@ export function TopMenu() {
           <span className="text-sm">Inactive</span>
           <Switch checked={isActive} onCheckedChange={setIsActive} />
         </div> */}
-        
+        <Button variant="outline" size="sm" onClick={handleRunWorkflow}>
+        <span className="text-xs">Run</span>
+        </Button>
         <Button variant="outline" size="sm">
           <Share2 className="h-4 w-4 mr-1" />
           Share

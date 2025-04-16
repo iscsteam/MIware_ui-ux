@@ -3,7 +3,7 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Plus, Play, FileText, FileInput, FileOutput, Copy, CheckCircle, ChevronRight, ChevronDown, HelpCircle } from "lucide-react"
+import { Plus, Play, FileText, FileInput, FilePen, FilePlus2, Copy, CheckCircle, ChevronRight, ChevronDown, HelpCircle } from "lucide-react"
 import type { NodeType } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -26,7 +26,7 @@ const nodeTypes: NodeTypeDefinition[] = [
   {
     type: "create-file",
     label: "Create File",
-    icon: <FileText className="h-4 w-4" />,
+    icon: <FilePlus2 className="h-4 w-4" />,
     description: "Creates a new file or directory",
   },
   {
@@ -38,7 +38,7 @@ const nodeTypes: NodeTypeDefinition[] = [
   {
     type: "write-file",
     label: "Write File",
-    icon: <FileOutput className="h-4 w-4" />,
+    icon: <FilePen className="h-4 w-4" />,
     description: "Writes content to a file",
   },
   {

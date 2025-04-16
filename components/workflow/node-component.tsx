@@ -120,8 +120,8 @@ export function NodeComponent({ node, selected, onSelect, onDragStart, onExecute
   }
 
   const getNodeBackgroundColor = () => {
-    if (node.type === "start") return "bg-green-500"
-    if (node.type === "end") return "bg-red-400"
+    if (node.type === "start") return "bg-white"
+    if (node.type === "end") return "bg-white"
     return "bg-white"
   }
 
