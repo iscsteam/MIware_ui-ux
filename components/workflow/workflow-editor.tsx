@@ -1,6 +1,5 @@
-// //workflow-editor.tsx
+ // //workflow-editor.tsx
 "use client"
-
 import type React from "react"
 import { useRef, useState, useEffect, useCallback } from "react"
 import { useWorkflow, type NodeType, type WorkflowNode, type NodeConnection } from "./workflow-context"

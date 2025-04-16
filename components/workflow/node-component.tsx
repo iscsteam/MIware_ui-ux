@@ -1,18 +1,13 @@
+//node-component.tsx
 "use client";
 import type React from "react";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
-
 import { useState, useRef } from "react";
 import { Play, Power, Trash2, MoreHorizontal } from "lucide-react";
 import { type WorkflowNode, useWorkflow } from "./workflow-context";
 import { getNodeIcon } from "./node-utils";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import {Tooltip,TooltipContent,TooltipProvider,TooltipTrigger,} from "@/components/ui/tooltip";
 
 interface NodeComponentProps {
   node: WorkflowNode;
