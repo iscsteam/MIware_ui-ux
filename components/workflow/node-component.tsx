@@ -15,6 +15,7 @@ interface NodeComponentProps {
   onSelect: () => void;
   onDragStart: (nodeId: string, e: React.MouseEvent) => void;
   onExecuteNode: (nodeId: string) => void;
+  onOpenProperties: (nodeId: string) => void;
 }
 
 export function NodeComponent({
@@ -23,6 +24,7 @@ export function NodeComponent({
   onSelect,
   onDragStart,
   onExecuteNode,
+  onOpenProperties,
 }: NodeComponentProps) {
   const {
     removeNode,
@@ -36,6 +38,7 @@ export function NodeComponent({
 
   const [isExpanded, setIsExpanded] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
+  const iconRef = useRef<HTMLDivElement>(null);
 
   // Get status color
   const getStatusColor = () => {
@@ -68,6 +71,20 @@ export function NodeComponent({
       }
       setPendingConnection(null);
     }
+  };
+
+  // Handle icon double-click to open properties panel
+  const handleIconClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelect(); // Still select the node on single click
+    
+    // We'll use the double-click event directly on the icon
+  };
+
+  // Handle double-click on the icon to open properties
+  const handleIconDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onOpenProperties(node.id);
   };
 
   // Handle node deactivation with auto-rerouting
@@ -240,14 +257,21 @@ export function NodeComponent({
           if (
             e.button === 0 &&
             !target.closest(".port") &&
-            !target.closest(".node-action")
+            !target.closest(".node-action") &&
+            !target.closest(".node-icon") // Don't start dragging when clicking on the icon
           ) {
             onDragStart(node.id, e);
           }
         }}
       >
         <div className="flex flex-1 flex-col items-center justify-center p-2">
-          <div className="flex h-12 w-12 items-center justify-center text-zinc-600">
+          {/* Node icon - with double-click handler */}
+          <div 
+            ref={iconRef}
+            className="flex h-12 w-12 items-center justify-center text-zinc-600 node-icon cursor-pointer"
+            onClick={handleIconClick}
+            onDoubleClick={handleIconDoubleClick}
+          >
             {getNodeIcon(node.type)}
           </div>
           {node.status !== "idle" && (

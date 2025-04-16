@@ -1,4 +1,4 @@
- // //workflow-editor.tsx
+//workflow-editor.tsx
 "use client"
 import type React from "react"
 import { useRef, useState, useEffect, useCallback } from "react"
@@ -25,6 +25,7 @@ export function WorkflowEditor() {
   const [connectionToSplit, setConnectionToSplit] = useState<NodeConnection | null>(null)
   const [executionModalOpen, setExecutionModalOpen] = useState(false)
   const [executingNodeId, setExecutingNodeId] = useState<string | null>(null)
+  const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false)
 
   // Handle node drop from palette
   const handleDrop = useCallback(
@@ -108,6 +109,7 @@ export function WorkflowEditor() {
       setPendingConnection(null)
     } else {
       selectNode(null)
+      setPropertiesPanelOpen(false)
     }
   }, [pendingConnection, setPendingConnection, selectNode])
 
@@ -125,6 +127,7 @@ export function WorkflowEditor() {
       if (e.key === "Escape") {
         setPendingConnection(null)
         setSideModalOpen(false)
+        setPropertiesPanelOpen(false)
       }
     }
 
@@ -227,6 +230,17 @@ export function WorkflowEditor() {
     setSideModalOpen(prev => !prev)
   }, [])
 
+  // Open properties panel when double-clicking on node icon
+  const handleOpenProperties = useCallback((nodeId: string) => {
+    selectNode(nodeId)
+    setPropertiesPanelOpen(true)
+  }, [selectNode])
+
+  // Close properties panel
+  const handleCloseProperties = useCallback(() => {
+    setPropertiesPanelOpen(false)
+  }, [])
+
   return (
     <div className="relative flex-1 overflow-hidden bg-blue">
       {/* Add Button in top-right corner */}
@@ -305,6 +319,7 @@ export function WorkflowEditor() {
               onSelect={() => selectNode(node.id)}
               onDragStart={startNodeDrag}
               onExecuteNode={handleExecuteNode}
+              onOpenProperties={handleOpenProperties} // Pass the handler
             />
           ))}
         </div>
@@ -317,8 +332,10 @@ export function WorkflowEditor() {
         </div>
       )}
 
-      {/* Properties panel */}
-      {selectedNodeId && <NodePropertiesPanel nodeId={selectedNodeId} onClose={() => selectNode(null)} />}
+      {/* Properties panel - only show when a node is selected AND propertiesPanelOpen is true */}
+      {selectedNodeId && propertiesPanelOpen && (
+        <NodePropertiesPanel nodeId={selectedNodeId} onClose={handleCloseProperties} />
+      )}
 
       {/* Side modal for adding nodes */}
       <SideModal
