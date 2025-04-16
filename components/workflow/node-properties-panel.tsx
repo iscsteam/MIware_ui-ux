@@ -1,5 +1,5 @@
-"use client"
-
+//node-properties-panel.tsx
+"use client" 
 import { useState, useEffect } from "react"
 import { X } from "lucide-react"
 import { useWorkflow } from "./workflow-context"
