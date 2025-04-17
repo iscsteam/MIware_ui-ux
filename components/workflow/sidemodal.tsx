@@ -6,67 +6,89 @@ import {Play,FileText,FileInput, FileOutput,Copy,CheckCircle,X,Search,ChevronDow
 import type { NodeType } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 
+import {
+  PlayIcon,
+  DocumentTextIcon,
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
+  ClipboardIcon,
+  CheckCircleIcon,
+  ChevronRightIcon,
+  ChevronDownIcon,
+  PauseCircleIcon,
+} from '@heroicons/react/24/outline';
+
 interface NodeTypeDefinition {
   type: NodeType
   label: string
   icon: React.ReactNode
   description: string
-  category: "file" | "general"
+   category: "file" | "general"
 }
 
 const nodeTypes: NodeTypeDefinition[] = [
   {
-    type: "start",
+    type: "START",
     label: "Start",
-    icon: <Play className="h-5 w-5 text-green-600" />,
+    icon: <PlayIcon className="h-4 w-4" />,
     description: "Starting point of the workflow",
     category: "general"
   },
   {
-    type: "create-file",
+    type: "CREATE",
     label: "Create File",
-    icon: <FilePlus2 className="h-5 w-5 text-blue-600" />,
+    icon: <FileText className="h-4 w-4" />,
     description: "Creates a new file or directory",
     category: "file"
   },
   {
-    type: "read-file",
+    type: "READ",
     label: "Read File",
-    icon: <FileText className="h-5 w-5 text-indigo-600" />,
+    icon: <FileInput className="h-4 w-4" />,
     description: "Reads content from a file",
     category: "file"
   },
   {
-    type: "write-file",
+    type: "WRITE",
     label: "Write File",
-    icon: <FileEdit className="h-5 w-5 text-purple-600" />,
+    icon: <FileOutput className="h-4 w-4" />,
     description: "Writes content to a file",
     category: "file"
   },
   {
-    type: "copy-file",
+    type: "COPY",
     label: "Copy File",
-    icon: <Copy className="h-5 w-5 text-amber-600" />,
+    icon: <Copy className="h-4 w-4" />,
     description: "Copies a file or directory",
     category: "file"
   },
   {
-    type: "end",
+    type: "END",
     label: "End",
-    icon: <CheckCircle className="h-5 w-5 text-red-600" />,
+    icon: <PauseCircleIcon className="h-4 w-4" />,
     description: "End point of the workflow",
-    category: "general"
+      category: "general"
   },
 ]
 
+// const nodeTypeStyles: Record<NodeType, string> = {
+//   start: "border-green-400 bg-gradient-to-r from-green-50 to-green-100 hover:from-green-100 hover:to-green-200",
+//   "create-file": "border-blue-400 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200",
+//   "read-file": "border-indigo-400 bg-gradient-to-r from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200",
+//   "write-file": "border-purple-400 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200",
+//   "copy-file": "border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200",
+//   end: "border-red-400 bg-gradient-to-r from-red-50 to-red-100 hover:from-red-100 hover:to-red-200",
+//   code: "border-gray-400 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200",
+// }
+
 const nodeTypeStyles: Record<NodeType, string> = {
-  start: "border-green-400 bg-gradient-to-r from-green-50 to-green-100 hover:from-green-100 hover:to-green-200",
-  "create-file": "border-blue-400 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200",
-  "read-file": "border-indigo-400 bg-gradient-to-r from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200",
-  "write-file": "border-purple-400 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200",
-  "copy-file": "border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200",
-  end: "border-red-400 bg-gradient-to-r from-red-50 to-red-100 hover:from-red-100 hover:to-red-200",
-  code: "border-gray-400 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200",
+  START: "border-green-400 bg-green-50",
+  "CREATE": "border-blue-400 bg-blue-50",
+  "READ": "border-indigo-400 bg-indigo-50",
+  "WRITE": "border-purple-400 bg-purple-50",
+  "COPY": "border-yellow-400 bg-yellow-50",
+  END: "border-red-400 bg-red-50",
+  // CODE: "border-gray-400 bg-gray-50",
 }
 
 interface SideModalProps {

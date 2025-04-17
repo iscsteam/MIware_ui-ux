@@ -23,7 +23,8 @@ interface NodePropertiesConfig {
 }
 
 const nodePropertiesConfig: NodePropertiesConfig = {
-  start: {
+  
+  START: {
     fields: [
       {
         name: "label",
@@ -33,7 +34,8 @@ const nodePropertiesConfig: NodePropertiesConfig = {
       },
     ],
   },
-  end: {
+
+  END: {
     fields: [
       {
         name: "label",
@@ -43,7 +45,7 @@ const nodePropertiesConfig: NodePropertiesConfig = {
       },
     ],
   },
-  "create-file": {
+  "CREATE": {
     fields: [
       {
         name: "label",
@@ -74,7 +76,7 @@ const nodePropertiesConfig: NodePropertiesConfig = {
       },
     ],
   },
-  "read-file": {
+  "READ": {
     fields: [
       {
         name: "label",
@@ -107,7 +109,7 @@ const nodePropertiesConfig: NodePropertiesConfig = {
       },
     ],
   },
-  "write-file": {
+  "WRITE": {
     fields: [
       {
         name: "label",
@@ -151,7 +153,7 @@ const nodePropertiesConfig: NodePropertiesConfig = {
       },
     ],
   },
-  "copy-file": {
+  "COPY": {
     fields: [
       {
         name: "label",
@@ -347,4 +349,5 @@ export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProp
       </div>
     </div>
   )
+  
 }

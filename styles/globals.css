@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -93,5 +94,25 @@ body {
   }
 }
 
+.connection-line {
+  stroke-dasharray: 8;
+  stroke-dashoffset: 0;
+  animation: dashmove 1s linear infinite;
+}
+
+@keyframes dashmove {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
 
 
+
+.scroll-container {
+  position: relative;
+  width: 100%;
+  height: 80vh; /* Or whatever fits your layout */
+  overflow: auto;
+  background-color: #f0f0f0; /* Optional: canvas background */
+  border: 1px solid #ccc;
+}
