@@ -29,12 +29,12 @@ function WorkflowEditorInternal() {
   } = useWorkflow();
 
   const editorRef = useRef<HTMLDivElement>(null);
-  const dragStartPos = useRef<{ x: number; y: number } | null>(null); // Track initial drag position
+  const dragstartPos = useRef<{ x: number; y: number } | null>(null); // Track initial drag position
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
 
   // --- Drag Handlers ---
-  const handleDragStart = useCallback(
+  const handleDragstart = useCallback(
     (nodeId: string, e: React.MouseEvent) => {
       if (!editorRef.current) return;
       const node = getNodeById(nodeId);
@@ -46,7 +46,7 @@ function WorkflowEditorInternal() {
       const offsetY = e.clientY - editorRect.top - node.position.y;
 
       setDraggingNodeInfo({ id: nodeId, offset: { x: offsetX, y: offsetY } });
-      dragStartPos.current = { x: e.clientX, y: e.clientY }; // Record mouse start
+      dragstartPos.current = { x: e.clientX, y: e.clientY }; // Record mouse start
       e.preventDefault(); // Prevent default browser drag behavior
     },
     [setDraggingNodeInfo, getNodeById]
@@ -72,10 +72,10 @@ function WorkflowEditorInternal() {
       if (draggingNodeInfo) {
         // Check if it was a drag or just a click
         const endPos = { x: e.clientX, y: e.clientY };
-        const distanceMoved = dragStartPos.current
+        const distanceMoved = dragstartPos.current
           ? Math.sqrt(
-              Math.pow(endPos.x - dragStartPos.current.x, 2) +
-                Math.pow(endPos.y - dragStartPos.current.y, 2)
+              Math.pow(endPos.x - dragstartPos.current.x, 2) +
+                Math.pow(endPos.y - dragstartPos.current.y, 2)
             )
           : 0;
 
@@ -96,7 +96,7 @@ function WorkflowEditorInternal() {
         // Else it was a drag, position already updated by mouseMove
 
         setDraggingNodeInfo(null); // Stop dragging
-        dragStartPos.current = null;
+        dragstartPos.current = null;
       } else if (pendingConnection) {
         // If releasing mouse during connection drag and not over an input port
         const target = e.target as HTMLElement;
@@ -159,7 +159,7 @@ function WorkflowEditorInternal() {
         key={node.id}
         node={node}
         selected={node.id === selectedNodeId}
-        onDragStart={handleDragStart}
+        onDragstart={handleDragstart}
         onExecuteNode={(id) => console.log("Execute", id)}
         onSelect={() => setSelectedNodeId(node.id)} // ✅ Fix here
       />

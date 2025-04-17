@@ -8,7 +8,7 @@ const nodeStyles: Record<NodeType | 'DEFAULT', string> = {
   WRITE: 'bg-green-100 border-green-500',
   COPY: 'bg-yellow-100 border-yellow-500',
   CREATE: 'bg-purple-100 border-purple-500',
-  START: 'bg-gray-100 border-gray-500 rounded-full',
+  start: 'bg-gray-100 border-gray-500 rounded-full',
   END: 'bg-red-100 border-red-500 rounded-full',
   DEFAULT: 'bg-gray-200 border-gray-400',
 };

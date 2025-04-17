@@ -31,10 +31,10 @@ interface NodeTypeDefinition {
 
 const nodeTypes: NodeTypeDefinition[] = [
   {
-    type: "START",
-    label: "Start",
+    type: "start",
+    label: "start",
     icon: <PlayIcon className="h-4 w-4" />,
-    description: "Starting point of the workflow",
+    description: "starting point of the workflow",
   },
   {
     type: "CREATE",

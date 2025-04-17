@@ -24,13 +24,13 @@ interface NodePropertiesConfig {
 
 const nodePropertiesConfig: NodePropertiesConfig = {
   
-  START: {
+  start: {
     fields: [
       {
         name: "label",
         label: "Node Label",
         type: "text",
-        placeholder: "Start",
+        placeholder: "start",
       },
     ],
   },

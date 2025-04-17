@@ -39,7 +39,7 @@ interface NodeComponentProps {
   selected: boolean;
 
   onSelect: () => void;
-  onDragStart: (nodeId: string, e: React.MouseEvent) => void;
+  onDragstart: (nodeId: string, e: React.MouseEvent) => void;
   onExecuteNode: (nodeId: string) => void;
 }
 
@@ -56,7 +56,7 @@ export function NodeComponent({
   node,
   selected,
   onSelect,
-  onDragStart,
+  onDragstart,
   onExecuteNode,
   onOpenProperties,
 }: NodeComponentProps) {
@@ -161,7 +161,7 @@ export function NodeComponent({
           // Optimization: Only add lines if they are potentially visible within the SVG bounds
           const svgHeight = svgRect.height;
           if (
-            (y1 >= 0 && y1 <= svgHeight) || // Start point visible
+            (y1 >= 0 && y1 <= svgHeight) || // start point visible
             (y2 >= 0 && y2 <= svgHeight) || // End point visible
             (y1 < 0 && y2 > svgHeight) || // Line crosses from top to bottom
             (y2 < 0 && y1 > svgHeight) // Line crosses from bottom to top
@@ -323,7 +323,7 @@ export function NodeComponent({
   };
 
   const getNodeBackgroundColor = () => {
-    if (node.type === "START") return "bg-green-200";
+    if (node.type === "start") return "bg-green-200";
     if (node.type === "END") return "bg-red-200";
     return "bg-white";
   };
@@ -484,7 +484,7 @@ export function NodeComponent({
               !target.closest(".node-action") &&
               target.closest(".flex-col.items-center")
             ) {
-              onDragStart(node.id, e);
+              onDragstart(node.id, e);
             }
           }}
           title={`Type: ${node.type}\nID: ${node.id}`}
@@ -529,7 +529,7 @@ export function NodeComponent({
             style={{ top: "50%" }}
           />
         )}
-        {node.type !== "START" && (
+        {node.type !== "start" && (
           <div
             className={`port absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 -translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-blue-500 hover:scale-110 transition-all ${
               pendingConnection && pendingConnection.sourceId !== node.id

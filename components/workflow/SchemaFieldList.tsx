@@ -1,57 +1,69 @@
-// src/components/workflow/SchemaFieldList.tsx (or similar path)
-"use client"
+// // src/components/workflow/SchemaFieldList.tsx (or similar path)
 import React, { forwardRef } from "react";
+import { Badge } from "@/components/ui/badge";
+import { SchemaItem } from "@/components/workflow/SchemaModal";
 
 interface SchemaFieldListProps {
-  type: "input" | "output"; // To differentiate element IDs/refs
-  schema: Record<string, any> | null | undefined;
-  setRef: (key: string, element: HTMLDivElement | null) => void; // Callback to register refs
+  type: "input" | "output";
+  fields: SchemaItem[];
+  selectedId: string | null;
+  onFieldClick: (field: SchemaItem) => void;
+  setRef: (key: string, element: HTMLDivElement | null) => void;
 }
 
-// Using forwardRef to allow parent to potentially get a ref to the list itself if needed
 export const SchemaFieldList = forwardRef<HTMLDivElement, SchemaFieldListProps>(
-  ({ type, schema, setRef }, ref) => {
-    if (!schema || typeof schema !== "object" || Array.isArray(schema)) {
-      return <div className="text-sm text-gray-500 p-2">Invalid or empty schema</div>;
-    }
-
-    const fields = Object.keys(schema);
-
-    if (fields.length === 0) {
+  ({ type, fields, selectedId, onFieldClick, setRef }, ref) => {
+    if (!fields || fields.length === 0) {
       return <div className="text-sm text-gray-500 p-2">No fields defined</div>;
     }
 
     return (
       <div ref={ref} className="flex flex-col space-y-1 p-2">
-        {fields.map((fieldName) => (
-          <div
-            key={`${type}-${fieldName}`}
-            // Store the element ref using the callback prop
-            ref={(el) => setRef(`${type}-${fieldName}`, el)}
-            // Add data attributes for easier identification if needed
-            data-field-name={fieldName}
-            data-field-type={type}
-            className="flex justify-between items-center p-2 bg-gray-50 rounded border border-gray-200 text-sm"
-          >
-            <span className="font-medium text-gray-800">{fieldName}</span>
+        {fields.map((field) => {
+          const isSelected = type === 'input' && selectedId === field.name;
+          
+          return (
+            <div
+              key={`${type}-${field.name}`}
+              ref={(el) => setRef(field.name, el)}
+              data-field-name={field.name}
+              data-field-type={type}
+              className={`relative flex justify-between items-center p-2 rounded border text-sm cursor-pointer
+                group transition-colors duration-150 hover:bg-gray-100
+                ${isSelected ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200'}`}
+              onClick={() => onFieldClick(field)}
+            >
+              <div className="flex flex-col">
+                <div className="flex items-center">
+                  <span className="font-medium text-gray-800">
+                    {field.name}
+                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                  </span>
+                </div>
+                {field.description && (
+                  <span className="text-xs text-gray-500 mt-1">{field.description}</span>
+                )}
+              </div>
 
-            {/* Optionally display data type if available and simple */}
-            {/* {typeof schema[fieldName] === 'string' && (
-               <span className="text-xs text-gray-500 ml-2">({schema[fieldName]})</span>
-            )} */}
-             {/* Add a small visual cue for connection points */}
-             {/* <div className={`
-                absolute ${type === 'input' ? 'right-0 translate-x-1/2' : 'left-0 -translate-x-1/2'} top-1/2 -translate-y-1/2
-                w-2 h-2 rounded-full bg-gray-400 border border-white group-hover:bg-blue-500
-             `}></div> */}
-          </div>
-        ))}
+              <Badge variant="outline" className="text-xs bg-gray-50">
+                {field.datatype}
+              </Badge>
+
+              {/* Connection point indicator */}
+              <div 
+                className={`absolute ${type === 'input' ? 'right-0 translate-x-1/2' : 'left-0 -translate-x-1/2'} 
+                  top-1/2 -translate-y-1/2 w-2 h-2 rounded-full 
+                  ${isSelected ? 'bg-blue-500' : 'bg-gray-300'} 
+                  group-hover:bg-blue-400 border border-white`}
+              />
+            </div>
+          );
+        })}
       </div>
     );
   }
 );
 
-SchemaFieldList.displayName = "SchemaFieldList"; // Add display name for DevTools
+SchemaFieldList.displayName = "SchemaFieldList";
 
-
-// Example SchemaFieldList.tsx
+export default SchemaFieldList;

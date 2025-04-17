@@ -1,4 +1,4 @@
-//(sidebar.tsx)
+// // // // // // node-palette.tsx(sidebar.tsx)
 import { useState, useEffect } from "react";
 import {HelpCircle, Plus, ChevronDown, FileText, Folder, Layers,Shield, Settings, Plug, Puzzle, Variable, Boxes} from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ export function Sidebar() {
   const [isModuleOpen, setIsModuleOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   
-  // Auto-close all sections when sidebar collapses
+  // Auto-close all sections when sidebar collapses 
   useEffect(() => {
     if (isCollapsed) {
       setIsHelpOpen(false);

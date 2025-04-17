@@ -34,7 +34,7 @@ interface NodePropertiesConfig {
 }
 
 const nodePropertiesConfig: NodePropertiesConfig = {
-  START: { fields: [] },
+  start: { fields: [] },
   END: { fields: [] },
   "CREATE": {
     fields: [

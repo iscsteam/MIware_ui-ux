@@ -79,7 +79,7 @@ export function History() {
             <TableRow>
               <TableHead className="w-1/4">Workflow Name</TableHead>
               <TableHead className="w-1/6">Status</TableHead>
-              <TableHead className="w-1/5">Start Time</TableHead>
+              <TableHead className="w-1/5">start Time</TableHead>
               <TableHead className="w-1/6">Duration</TableHead>
               <TableHead className="w-1/6">Nodes</TableHead>
               <TableHead className="w-1/6">Actions</TableHead>

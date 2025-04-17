@@ -1,7 +1,7 @@
 // src/types/workflow.ts
 
 // Define the possible node types
-export type NodeType = 'READ' | 'WRITE' | 'COPY' | 'CREATE' | 'START' | 'END';
+export type NodeType = 'READ' | 'WRITE' | 'COPY' | 'CREATE' | 'start' | 'END';
 
 // Interface for a single item within an input or output schema
 export interface SchemaItem {

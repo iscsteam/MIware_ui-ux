@@ -58,7 +58,7 @@ export function ExecutionModal({ isOpen, onClose, nodeId }: ExecutionModalProps)
   // Format time
   const formatTime = (date: Date) => {
     const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-    const milliseconds = String(date.getMilliseconds()).padStart(3, "0")
+    const milliseconds = String(date.getMilliseconds()).padstart(3, "0")
     return `${time}.${milliseconds}`
   }
   

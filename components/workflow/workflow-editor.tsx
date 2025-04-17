@@ -52,7 +52,7 @@ export function WorkflowEditor() {
     e.preventDefault()
   }, [])
 
-  // Start node dragging
+  // start node dragging
   const startNodeDrag = useCallback(
     (nodeId: string, e: React.MouseEvent) => {
       const node = nodes.find((n) => n.id === nodeId)
@@ -317,7 +317,7 @@ export function WorkflowEditor() {
               node={node}
               selected={node.id === selectedNodeId}
               onSelect={() => selectNode(node.id)}
-              onDragStart={startNodeDrag}
+              onDragstart={startNodeDrag}
               onExecuteNode={handleExecuteNode}
               onOpenProperties={handleOpenProperties} // Pass the handler
             />
