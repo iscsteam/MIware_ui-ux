@@ -1,81 +1,4 @@
-// // // src/pages/workflow.tsx
-// import React, { useState } from 'react';
-// import WorkflowNode from './workflownode'; // Adjust path
-// import SchemaModal from './SchemaModal'; // Adjust path
-// import { WorkflowNodeData } from './workflow-context'; // Adjust path
-// import {NodeType} from "./workflow-context";
-
-// // Example nodes data typed with WorkflowNodeData
-// const initialNodes: WorkflowNodeData[] = [
-//   { id: 'node-start', type: 'START', position: { x: 50, y: 50 } },
-//   { id: 'node-read-1', type: 'READ', position: { x: 200, y: 150 } },
-//   { id: 'node-write-1', type: 'WRITE', position: { x: 400, y: 150 } },
-//   { id: 'node-copy-1', type: 'COPY', position: { x: 200, y: 300 } },
-//   { id: 'node-stop', type: 'END', position: { x: 600, y: 250 } },
-// ];
-
-// // Use React.FC for the page component type
-// const WorkflowPage: React.FC = () => {
-//   // State with explicit types
-//   const [nodes, setNodes] = useState<WorkflowNodeData[]>(initialNodes);
-//   const [selectedNodeType, setSelectedNodeType] = useState<NodeType | null>(null);
-//   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-
-//   // Handler function with typed parameters
-//   const handleNodeClick = (nodeId: string, nodeType: NodeType) => {
-//     console.log(`Node clicked: ID=${nodeId}, Type=${nodeType}`);
-//     setSelectedNodeType(nodeType);
-//     setIsModalOpen(true);
-//   };
-
-//   // Handler function with type
-//   const handleCloseModal = (): void => {
-//     setIsModalOpen(false);
-//     setSelectedNodeType(null); // Reset selected type when closing
-//   };
-
-//   return (
-//     <div className="container mx-auto p-4 min-h-screen">
-//       <h1 className="text-3xl font-bold mb-6">Workflow Editor</h1>
-
-//       {/* Canvas Area */}
-//       <div className="relative border border-dashed border-gray-400 h-[600px] bg-gray-50 p-4 overflow-auto"> {/* Added overflow */}
-//         {nodes.map((node) => (
-//           // Applying basic absolute positioning
-//           <div
-//              key={node.id}
-//              style={{ position: 'absolute', left: `${node.position.x}px`, top: `${node.position.y}px` }}
-//           >
-//              <WorkflowNode
-//                id={node.id}
-//                type={node.type}
-//               //  onClick={handleNodeClick} // Pass the typed handler
-//               onClick={(e) => handleNodeClick(node.id, node.type)} // Pass the typed handler}
-
-
-//              />
-//           </div>
-//         ))}
-//       </div>
-
-//       {/* Render the Modal conditionally, passing typed props */}
-//       {isModalOpen && (
-//         <SchemaModal
-//           // nodeType={selectedNodeType}
-//           // onClose={handleCloseModal}
-//           // nodeType={selectedNodeType as NodeType} // Casting to NodeType type
-//           nodeType={ selectedNodeType as NodeType } // Casting to NodeType type
-//           onClose={handleCloseModal}
-//         />
-//       )}
-//     </div>
-//   );
-// };
-
-// export default WorkflowPage;
-
-
-
+//workflow-editor.tsx
 "use client"
 import type React from "react"
 import { useRef, useState, useEffect, useCallback } from "react"
@@ -107,98 +30,98 @@ export function WorkflowEditor() {
   // Handle node drop from palette
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
-      e.preventDefault();
+      e.preventDefault()
 
-      const nodeType = e.dataTransfer.getData("nodeType") as NodeType;
-      if (!nodeType) return;
+      const nodeType = e.dataTransfer.getData("nodeType") as NodeType
+      if (!nodeType) return
 
-      const canvasRect = canvasRef.current?.getBoundingClientRect();
-      if (!canvasRect) return;
+      const canvasRect = canvasRef.current?.getBoundingClientRect()
+      if (!canvasRect) return
 
       // Calculate position relative to canvas, accounting for scroll and zoom
-      const x = (e.clientX - canvasRect.left) / canvasScale - canvasOffset.x;
-      const y = (e.clientY - canvasRect.top) / canvasScale - canvasOffset.y;
+      const x = (e.clientX - canvasRect.left) / canvasScale - canvasOffset.x
+      const y = (e.clientY - canvasRect.top) / canvasScale - canvasOffset.y
 
-      addNode(nodeType, { x, y });
+      addNode(nodeType, { x, y })
     },
-    [addNode, canvasScale, canvasOffset]
-  );
+    [addNode, canvasScale, canvasOffset],
+  )
 
   // Handle drag over for drop target
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
+    e.preventDefault()
+  }, [])
 
   // Start node dragging
   const startNodeDrag = useCallback(
     (nodeId: string, e: React.MouseEvent) => {
-      const node = nodes.find((n) => n.id === nodeId);
-      if (!node) return;
+      const node = nodes.find((n) => n.id === nodeId)
+      if (!node) return
 
-      setIsDragging(true);
-      selectNode(nodeId);
+      setIsDragging(true)
+      selectNode(nodeId)
 
-      const canvasRect = canvasRef.current?.getBoundingClientRect();
-      if (!canvasRect) return;
+      const canvasRect = canvasRef.current?.getBoundingClientRect()
+      if (!canvasRect) return
 
       // Calculate offset between mouse and node position
-      const x = e.clientX - canvasRect.left - node.position.x * canvasScale;
-      const y = e.clientY - canvasRect.top - node.position.y * canvasScale;
+      const x = e.clientX - canvasRect.left - node.position.x * canvasScale
+      const y = e.clientY - canvasRect.top - node.position.y * canvasScale
 
-      setDragOffset({ x, y });
+      setDragOffset({ x, y })
     },
-    [nodes, selectNode, canvasScale]
-  );
+    [nodes, selectNode, canvasScale],
+  )
 
   // Handle mouse move for node dragging and pending connection
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      const canvasRect = canvasRef.current?.getBoundingClientRect();
-      if (!canvasRect) return;
+      const canvasRect = canvasRef.current?.getBoundingClientRect()
+      if (!canvasRect) return
 
       // Update mouse position for pending connection line
-      const x = (e.clientX - canvasRect.left) / canvasScale;
-      const y = (e.clientY - canvasRect.top) / canvasScale;
-      setMousePosition({ x, y });
+      const x = (e.clientX - canvasRect.left) / canvasScale
+      const y = (e.clientY - canvasRect.top) / canvasScale
+      setMousePosition({ x, y })
 
       // Handle node dragging
       if (isDragging && selectedNodeId) {
         // Calculate new position, accounting for scale and offset
-        const x = (e.clientX - canvasRect.left - dragOffset.x) / canvasScale;
-        const y = (e.clientY - canvasRect.top - dragOffset.y) / canvasScale;
+        const x = (e.clientX - canvasRect.left - dragOffset.x) / canvasScale
+        const y = (e.clientY - canvasRect.top - dragOffset.y) / canvasScale
 
         updateNode(selectedNodeId, {
           position: { x, y },
-        });
+        })
       }
     },
-    [isDragging, selectedNodeId, dragOffset, updateNode, canvasScale]
-  );
+    [isDragging, selectedNodeId, dragOffset, updateNode, canvasScale],
+  )
 
   // Handle mouse up to end dragging
   const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+    setIsDragging(false)
+  }, [])
 
   // Handle canvas click to cancel pending connection
   const handleCanvasClick = useCallback(() => {
     if (pendingConnection) {
-      setPendingConnection(null);
+      setPendingConnection(null)
     } else {
       selectNode(null)
       setPropertiesPanelOpen(false)
     }
-  }, [pendingConnection, setPendingConnection, selectNode]);
+  }, [pendingConnection, setPendingConnection, selectNode])
 
   // Set up event listeners
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
-      handleMouseMove(e);
-    };
+      handleMouseMove(e)
+    }
 
     const handleGlobalMouseUp = () => {
-      handleMouseUp();
-    };
+      handleMouseUp()
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -206,52 +129,50 @@ export function WorkflowEditor() {
         setSideModalOpen(false)
         setPropertiesPanelOpen(false)
       }
-    };
+    }
 
-    window.addEventListener("mousemove", handleGlobalMouseMove);
-    window.addEventListener("mouseup", handleGlobalMouseUp);
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousemove", handleGlobalMouseMove)
+    window.addEventListener("mouseup", handleGlobalMouseUp)
+    window.addEventListener("keydown", handleKeyDown)
 
     return () => {
-      window.removeEventListener("mousemove", handleGlobalMouseMove);
-      window.removeEventListener("mouseup", handleGlobalMouseUp);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [handleMouseMove, handleMouseUp, setPendingConnection]);
+      window.removeEventListener("mousemove", handleGlobalMouseMove)
+      window.removeEventListener("mouseup", handleGlobalMouseUp)
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [handleMouseMove, handleMouseUp, setPendingConnection])
 
   // Handle zoom with mouse wheel
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
-      e.preventDefault();
+      e.preventDefault()
 
       // Calculate zoom factor
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      const newScale = Math.max(0.5, Math.min(2, canvasScale * delta));
+      const delta = e.deltaY > 0 ? 0.9 : 1.1
+      const newScale = Math.max(0.5, Math.min(2, canvasScale * delta))
 
       // Calculate mouse position relative to canvas
-      const canvasRect = canvasRef.current?.getBoundingClientRect();
-      if (!canvasRect) return;
+      const canvasRect = canvasRef.current?.getBoundingClientRect()
+      if (!canvasRect) return
 
-      const mouseX = e.clientX - canvasRect.left;
-      const mouseY = e.clientY - canvasRect.top;
+      const mouseX = e.clientX - canvasRect.left
+      const mouseY = e.clientY - canvasRect.top
 
       // Calculate new offset to zoom toward mouse position
-      const newOffsetX =
-        mouseX / newScale - (mouseX / canvasScale - canvasOffset.x);
-      const newOffsetY =
-        mouseY / newScale - (mouseY / canvasScale - canvasOffset.y);
+      const newOffsetX = mouseX / newScale - (mouseX / canvasScale - canvasOffset.x)
+      const newOffsetY = mouseY / newScale - (mouseY / canvasScale - canvasOffset.y)
 
-      setCanvasScale(newScale);
-      setCanvasOffset({ x: newOffsetX, y: newOffsetY });
+      setCanvasScale(newScale)
+      setCanvasOffset({ x: newOffsetX, y: newOffsetY })
     },
-    [canvasScale, canvasOffset]
-  );
+    [canvasScale, canvasOffset],
+  )
 
   // Find source node for pending connection
   const getPendingConnectionSourceNode = useCallback(() => {
-    if (!pendingConnection) return null;
-    return nodes.find((node) => node.id === pendingConnection.sourceId);
-  }, [pendingConnection, nodes]);
+    if (!pendingConnection) return null
+    return nodes.find((node) => node.id === pendingConnection.sourceId)
+  }, [pendingConnection, nodes])
 
   // Handle inserting a node into a connection
   const handleInsertNode = useCallback((connection: NodeConnection, position: { x: number; y: number }) => {
@@ -295,11 +216,11 @@ export function WorkflowEditor() {
   // Handle executing a single node
   const handleExecuteNode = useCallback(
     (nodeId: string) => {
-      setExecutingNodeId(nodeId);
-      setExecutionModalOpen(true);
+      setExecutingNodeId(nodeId)
+      setExecutionModalOpen(true)
 
       // Execute the node
-      executeNode(nodeId);
+      executeNode(nodeId)
     },
     [executeNode],
   )
@@ -350,7 +271,7 @@ export function WorkflowEditor() {
           }}
         >
           {/* Grid background */}
-          {/* <svg className="absolute h-full w-full" xmlns="http://www.w3.org/2000/svg">
+          <svg className="absolute h-full w-full" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
                 <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(38, 37, 37, 0.2)" strokeWidth="0.5" />
@@ -360,19 +281,15 @@ export function WorkflowEditor() {
           </svg>
           {/* Connections */}
           <svg className="absolute h-full w-full pointer-events-none">
-            
             {connections.map((connection) => {
-              const source = nodes.find((n) => n.id === connection.sourceId);
-              const target = nodes.find((n) => n.id === connection.targetId);
+              const source = nodes.find((n) => n.id === connection.sourceId)
+              const target = nodes.find((n) => n.id === connection.targetId)
 
-              if (!source || !target) return null;
+              if (!source || !target) return null
 
               // Skip connections to/from inactive nodes
-              if (
-                source.data?.active === false ||
-                target.data?.active === false
-              ) {
-                return null;
+              if (source.data?.active === false || target.data?.active === false) {
+                return null
               }
 
               return (
@@ -384,15 +301,12 @@ export function WorkflowEditor() {
                   onDelete={() => removeConnection(connection.id)}
                   onInsertNode={handleInsertNode}
                 />
-              );
+              )
             })}
 
             {/* Pending connection line */}
             {pendingConnection && (
-              <PendingConnectionLine
-                sourceNode={getPendingConnectionSourceNode() ?? null}
-                mousePosition={mousePosition}
-              />
+              <PendingConnectionLine sourceNode={getPendingConnectionSourceNode()?? null} mousePosition={mousePosition} />
             )}
           </svg>
 
@@ -437,7 +351,7 @@ export function WorkflowEditor() {
         nodeId={executingNodeId}
       />
     </div>
-  );
+  )
 }
 
 // Component for rendering the pending connection line
@@ -445,21 +359,21 @@ function PendingConnectionLine({
   sourceNode,
   mousePosition,
 }: {
-  sourceNode: WorkflowNode | null;
-  mousePosition: { x: number; y: number };
+  sourceNode: WorkflowNode | null
+  mousePosition: { x: number; y: number }
 }) {
-  if (!sourceNode) return null;
+  if (!sourceNode) return null
 
   // Calculate the starting point of the connection
-  const sourceX = sourceNode.position.x + 100; // Node width is 100px
-  const sourceY = sourceNode.position.y + 50; // Node height is 100px, port at middle
+  const sourceX = sourceNode.position.x + 100 // Node width is 100px
+  const sourceY = sourceNode.position.y + 50 // Node height is 100px, port at middle
 
   // Create a bezier curve path from source to mouse position
-  const controlPointOffset = 60;
-  const sourceControlX = sourceX + controlPointOffset;
-  const targetControlX = mousePosition.x - controlPointOffset;
+  const controlPointOffset = 60
+  const sourceControlX = sourceX + controlPointOffset
+  const targetControlX = mousePosition.x - controlPointOffset
 
-  const path = `M ${sourceX} ${sourceY} C ${sourceControlX} ${sourceY}, ${targetControlX} ${mousePosition.y}, ${mousePosition.x} ${mousePosition.y}`;
+  const path = `M ${sourceX} ${sourceY} C ${sourceControlX} ${sourceY}, ${targetControlX} ${mousePosition.y}, ${mousePosition.x} ${mousePosition.y}`
 
   return <path d={path} stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" fill="none" />
 }

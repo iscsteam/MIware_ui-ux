@@ -348,6 +348,22 @@ export function NodeComponent({
     setSelectedNodeType(null); // Reset selected type when closing
   };
 
+
+  
+  // Handle icon double-click to open properties panel
+  const handleIconClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelect(); // Still select the node on single click
+    
+    // We'll use the double-click event directly on the icon
+  };
+
+  // Handle double-click on the icon to open properties
+  const handleIconDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onOpenProperties(node.id);
+  };
+
   return (
     <>
       {/* --- Node Visual Representation (Unchanged) --- */}
@@ -445,6 +461,8 @@ export function NodeComponent({
         {/* Node body (Unchanged) */}
         <div
           ref={nodeRef}
+          onClick={handleIconClick}
+          onDoubleClick={handleIconDoubleClick}
           className={`relative flex flex-col rounded-md border ${
             selected
               ? "border-blue-500 ring-1 ring-blue-500"
@@ -470,6 +488,7 @@ export function NodeComponent({
             }
           }}
           title={`Type: ${node.type}\nID: ${node.id}`}
+
         >
           <div className="flex flex-1 flex-col items-center justify-center p-2 overflow-hidden">
             <div className="flex h-10 w-10 items-center justify-center text-zinc-600 mb-1">
