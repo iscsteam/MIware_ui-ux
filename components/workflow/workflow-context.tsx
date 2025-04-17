@@ -17,6 +17,8 @@ export type NodeType =
   | "http-receiver"
   | "send-http-request"
   | "send-http-response"
+  | "xml-parser"
+  | "xml-render"
   | "code"
 
 export type NodeStatus = "idle" | "running" | "success" | "error"

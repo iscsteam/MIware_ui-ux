@@ -1,6 +1,6 @@
 //node-utils.tsx
 "use client"
-import { Play, Filter, FileText, FileInput, FileOutput, Copy, CheckCircle, Code, Trash2, Files, Clock, Server, Send, Globe } from "lucide-react"
+import { Play, Filter, FileText, FileInput, FileOutput, Copy, CheckCircle, Code, Trash2, Files, Clock, Server, Send, Globe, FileJson, FileCode } from "lucide-react"
 import type { NodeType } from "./workflow-context"
 
 export function getNodeIcon(type: NodeType) {
@@ -27,6 +27,10 @@ export function getNodeIcon(type: NodeType) {
       return <Send className="h-10 w-10 text-rose-600" />
     case "send-http-response":
       return <Globe className="h-10 w-10 text-sky-600" />
+    case "xml-parser":
+      return <FileCode className="h-10 w-10 text-violet-600" />
+    case "xml-render":
+      return <FileJson className="h-10 w-10 text-fuchsia-600" />
     case "end":
       return <CheckCircle className="h-10 w-10" />
     case "code":
@@ -35,7 +39,3 @@ export function getNodeIcon(type: NodeType) {
       return <Filter className="h-10 w-10" />
   }
 }
-
-
-
-
