@@ -1,7 +1,7 @@
 // // src/components/workflow/SchemaFieldList.tsx (or similar path)
 import React, { forwardRef } from "react";
 import { Badge } from "@/components/ui/badge";
-import { SchemaItem } from "@/components/workflow/SchemaModal";
+import { SchemaItem } from "./workflow-context";
 
 interface SchemaFieldListProps {
   type: "input" | "output";

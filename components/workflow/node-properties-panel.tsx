@@ -35,7 +35,7 @@ const nodePropertiesConfig: NodePropertiesConfig = {
     ],
   },
 
-  END: {
+  end: {
     fields: [
       {
         name: "label",
@@ -45,7 +45,7 @@ const nodePropertiesConfig: NodePropertiesConfig = {
       },
     ],
   },
-  "CREATE": {
+  "create-file": {
     fields: [
       {
         name: "label",
@@ -76,7 +76,7 @@ const nodePropertiesConfig: NodePropertiesConfig = {
       },
     ],
   },
-  "READ": {
+  "read-file": {
     fields: [
       {
         name: "label",
@@ -109,7 +109,7 @@ const nodePropertiesConfig: NodePropertiesConfig = {
       },
     ],
   },
-  "WRITE": {
+  "write-file": {
     fields: [
       {
         name: "label",
@@ -153,7 +153,7 @@ const nodePropertiesConfig: NodePropertiesConfig = {
       },
     ],
   },
-  "COPY": {
+  "copy": {
     fields: [
       {
         name: "label",
@@ -190,7 +190,7 @@ const nodePropertiesConfig: NodePropertiesConfig = {
       },
     ],
   },
-  code: {
+  "code": {
     fields: [
       {
         name: "label",
@@ -232,72 +232,71 @@ interface NodePropertiesPanelProps {
 }
 
 export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProps) {
-  const { getNodeById, updateNode } = useWorkflow()
-  const [formData, setFormData] = useState<Record<string, any>>({})
+  const { getNodeById, updateNode } = useWorkflow();
+  const [formData, setFormData] = useState<Record<string, any>>({});
 
-  const node = getNodeById(nodeId)
+  const node = getNodeById(nodeId);
 
   useEffect(() => {
     if (node) {
-      setFormData(node.data || {})
+      setFormData(node.data || {});
     }
-  }, [node])
+  }, [node]);
 
-  if (!node) return null
+  if (!node) return null;
 
-  const config = nodePropertiesConfig[node.type]
+  // --- Solution Applied ---
+  // 1. Normalize lookup (assuming nodePropertiesConfig keys are now lowercase)
+  const nodeTypeKey = node.type ? node.type.toLowerCase() : '';
+  const config = nodePropertiesConfig[nodeTypeKey];
+  // --- End Solution ---
 
   const handleChange = (name: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-    }))
-  }
+    }));
+  };
 
   const handleSave = () => {
-    updateNode(nodeId, { data: formData })
-  }
+    updateNode(nodeId, { data: formData });
+  };
 
-  return (
-    <div className="absolute right-0 top-0 h-full w-80 border-l bg-background p-4 shadow-md flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b pb-2">
-        <h3 className="text-lg font-medium">Node Properties</h3>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto py-4 pr-2 scrollbar-hide">
-        <div className="mb-4">
-          <div className="text-sm font-medium text-muted-foreground">Node Type</div>
-          <div className="text-lg">
-            {node.type
-              .split("-")
-              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(" ")}
-          </div>
+  // --- Solution Applied ---
+  // 2. Check if config was found before trying to render fields
+  const renderFields = () => {
+    if (!config) {
+      return (
+        <div className="text-sm text-muted-foreground italic p-2 border border-dashed rounded">
+          No configuration found for node type: "{node.type}".
         </div>
+      );
+    }
 
-        {config?.fields.length === 0 ? (
-          <div className="text-sm text-muted-foreground">This node type has no configurable properties.</div>
-        ) : (
-          <div className="space-y-4">
-            {config.fields.map((field) => (
-              <div key={field.name} className="space-y-2">
-                <Label htmlFor={field.name}>{field.label}</Label>
+    if (!config.fields || config.fields.length === 0) {
+        return (
+            <div className="text-sm text-muted-foreground">
+                 This node type has no configurable properties.
+            </div>
+        );
+    }
 
-                {field.type === "text" && (
-                  <Input
-                    id={field.name}
-                    value={formData[field.name] || ""}
-                    placeholder={field.placeholder}
-                    onChange={(e) => handleChange(field.name, e.target.value)}
-                  />
-                )}
+    return (
+      <div className="space-y-4">
+        {config.fields.map((field) => (
+          <div key={field.name} className="space-y-2">
+            <Label htmlFor={field.name}>{field.label}</Label>
 
-                {field.type === "textarea" && (
+            {field.type === "text" && (
+              <Input
+                id={field.name}
+                value={formData[field.name] || ""}
+                placeholder={field.placeholder}
+                onChange={(e) => handleChange(field.name, e.target.value)}
+              />
+            )}
+            {/* ... other field types ... */}
+             {field.type === "textarea" && (
                   <Textarea
                     id={field.name}
                     value={formData[field.name] || ""}
@@ -314,13 +313,15 @@ export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProp
                       checked={formData[field.name] || false}
                       onCheckedChange={(checked) => handleChange(field.name, checked)}
                     />
-                    <Label htmlFor={field.name}>Enabled</Label>
+                    {/* Use field.label for Switch label if desired, or keep generic "Enabled" */}
+                    <Label htmlFor={field.name}>{field.label}</Label>
                   </div>
                 )}
 
                 {field.type === "select" && field.options && (
                   <Select
-                    value={formData[field.name] || field.options[0]}
+                    // Provide a default value if formData doesn't have one yet
+                    value={formData[field.name] ?? (field.options.length > 0 ? field.options[0] : '')}
                     onValueChange={(value) => handleChange(field.name, value)}
                   >
                     <SelectTrigger>
@@ -335,10 +336,40 @@ export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProp
                     </SelectContent>
                   </Select>
                 )}
-              </div>
-            ))}
           </div>
-        )}
+        ))}
+      </div>
+    );
+  };
+  // --- End Solution ---
+
+
+  return (
+    <div className="absolute right-0 top-0 h-full w-80 border-l bg-background p-4 shadow-md flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b pb-2">
+        <h3 className="text-lg font-medium">Node Properties</h3>
+        <Button variant="ghost" size="icon" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto py-4 pr-2 scrollbar-hide">
+        <div className="mb-4">
+          <div className="text-sm font-medium text-muted-foreground">Node Type</div>
+          <div className="text-lg">
+            {/* Display the original node type */}
+            {node.type
+              .split("-")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ")}
+          </div>
+        </div>
+
+        {/* Use the renderFields function */}
+        {renderFields()}
+
       </div>
 
       {/* Footer */}
@@ -348,6 +379,5 @@ export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProp
         </Button>
       </div>
     </div>
-  )
-  
+  );
 }

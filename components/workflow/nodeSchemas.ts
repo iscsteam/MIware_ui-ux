@@ -1,6 +1,5 @@
-// // src/data/nodeSchemas.ts
-import { NodeType } from '@/components/workflow/workflow-context';
-import { SchemaItem } from '@/components/workflow/SchemaModal';
+// src/components/workflow/nodeSchemas.ts
+import { NodeType, SchemaItem } from "./workflow-context"; // Assuming SchemaItem is also in workflow-context
 
 export interface NodeSchema {
   label: string;
@@ -10,223 +9,560 @@ export interface NodeSchema {
 }
 
 // Define schemas for all available node types
+// This object MUST contain an entry for every possible value defined in the NodeType type.
 export const nodeSchemas: Record<NodeType, NodeSchema> = {
-  "start": {
-    label: 'Start',
-    description: 'Workflow starting point.',
-    inputSchema: [],
+  start: {
+    label: "Start",
+    description: "Workflow starting point.",
+    inputSchema: [], // Start nodes typically have no specific data inputs via connections
     outputSchema: [
-      { name: 'started', datatype: 'boolean', description: 'Indicates workflow has started.' },
-      { name: 'timestamp', datatype: 'string', description: 'ISO timestamp when workflow started.' }
+      {
+        name: "triggerData", // Example: Data that triggered the workflow (if applicable)
+        datatype: "any",
+        description: "Data that initiated the workflow run.",
+      },
+      {
+        name: "startTime",
+        datatype: "string", // ISO timestamp
+        description: "Timestamp when the workflow instance started.",
+      },
     ],
   },
-  
-  "end": {
-    label: 'End',
-    description: 'Workflow ending point.',
+
+  end: {
+    label: "End",
+    description: "Workflow ending point. Consumes final data.",
     inputSchema: [
-      { name: 'result', datatype: 'any', description: 'Final workflow result.' },
+      {
+        name: "finalResult",
+        datatype: "any",
+        description: "The final data payload to conclude the workflow.",
+        required: true, // Usually requires some input to signify completion
+      },
     ],
-    outputSchema: [],
+    outputSchema: [], // End nodes typically don't output data via connections
   },
-  
+
   "create-file": {
-    label: 'Create File',
-    description: 'Creates a new file at the specified location.',
+    label: "Create File",
+    description: "Creates a new file or directory.",
     inputSchema: [
-      { name: 'filename', datatype: 'string', description: 'Path and name of the file to create.', required: true },
-      { name: 'content', datatype: 'string', description: 'Initial content of the file.', required: false },
-      { name: 'overwrite', datatype: 'boolean', description: 'Whether to overwrite if file exists.', required: false },
+      {
+        name: "filename",
+        datatype: "string",
+        description: "Path and name of the file/directory to create.",
+        required: true,
+      },
+      {
+        name: "content",
+        datatype: "string",
+        description: "Initial content (for files only).",
+        required: false,
+      },
+      {
+        name: "overwrite",
+        datatype: "boolean",
+        description: "Whether to overwrite if the file/directory exists.",
+        required: false,
+      },
+      {
+        name: "isDirectory",
+        datatype: "boolean",
+        description: "Set to true to create a directory instead of a file.",
+        required: false,
+      },
     ],
     outputSchema: [
-      { name: 'fileInfo', datatype: 'object', description: 'Information about the created file.' },
-      { name: 'fileInfo.fullName', datatype: 'string', description: 'Full path and name of the created file.' },
-      { name: 'fileInfo.fileName', datatype: 'string', description: 'Name of the file without the path.' },
-      { name: 'fileInfo.size', datatype: 'number', description: 'Size of the file in bytes.' },
-      { name: 'fileInfo.location', datatype: 'string', description: 'Directory containing the file.' },
-      { name: 'fileInfo.lastModified', datatype: 'string', description: 'ISO timestamp of last modification.' },
+      {
+        name: "fileInfo",
+        datatype: "object",
+        description: "Information about the created file/directory.",
+      },
+      {
+        name: "fileInfo.fullName",
+        datatype: "string",
+        description: "Full path and name of the created item.",
+      },
+      // Add other relevant fileInfo properties as needed (size, location, timestamp, etc.)
     ],
   },
-  
+
   "read-file": {
-    label: 'Read File',
-    description: 'Reads content from an existing file.',
+    label: "Read File",
+    description: "Reads content from an existing file.",
     inputSchema: [
-      { name: 'filename', datatype: 'string', description: 'Path and name of the file to read.', required: true },
-      { name: 'encoding', datatype: 'string', description: 'Character encoding (default: UTF-8).', required: false },
+      {
+        name: "filename",
+        datatype: "string",
+        description: "Path and name of the file to read.",
+        required: true,
+      },
+      {
+        name: "encoding",
+        datatype: "string", // Consider specific options: 'utf-8', 'ascii', 'binary'
+        description: "Character encoding (default: UTF-8).",
+        required: false,
+      },
+      {
+        name: "readAs",
+        datatype: "string", // 'text' or 'binary'
+        description: "How to read the file content (default: text).",
+        required: false,
+      },
     ],
     outputSchema: [
-      { name: 'textContent', datatype: 'string', description: 'Text content of the file.' },
-      { name: 'fileInfo', datatype: 'object', description: 'Information about the read file.' },
-      { name: 'fileInfo.fullName', datatype: 'string', description: 'Full path and name of the file.' },
-      { name: 'fileInfo.fileName', datatype: 'string', description: 'Name of the file without the path.' },
-      { name: 'fileInfo.size', datatype: 'number', description: 'Size of the file in bytes.' },
-      { name: 'fileInfo.location', datatype: 'string', description: 'Directory containing the file.' },
-      { name: 'fileInfo.lastModified', datatype: 'string', description: 'ISO timestamp of last modification.' },
+      {
+        name: "textContent", // Or binaryContent depending on readAs
+        datatype: "string", // or 'Buffer'/'Blob'/'ArrayBuffer' if binary
+        description: "Content of the file.",
+      },
+      {
+        name: "fileInfo",
+        datatype: "object",
+        description: "Information about the read file.",
+      },
+      // Add other relevant fileInfo properties
     ],
   },
-  
+
   "write-file": {
-    label: 'Write File',
-    description: 'Writes content to a file.',
+    label: "Write File",
+    description: "Writes content to a file.",
     inputSchema: [
-      { name: 'filename', datatype: 'string', description: 'Path and name of the file to write.', required: true },
-      { name: 'textContent', datatype: 'string', description: 'Content to write to the file.', required: true },
-      { name: 'append', datatype: 'boolean', description: 'Whether to append to existing content.', required: false },
-      { name: 'encoding', datatype: 'string', description: 'Character encoding (default: UTF-8).', required: false },
+      {
+        name: "filename",
+        datatype: "string",
+        description: "Path and name of the file to write.",
+        required: true,
+      },
+      {
+        name: "content",
+        datatype: "any", // Can be string or binary data
+        description: "Content to write to the file.",
+        required: true,
+      },
+      {
+        name: "append",
+        datatype: "boolean",
+        description: "Whether to append to existing content (default: overwrite).",
+        required: false,
+      },
+      {
+        name: "encoding",
+        datatype: "string", // 'utf-8', 'ascii', etc. (if content is text)
+        description: "Character encoding (default: UTF-8).",
+        required: false,
+      },
+      {
+        name: "createDirectory",
+        datatype: "boolean",
+        description: "Create parent directories if they don't exist.",
+        required: false,
+      }
     ],
     outputSchema: [
-      { name: 'fileInfo', datatype: 'object', description: 'Information about the written file.' },
-      { name: 'fileInfo.fullName', datatype: 'string', description: 'Full path and name of the file.' },
-      { name: 'fileInfo.fileName', datatype: 'string', description: 'Name of the file without the path.' },
-      { name: 'fileInfo.size', datatype: 'number', description: 'Size of the file in bytes.' },
-      { name: 'fileInfo.location', datatype: 'string', description: 'Directory containing the file.' },
-      { name: 'fileInfo.lastModified', datatype: 'string', description: 'ISO timestamp of last modification.' },
+      {
+        name: "fileInfo",
+        datatype: "object",
+        description: "Information about the written file.",
+      },
+       // Add other relevant fileInfo properties
     ],
   },
-  
+
   "copy-file": {
-    label: 'Copy File',
-    description: 'Copies a file from one location to another.',
+    label: "Copy File/Directory",
+    description: "Copies a file or directory.",
     inputSchema: [
-      { name: 'sourceFilename', datatype: 'string', description: 'Path and name of source file.', required: true },
-      { name: 'targetFilename', datatype: 'string', description: 'Path and name of destination file.', required: true },
-      { name: 'overwrite', datatype: 'boolean', description: 'Whether to overwrite if target exists.', required: false },
+      {
+        name: "sourcePath",
+        datatype: "string",
+        description: "Path of the source file or directory.",
+        required: true,
+      },
+      {
+        name: "targetPath",
+        datatype: "string",
+        description: "Path for the destination file or directory.",
+        required: true,
+      },
+      {
+        name: "overwrite",
+        datatype: "boolean",
+        description: "Whether to overwrite if the target exists.",
+        required: false,
+      },
     ],
     outputSchema: [
-      { name: 'fileInfo', datatype: 'object', description: 'Information about the copied file.' },
-      { name: 'fileInfo.fullName', datatype: 'string', description: 'Full path and name of the target file.' },
-      { name: 'fileInfo.fileName', datatype: 'string', description: 'Name of the target file without the path.' },
-      { name: 'fileInfo.size', datatype: 'number', description: 'Size of the file in bytes.' },
-      { name: 'fileInfo.location', datatype: 'string', description: 'Directory containing the file.' },
-      { name: 'fileInfo.lastModified', datatype: 'string', description: 'ISO timestamp of last modification.' },
+      {
+        name: "targetInfo",
+        datatype: "object",
+        description: "Information about the copied item at the target location.",
+      },
+       // Add other relevant fileInfo properties
     ],
   },
-  
+
   "delete-file": {
-    label: 'Delete File',
-    description: 'Deletes a file or directory.',
+    label: "Delete File/Directory",
+    description: "Deletes a file or directory.",
     inputSchema: [
-      { name: 'filename', datatype: 'string', description: 'Path and name of file to delete.', required: true },
-      { name: 'recursive', datatype: 'boolean', description: 'Whether to delete directories recursively.', required: false },
+      {
+        name: "path",
+        datatype: "string",
+        description: "Path of the file or directory to delete.",
+        required: true,
+      },
+      {
+        name: "recursive",
+        datatype: "boolean",
+        description: "Required to delete non-empty directories.",
+        required: false,
+      },
     ],
     outputSchema: [
-      { name: 'success', datatype: 'boolean', description: 'Whether the deletion was successful.' },
-      { name: 'deletedPath', datatype: 'string', description: 'Path of the deleted file/directory.' },
+      {
+        name: "success",
+        datatype: "boolean",
+        description: "Whether the deletion was successful.",
+      },
+      {
+        name: "deletedPath",
+        datatype: "string",
+        description: "Path of the item that was deleted.",
+      },
     ],
   },
-  
+
   "list-files": {
-    label: 'List Files',
-    description: 'Lists files in a directory.',
+    label: "List Directory",
+    description: "Lists files and/or directories within a path.",
     inputSchema: [
-      { name: 'directory', datatype: 'string', description: 'Directory path to list files from.', required: true },
-      { name: 'filter', datatype: 'string', description: 'Filter pattern for file names.', required: false },
-      { name: 'recursive', datatype: 'boolean', description: 'Include subdirectories.', required: false },
+      {
+        name: "directoryPath",
+        datatype: "string",
+        description: "Directory path to list contents from.",
+        required: true,
+      },
+      {
+        name: "filter", // e.g., "*.txt", "image.*"
+        datatype: "string",
+        description: "Glob pattern to filter items.",
+        required: false,
+      },
+      {
+        name: "recursive",
+        datatype: "boolean",
+        description: "Include items in subdirectories.",
+        required: false,
+      },
+       {
+        name: "type", // 'files', 'directories', 'all'
+        datatype: "string",
+        description: "Type of items to list (default: all).",
+        required: false,
+      },
     ],
     outputSchema: [
-      { name: 'files', datatype: 'array', description: 'Array of file information objects.' },
-      { name: 'count', datatype: 'number', description: 'Number of files found.' },
-      { name: 'directory', datatype: 'string', description: 'Base directory that was searched.' },
+      {
+        name: "items", // Array of strings (paths) or fileInfo objects
+        datatype: "array",
+        description: "Array of found file/directory paths or info objects.",
+      },
+      {
+        name: "count",
+        datatype: "number",
+        description: "Number of items found.",
+      },
     ],
   },
-  
+
   "file-poller": {
-    label: 'File Poller',
-    description: 'Monitors a directory for file changes.',
-    inputSchema: [
-      { name: 'directory', datatype: 'string', description: 'Directory path to monitor.', required: true },
-      { name: 'filter', datatype: 'string', description: 'Filter pattern for file names.', required: false },
-      { name: 'interval', datatype: 'number', description: 'Polling interval in seconds.', required: false },
+    label: "File Poller",
+    description: "Triggers when files change in a directory.",
+    inputSchema: [ // Configured via properties panel, not typically dynamic inputs
+        // Usually configuration like directory, filter, interval
     ],
-    outputSchema: [
-      { name: 'event', datatype: 'string', description: 'Type of file event (create, modify, delete).' },
-      { name: 'file', datatype: 'object', description: 'Information about the file that changed.' },
-      { name: 'timestamp', datatype: 'string', description: 'When the change was detected.' },
+    outputSchema: [ // Output depends on the event
+      {
+        name: "event", // 'create', 'modify', 'delete'
+        datatype: "string",
+        description: "Type of file event detected.",
+      },
+      {
+        name: "fileInfo",
+        datatype: "object",
+        description: "Information about the file that triggered the event.",
+      },
+      {
+        name: "timestamp",
+        datatype: "string", // ISO timestamp
+        description: "When the change was detected.",
+      },
     ],
   },
-  
+
   "http-receiver": {
-    label: 'HTTP Receiver',
-    description: 'Listens for incoming HTTP requests.',
-    inputSchema: [
-      { name: 'path', datatype: 'string', description: 'Endpoint path to listen on.', required: true },
-      { name: 'method', datatype: 'string', description: 'HTTP method to accept.', required: false },
-      { name: 'port', datatype: 'number', description: 'Port to listen on.', required: false },
+    label: "HTTP Receiver",
+    description: "Starts a listener for incoming HTTP requests.",
+     inputSchema: [ // Configured via properties panel, not typically dynamic inputs
+        // Usually configuration like path, method, port
     ],
     outputSchema: [
-      { name: 'request', datatype: 'object', description: 'Incoming HTTP request object.' },
-      { name: 'request.method', datatype: 'string', description: 'HTTP method of the request.' },
-      { name: 'request.path', datatype: 'string', description: 'Request path.' },
-      { name: 'request.headers', datatype: 'object', description: 'Request headers.' },
-      { name: 'request.body', datatype: 'any', description: 'Request body content.' },
-      { name: 'request.query', datatype: 'object', description: 'URL query parameters.' },
-      { name: 'responseCallback', datatype: 'function', description: 'Function to send HTTP response.' },
+      {
+        name: "request",
+        datatype: "object",
+        description: "Details of the incoming HTTP request.",
+      },
+      {
+        name: "request.method",
+        datatype: "string",
+        description: "HTTP method (GET, POST, etc.).",
+      },
+      {
+        name: "request.path",
+        datatype: "string",
+        description: "Request path.",
+      },
+      {
+        name: "request.headers",
+        datatype: "object",
+        description: "Request headers.",
+      },
+      {
+        name: "request.query",
+        datatype: "object",
+        description: "URL query parameters.",
+      },
+      {
+        name: "request.body",
+        datatype: "any",
+        description: "Request body content.",
+      },
+       {
+        name: "responseHandle", // An identifier or object needed by Send HTTP Response
+        datatype: "any",
+        description: "Handle required to send a response back.",
+      },
     ],
   },
-  
+
   "send-http-request": {
-    label: 'Send HTTP Request',
-    description: 'Makes an outgoing HTTP request.',
+    label: "Send HTTP Request",
+    description: "Makes an outgoing HTTP request.",
     inputSchema: [
-      { name: 'url', datatype: 'string', description: 'URL to send request to.', required: true },
-      { name: 'method', datatype: 'string', description: 'HTTP method (GET, POST, etc).', required: false },
-      { name: 'headers', datatype: 'object', description: 'HTTP headers.', required: false },
-      { name: 'body', datatype: 'any', description: 'Request body.', required: false },
+      {
+        name: "url",
+        datatype: "string",
+        description: "URL to send the request to.",
+        required: true,
+      },
+      {
+        name: "method", // GET, POST, PUT, DELETE, etc.
+        datatype: "string",
+        description: "HTTP method (default: GET).",
+        required: false,
+      },
+      {
+        name: "headers",
+        datatype: "object",
+        description: "HTTP headers as key-value pairs.",
+        required: false,
+      },
+      {
+        name: "query",
+        datatype: "object",
+        description: "URL query parameters as key-value pairs.",
+        required: false,
+      },
+      {
+        name: "body",
+        datatype: "any", // string, object (will be JSON stringified?), Buffer
+        description: "Request body.",
+        required: false,
+      },
+      {
+        name: "timeout",
+        datatype: "number", // milliseconds
+        description: "Request timeout in milliseconds.",
+        required: false,
+      },
     ],
     outputSchema: [
-      { name: 'status', datatype: 'number', description: 'HTTP status code.' },
-      { name: 'headers', datatype: 'object', description: 'Response headers.' },
-      { name: 'body', datatype: 'any', description: 'Response body.' },
-      { name: 'error', datatype: 'string', description: 'Error message if request failed.' },
+      {
+        name: "response",
+        datatype: "object",
+        description: "Details of the HTTP response.",
+      },
+      { name: "response.status", datatype: "number", description: "HTTP status code." },
+      { name: "response.headers", datatype: "object", description: "Response headers." },
+      { name: "response.body", datatype: "any", description: "Response body (parsed if JSON, otherwise raw)." },
+      {
+        name: "error",
+        datatype: "string",
+        description: "Error message if the request failed.",
+      },
     ],
   },
-  
+
   "send-http-response": {
-    label: 'Send HTTP Response',
-    description: 'Sends an HTTP response to a previous request.',
+    label: "Send HTTP Response",
+    description: "Sends response back for a received HTTP request.",
     inputSchema: [
-      { name: 'responseCallback', datatype: 'function', description: 'Response callback from HTTP receiver.', required: true },
-      { name: 'status', datatype: 'number', description: 'HTTP status code.', required: false },
-      { name: 'headers', datatype: 'object', description: 'HTTP headers.', required: false },
-      { name: 'body', datatype: 'any', description: 'Response body.', required: false },
+       {
+        name: "responseHandle", // The identifier from HTTP Receiver
+        datatype: "any",
+        description: "Handle for the request to respond to.",
+        required: true,
+      },
+      {
+        name: "status",
+        datatype: "number",
+        description: "HTTP status code (default: 200).",
+        required: false,
+      },
+      {
+        name: "headers",
+        datatype: "object",
+        description: "Response headers.",
+        required: false,
+      },
+      {
+        name: "body",
+        datatype: "any",
+        description: "Response body.",
+        required: false,
+      },
     ],
-    outputSchema: [
-      { name: 'sent', datatype: 'boolean', description: 'Whether response was sent successfully.' },
-      { name: 'timestamp', datatype: 'string', description: 'When the response was sent.' },
+    outputSchema: [ // Often doesn't output data, just completes an interaction
+      {
+        name: "sent",
+        datatype: "boolean",
+        description: "Indicates if the response was successfully sent.",
+      },
     ],
   },
-  
-  "code": {
-    label: 'Custom Code',
-    description: 'Executes custom JavaScript/TypeScript code.',
-    inputSchema: [
-      { name: 'code', datatype: 'string', description: 'JavaScript/TypeScript code to execute.', required: true },
-      { name: 'input', datatype: 'any', description: 'Input data for the code.', required: false },
-      { name: 'timeout', datatype: 'number', description: 'Execution timeout in milliseconds.', required: false },
+
+  code: {
+    label: "Execute Code",
+    description: "Executes custom JavaScript code.",
+    inputSchema: [ // Inputs can be dynamically defined or passed as a single object
+      {
+        name: "inputData",
+        datatype: "any",
+        description: "Data passed into the code execution context.",
+        required: false,
+      },
+       // Code itself is usually configured in the properties panel
     ],
     outputSchema: [
-      { name: 'result', datatype: 'any', description: 'Result returned by the code.' },
-      { name: 'logs', datatype: 'array', description: 'Console logs from code execution.' },
-      { name: 'executionTime', datatype: 'number', description: 'Time taken to execute in milliseconds.' },
+      {
+        name: "result",
+        datatype: "any",
+        description: "The value returned by the executed code.",
+      },
+       {
+        name: "error",
+        datatype: "string",
+        description: "Error message if code execution failed.",
+      },
+      {
+        name: "logs",
+        datatype: "array", // Array of strings
+        description: "Console logs captured during execution.",
+      },
     ],
   },
+
+  // ----- MISSING SCHEMAS ADDED BELOW -----
+  "xml-parser": {
+    label: "XML Parser",
+    description: "Parses an XML string into a structured object.",
+    inputSchema: [
+      {
+        name: "xmlString",
+        datatype: "string",
+        description: "The XML content to parse.",
+        required: true,
+      },
+      {
+        name: "options", // e.g., ignoreAttributes, explicitArray
+        datatype: "object",
+        description: "Parsing options (specific to the library used).",
+        required: false,
+      },
+    ],
+    outputSchema: [
+      {
+        name: "parsedObject",
+        datatype: "object",
+        description: "The JavaScript object representation of the XML.",
+      },
+      {
+        name: "error",
+        datatype: "string",
+        description: "Error message if parsing failed.",
+      },
+    ],
+  },
+
+  "xml-render": {
+    label: "XML Render",
+    description: "Renders a JavaScript object into an XML string.",
+    inputSchema: [
+      {
+        name: "jsonObject",
+        datatype: "object",
+        description: "The JavaScript object to render as XML.",
+        required: true,
+      },
+       {
+        name: "options", // e.g., rootName, prettyPrint, indentation
+        datatype: "object",
+        description: "Rendering options (specific to the library used).",
+        required: false,
+      },
+    ],
+    outputSchema: [
+      {
+        name: "xmlString",
+        datatype: "string",
+        description: "The resulting XML string.",
+      },
+      {
+        name: "error",
+        datatype: "string",
+        description: "Error message if rendering failed.",
+      },
+    ],
+  },
+  // ----- END OF ADDED SCHEMAS -----
 };
 
 // Helper function to get a schema by node type
-export const getNodeSchema = (nodeType: NodeType): NodeSchema | undefined => {
-  if (!nodeType) return undefined;
-  
-  // Try case-insensitive match if direct match fails
+export const getNodeSchema = (nodeType: NodeType | null | undefined): NodeSchema | undefined => {
+  // Handle null/undefined input
+  if (!nodeType) {
+    return undefined;
+  }
+
+  // Direct case-sensitive match (most efficient)
   if (nodeSchemas[nodeType]) {
     return nodeSchemas[nodeType];
   }
-  
-  // Check for case-insensitive match
-  const normalizedType = nodeType.toLowerCase();
+
+  // Fallback: Case-insensitive check (only if direct match fails)
+  // Ensure nodeType is treated as a string for safety before lowercasing
+  const normalizedType = typeof nodeType === 'string' ? nodeType.toLowerCase() : null;
+  if (!normalizedType) {
+      return undefined; // If nodeType wasn't a string
+  }
+
+  // Find the key in nodeSchemas that matches case-insensitively
   const matchingKey = Object.keys(nodeSchemas).find(
-    key => key.toLowerCase() === normalizedType
-  ) as NodeType | undefined;
-  
-  return matchingKey ? nodeSchemas[matchingKey] : undefined;
+    (key) => key.toLowerCase() === normalizedType
+  );
+
+  // Return the schema if a matching key was found
+  return matchingKey ? nodeSchemas[matchingKey as NodeType] : undefined;
 };
