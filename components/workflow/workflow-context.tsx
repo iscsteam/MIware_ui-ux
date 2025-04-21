@@ -87,6 +87,8 @@ export interface WorkflowNodeData {
   jsonObject?: object; // For xml-render node
   xmlString?: string; // For xml-parser node
   // Add other config properties from NodePropertiesPanel as needed...
+  inputSchema?: string;
+  outputSchema?: string;
 
   // Runtime/UI state flags
   active?: boolean; // The flag to control if the node runs

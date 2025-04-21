@@ -304,10 +304,27 @@ export function WorkflowEditor() {
           className="h-full w-full"
           style={{
             transform: `scale(${canvasScale}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
-            transformOrigin: "0 0",
+            // transformOrigin: "0 0",
           }}
         >
-          {/* Grid background */}
+          {/* Dots Background */}
+          <svg
+            className="absolute h-full w-full"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <pattern
+                id="dot-grid"
+                width="20"
+                height="20"
+                patternUnits="userSpaceOnUse"
+              >
+                <circle cx="1" cy="1" r="1.2" fill="rgba(38, 37, 37, 0.2)" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#dot-grid)" />
+          </svg>
+          {/* Grid background
           <svg
             className="absolute h-full w-full"
             xmlns="http://www.w3.org/2000/svg"
@@ -327,8 +344,9 @@ export function WorkflowEditor() {
                 />
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
+            <rect width="100%" height="100vh" fill="url(#grid)" />
+           
+          </svg> */}
           {/* Connections */}
           <svg className="absolute h-full w-full pointer-events-none">
             {connections.map((connection) => {
@@ -375,7 +393,7 @@ export function WorkflowEditor() {
               onSelect={() => selectNode(node.id)}
               onDragstart={startNodeDrag}
               onExecuteNode={handleExecuteNode}
-              onOpenProperties={handleOpenProperties} // Pass the handler
+              // onOpenProperties={handleOpenProperties} // Pass the handler
             />
           ))}
         </div>

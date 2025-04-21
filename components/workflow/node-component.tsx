@@ -263,10 +263,10 @@ export function NodeComponent({
   }
 
   const getNodeBackgroundColor = () => {
-    if (node.type === "start") return "bg-white"
-    if (node.type === "end") return "bg-white"
-    return "bg-white"
-  }
+    if (node.type === "start") return "bg-green-200";
+    if (node.type === "end") return "bg-red-200";
+    return "bg-white";
+  };
 
   const handleOpenTreeModal = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -423,6 +423,8 @@ export function NodeComponent({
             e.stopPropagation()
             onSelect()
           }}
+
+
           onMouseDown={(e) => {
             const target = e.target as HTMLElement
             if (e.button === 0 && !target.closest(".port") && !target.closest(".node-action")) {
