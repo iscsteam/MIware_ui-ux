@@ -208,21 +208,21 @@ const SchemaModal: React.FC<SchemaModalProps> = ({ nodeType, onClose }) => {
 
     return (
         <div
-            className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+            className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex justify-center items-center z-50 p-4"
             onClick={handleBackdropClick}
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-title"
         >
             <div
-                 className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col relative"
+                 className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-xl w-full max-w-3xl max-h-[980vh] overflow-y-auto flex flex-col relative"
                 onClick={(e) => e.stopPropagation()}
                 // ***** SOLUTION STEP *****
                 // Optional: Add here if the *entire* modal itself scrolls and causes zoom
                 // onWheel={stopWheelPropagation}
             >
                 {/* Modal Header */}
-                <div className="flex justify-between items-center mb-4 border-b dark:border-gray-700 pb-2 flex-shrink-0">
+                <div className="flex justify-between items-center mb-2 border-b dark:border-gray-700 pb-2 flex-shrink-0">
                     {/* ... header content ... */}
                      <h2 id="modal-title" className="text-xl font-bold text-gray-800 dark:text-gray-100">
                         {schema.label || nodeType} Node Configuration
@@ -238,7 +238,7 @@ const SchemaModal: React.FC<SchemaModalProps> = ({ nodeType, onClose }) => {
 
         {/* Description */}
         {schema.description && (
-          <p className="mb-6 text-sm text-gray-600 flex-shrink-0">{schema.description}</p>
+          <p className="mb-2 text-sm text-gray-600 flex-shrink-0">{schema.description}</p>
         )}
 
                 {/* Schema Columns Container */}
@@ -288,7 +288,7 @@ const SchemaModal: React.FC<SchemaModalProps> = ({ nodeType, onClose }) => {
                 {/* End Schema Columns Container */}
 
         {/* Footer */}
-        <div className="mt-6 text-right border-t pt-4 flex-shrink-0">
+        <div className="mt-2 text-right border-t pt-2 flex-shrink-0">
           <button
             onClick={onClose}
             className="px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 text-sm"
@@ -302,3 +302,4 @@ const SchemaModal: React.FC<SchemaModalProps> = ({ nodeType, onClose }) => {
 };
 
 export default SchemaModal;
+

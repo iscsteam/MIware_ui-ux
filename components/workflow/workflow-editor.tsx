@@ -327,7 +327,8 @@ export function WorkflowEditor() {
                 />
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
+            <rect width="100%" height="100vh" fill="url(#grid)" />
+           
           </svg>
           {/* Connections */}
           <svg className="absolute h-full w-full pointer-events-none">

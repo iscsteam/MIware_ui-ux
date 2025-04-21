@@ -324,7 +324,7 @@ export function NodeComponent({
 
   const getNodeBackgroundColor = () => {
     if (node.type === "start") return "bg-green-200";
-    if (node.type === "END") return "bg-red-200";
+    if (node.type === "end") return "bg-red-200";
     return "bg-white";
   };
 
@@ -476,6 +476,8 @@ export function NodeComponent({
             e.stopPropagation();
             onSelect();
           }}
+
+
           onMouseDown={(e) => {
             const target = e.target as HTMLElement;
             if (
@@ -517,7 +519,7 @@ export function NodeComponent({
         </div>
 
         {/* Ports (Unchanged) */}
-        {node.type !== "END" && (
+        {node.type !== "end" && (
           <div
             className={`port absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-blue-500 hover:scale-110 transition-all ${
               pendingConnection && pendingConnection.sourceId === node.id
