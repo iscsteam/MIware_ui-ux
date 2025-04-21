@@ -42,18 +42,12 @@ export function ConnectionLine({
   const getConnectionColor = () => {
     if (sourceNode.status === "error" || targetNode.status === "error") {
       return "#ef4444";
-    } else if (
-      sourceNode.status === "running" ||
-      targetNode.status === "running"
-    ) {
-      return "#eab308";
-    } else if (
-      sourceNode.status === "success" &&
-      targetNode.status === "success"
-    ) {
+    } else if (sourceNode.status === "running" || targetNode.status === "running") {
+      return "#3b82f6";
+    } else if (sourceNode.status === "success" && targetNode.status === "success") {
       return "#22c55e";
     } else {
-      return "#22c55e";
+      return "#000000";
     }
   };
 
