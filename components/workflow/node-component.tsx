@@ -21,6 +21,7 @@ interface NodeComponentProps {
   onSelect: () => void
   onDragstart: (nodeId: string, e: React.MouseEvent) => void
   onExecuteNode: (nodeId: string) => void
+  onOpenProperties: (nodeId: string) => void 
 }
 
 interface LineCoords {
@@ -38,6 +39,7 @@ export function NodeComponent({
   onSelect,
   onDragstart,
   onExecuteNode,
+  onOpenProperties,
 }: NodeComponentProps) {
   // ... (existing hooks and state: useWorkflow, useState, nodeRef) ...
   const { removeNode, pendingConnection, setPendingConnection, addConnection, updateNode, nodes, connections } =
@@ -456,27 +458,31 @@ export function NodeComponent({
           </div>
         )}
 
-        {/* Ports (Unchanged) */}
-        {node.type !== "end" && (
+       {/* Output port */}
+       {node.type !== "end" && (
           <div
-            className={`port absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-blue-500 hover:scale-110 transition-all ${
+            className={`port absolute right-0 top-1/2 h-5 w-5 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
               pendingConnection && pendingConnection.sourceId === node.id
-                ? "ring-2 ring-blue-500 scale-125 bg-blue-500"
+                ? "ring-2 ring-blue-500 scale-125 bg-primary"
                 : ""
             }`}
             onClick={handleOutputPortClick}
-            title="Output: Click to start connection"
-            style={{ top: "50%" }}
+            title="Click to start connection"
+            style={{ top: "50px" }}
           />
         )}
+
+        {/* Input port */}
         {node.type !== "start" && (
           <div
-            className={`port absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 -translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-blue-500 hover:scale-110 transition-all ${
-              pendingConnection && pendingConnection.sourceId !== node.id ? "ring-2 ring-blue-500 animate-pulse" : ""
+            className={`port absolute left-0 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
+              pendingConnection && pendingConnection.sourceId !== node.id
+                ? "ring-2 ring-blue-500 animate-pulse"
+                : ""
             }`}
             onClick={handleInputPortClick}
-            title={pendingConnection ? "Input: Click to complete connection" : "Input port"}
-            style={{ top: "50%" }}
+            title={pendingConnection ? "Click to complete connection" : "Input port"}
+            style={{ top: "50px" }}
           />
         )}
       </div>
