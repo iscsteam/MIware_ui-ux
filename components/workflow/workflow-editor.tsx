@@ -1,13 +1,8 @@
-//workflow-editor.tsx
+// //workflow-editor.tsx
 "use client";
 import type React from "react";
 import { useRef, useState, useEffect, useCallback } from "react";
-import {
-  useWorkflow,
-  type NodeType,
-  type WorkflowNode,
-  type NodeConnection,
-} from "./workflow-context";
+import {useWorkflow,type NodeType,type WorkflowNode,type NodeConnection,} from "./workflow-context";
 import { NodeComponent } from "./node-component";
 import { ConnectionLine } from "./connection-line";
 import { NodePropertiesPanel } from "./node-properties-panel";
@@ -15,21 +10,10 @@ import { ExecutionModal } from "./execution-modal";
 import { SideModal } from "./sidemodal";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ApiMonitor } from "./api-monitor";
 
 export function WorkflowEditor() {
-  const {
-    nodes,
-    connections,
-    selectedNodeId,
-    pendingConnection,
-    setPendingConnection,
-    addNode,
-    updateNode,
-    selectNode,
-    removeConnection,
-    executeNode,
-    addConnection,
-  } = useWorkflow();
+  const {nodes,connections,selectedNodeId,pendingConnection,setPendingConnection,addNode,updateNode,selectNode,removeConnection,executeNode,addConnection,} = useWorkflow();
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -47,6 +31,11 @@ export function WorkflowEditor() {
   const [executionModalOpen, setExecutionModalOpen] = useState(false);
   const [executingNodeId, setExecutingNodeId] = useState<string | null>(null);
   const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
+  const [showApiMonitor, setShowApiMonitor] = useState(false);
+  const [apiMonitorPosition, setApiMonitorPosition] = useState({
+    x: 20,
+    y: 20,
+  });
 
   // Handle node drop from palette
   const handleDrop = useCallback(
@@ -149,6 +138,10 @@ export function WorkflowEditor() {
         setPendingConnection(null);
         setSideModalOpen(false);
         setPropertiesPanelOpen(false);
+      }
+      // Toggle API monitor with Alt+M
+      if (e.key === "m" && e.altKey) {
+        toggleApiMonitor({ x: 20, y: 20 });
       }
     };
 
@@ -278,19 +271,50 @@ export function WorkflowEditor() {
     setPropertiesPanelOpen(false);
   }, []);
 
+  // Toggle API Monitor at specific position
+  const toggleApiMonitor = useCallback((position: { x: number; y: number }) => {
+    setApiMonitorPosition(position);
+    setShowApiMonitor((prev) => !prev);
+  }, []);
+
+  // Handle right-click to open API monitor
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      toggleApiMonitor({ x: e.clientX, y: e.clientY });
+    },
+    [toggleApiMonitor]
+  );
+
   return (
     <div className="relative flex-1 overflow-hidden bg-blue">
       {/* Add Button in top-right corner */}
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-4 right-4 z-10 flex space-x-2">
+        <Button
+          onClick={() => toggleApiMonitor({ x: 20, y: 20 })}
+          variant="outline"
+          size="sm"
+          className="bg-white shadow-md hover:bg-gray-100"
+        >
+          API Monitor
+        </Button>
         <Button
           onClick={toggleSideModal}
           variant="outline"
           size="icon"
-          className=" bg-white shadow-md hover:bg-gray-100"
+          className="bg-white shadow-md hover:bg-gray-100"
         >
           <Plus className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* API Monitor Component */}
+      {showApiMonitor && (
+        <ApiMonitor
+          onClose={() => setShowApiMonitor(false)}
+          position={apiMonitorPosition}
+        />
+      )}
 
       <div
         ref={canvasRef}
@@ -299,6 +323,7 @@ export function WorkflowEditor() {
         onDragOver={handleDragOver}
         onWheel={handleWheel}
         onClick={handleCanvasClick}
+        onContextMenu={handleContextMenu}
       >
         <div
           className="h-full w-full"
@@ -324,29 +349,7 @@ export function WorkflowEditor() {
             </defs>
             <rect width="100%" height="100%" fill="url(#dot-grid)" />
           </svg>
-          {/* Grid background
-          <svg
-            className="absolute h-full w-full"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              <pattern
-                id="grid"
-                width="20"
-                height="20"
-                patternUnits="userSpaceOnUse"
-              >
-                <path
-                  d="M 20 0 L 0 0 0 20"
-                  fill="none"
-                  stroke="rgba(38, 37, 37, 0.2)"
-                  strokeWidth="0.5"
-                />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100vh" fill="url(#grid)" />
-           
-          </svg> */}
+
           {/* Connections */}
           <svg className="absolute h-full w-full pointer-events-none">
             {connections.map((connection) => {
@@ -393,7 +396,7 @@ export function WorkflowEditor() {
               onSelect={() => selectNode(node.id)}
               onDragstart={startNodeDrag}
               onExecuteNode={handleExecuteNode}
-               onOpenProperties={handleOpenProperties} // Pass the handler
+              onOpenProperties={handleOpenProperties} // Pass the handler
             />
           ))}
         </div>
