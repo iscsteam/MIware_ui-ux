@@ -345,7 +345,7 @@ export function NodePropertiesPanel({ nodeId, onClose }: NodePropertiesPanelProp
 
 
   return (
-    <div className="absolute right-0 top-0 h-full w-80 border-l bg-background p-4 shadow-md flex flex-col">
+    <div className="absolute right-0 top-0 h-full w-80 border-l bg-background p-4 shadow-md flex flex-col z-50">
       {/* Header */}
       <div className="flex items-center justify-between border-b pb-2">
         <h3 className="text-lg font-medium">Node Properties</h3>
