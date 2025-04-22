@@ -114,23 +114,8 @@ const nodeTypes: NodeTypeDefinition[] = [
   },
 ]
 
-const nodeTypeStyles: Record<NodeType, string> = {
-  start: "border-green-400 bg-gradient-to-r from-green-50 to-green-100 hover:from-green-100 hover:to-green-200",
-  "create-file": "border-blue-400 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200",
-  "read-file": "border-indigo-400 bg-gradient-to-r from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200",
-  "write-file": "border-purple-400 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200",
-  "copy-file": "border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200",
-  "delete-file": "border-red-400 bg-gradient-to-r from-red-50 to-red-100 hover:from-red-100 hover:to-red-200",
-  "list-files": "border-teal-400 bg-gradient-to-r from-teal-50 to-teal-100 hover:from-teal-100 hover:to-teal-200",
-  "file-poller": "border-cyan-400 bg-gradient-to-r from-cyan-50 to-cyan-100 hover:from-cyan-100 hover:to-cyan-200",
-  "http-receiver": "border-emerald-400 bg-gradient-to-r from-emerald-50 to-emerald-100 hover:from-emerald-100 hover:to-emerald-200",
-  "send-http-request": "border-rose-400 bg-gradient-to-r from-rose-50 to-rose-100 hover:from-rose-100 hover:to-rose-200",
-  "send-http-response": "border-sky-400 bg-gradient-to-r from-sky-50 to-sky-100 hover:from-sky-100 hover:to-sky-200",
-  "xml-parser": "border-violet-400 bg-gradient-to-r from-violet-50 to-violet-100 hover:from-violet-100 hover:to-violet-200",
-  "xml-render": "border-fuchsia-400 bg-gradient-to-r from-fuchsia-50 to-fuchsia-100 hover:from-fuchsia-100 hover:to-fuchsia-200",
-  end: "border-red-400 bg-gradient-to-r from-red-50 to-red-100 hover:from-red-100 hover:to-red-200",
-  code: "border-gray-400 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200",
-}
+// Updated to use consistent white background without borders
+const nodeTypeStyles = "bg-white hover:bg-slate-50 hover:shadow-sm";
 
 interface SideModalProps {
   isOpen: boolean;
@@ -226,13 +211,11 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </button>
 
           {isFileOpsOpen && (
-            <div className="mt-1 p-3 space-y-2 bg-white">
+            <div className="p-3 space-y-2 bg-white">
               {fileOperations.map((nodeType) => (
                 <div
                   key={nodeType.type}
-                  className={`flex items-center gap-3 rounded-lg border p-1 hover:shadow-md cursor-grab text-sm transition transform hover:scale-[1.01] ${
-                    nodeTypeStyles[nodeType.type] || "border-gray-300 bg-background"
-                  }`}
+                  className={`flex items-center gap-3 p-2 cursor-grab text-sm transition transform hover:scale-[1.01] ${nodeTypeStyles}`}
                   draggable
                   onDragStart={(e) => handleDragStart(e, nodeType.type)}
                   onClick={() => handleSelect(nodeType.type)}
@@ -241,7 +224,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
                     {nodeType.icon}
                   </div>
                   <div className="leading-tight">
-                    <div className="font-medium text-sm">{nodeType.label}</div>
+                    <div className="font-medium text-sm text-slate-800">{nodeType.label}</div>
                     <div className="text-xs text-slate-500">{nodeType.description}</div>
                   </div>
                 </div>
@@ -268,13 +251,11 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </button>
 
           {isHttpOpsOpen && (
-            <div className="mt-1 p-3 space-y-2 bg-white">
+            <div className="p-3 space-y-2 bg-white">
               {httpOperations.map((nodeType) => (
                 <div
                   key={nodeType.type}
-                  className={`flex items-center gap-3 rounded-lg border p-1 hover:shadow-md cursor-grab text-sm transition transform hover:scale-[1.01] ${
-                    nodeTypeStyles[nodeType.type] || "border-gray-300 bg-background"
-                  }`}
+                  className={`flex items-center gap-3 p-2 cursor-grab text-sm transition transform hover:scale-[1.01] ${nodeTypeStyles}`}
                   draggable
                   onDragStart={(e) => handleDragStart(e, nodeType.type)}
                   onClick={() => handleSelect(nodeType.type)}
@@ -283,7 +264,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
                     {nodeType.icon}
                   </div>
                   <div className="leading-tight">
-                    <div className="font-medium text-sm">{nodeType.label}</div>
+                    <div className="font-medium text-sm text-slate-800">{nodeType.label}</div>
                     <div className="text-xs text-slate-500">{nodeType.description}</div>
                   </div>
                 </div>
@@ -310,13 +291,11 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </button>
 
           {isXmlOpsOpen && (
-            <div className="mt-1 p-3 space-y-2 bg-white">
+            <div className="p-3 space-y-2 bg-white">
               {xmlOperations.map((nodeType) => (
                 <div
                   key={nodeType.type}
-                  className={`flex items-center gap-3 rounded-lg border p-1 hover:shadow-md cursor-grab text-sm transition transform hover:scale-[1.01] ${
-                    nodeTypeStyles[nodeType.type] || "border-gray-300 bg-background"
-                  }`}
+                  className={`flex items-center gap-3 p-2 cursor-grab text-sm transition transform hover:scale-[1.01] ${nodeTypeStyles}`}
                   draggable
                   onDragStart={(e) => handleDragStart(e, nodeType.type)}
                   onClick={() => handleSelect(nodeType.type)}
@@ -325,7 +304,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
                     {nodeType.icon}
                   </div>
                   <div className="leading-tight">
-                    <div className="font-medium text-sm">{nodeType.label}</div>
+                    <div className="font-medium text-sm text-slate-800">{nodeType.label}</div>
                     <div className="text-xs text-slate-500">{nodeType.description}</div>
                   </div>
                 </div>
@@ -352,13 +331,11 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </button>
 
           {isGeneralOpsOpen && (
-            <div className="mt-1 p-3 space-y-2 bg-white">
+            <div className="p-3 space-y-2 bg-white">
               {generalOperations.map((nodeType) => (
                 <div
                   key={nodeType.type}
-                  className={`flex items-center gap-3 rounded-lg border p-1 hover:shadow-md cursor-grab text-sm transition transform hover:scale-[1.01] ${
-                    nodeTypeStyles[nodeType.type] || "border-gray-300 bg-background"
-                  }`}
+                  className={`flex items-center gap-3 p-2 cursor-grab text-sm transition transform hover:scale-[1.01] ${nodeTypeStyles}`}
                   draggable
                   onDragStart={(e) => handleDragStart(e, nodeType.type)}
                   onClick={() => handleSelect(nodeType.type)}
@@ -367,7 +344,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
                     {nodeType.icon}
                   </div>
                   <div className="leading-tight">
-                    <div className="font-medium text-sm">{nodeType.label}</div>
+                    <div className="font-medium text-sm text-slate-800">{nodeType.label}</div>
                     <div className="text-xs text-slate-500">{nodeType.description}</div>
                   </div>
                 </div>
