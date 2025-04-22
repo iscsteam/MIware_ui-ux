@@ -393,7 +393,7 @@ export function WorkflowEditor() {
               onSelect={() => selectNode(node.id)}
               onDragstart={startNodeDrag}
               onExecuteNode={handleExecuteNode}
-              // onOpenProperties={handleOpenProperties} // Pass the handler
+               onOpenProperties={handleOpenProperties} // Pass the handler
             />
           ))}
         </div>
