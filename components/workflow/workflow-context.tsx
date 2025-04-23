@@ -1,3 +1,4 @@
+//workflow-context.tsx
 "use client"
 import type React from "react"
 import { createContext, useContext, useState, useCallback, useEffect } from "react"
@@ -7,7 +8,7 @@ import { v4 as uuidv4 } from "uuid"
 export type NodeType =
   | "start"
   | "end"
-  | "create-file" // Use consistent naming (lowercase, hyphenated)
+  | "create-file"
   | "read-file"
   | "write-file"
   | "copy-file"
@@ -43,8 +44,6 @@ export interface NodeSchema {
   inputSchema: SchemaItem[];
   outputSchema: SchemaItem[];
 }
-
-// --- CORRECTED WorkflowNodeData ---
 // This interface holds the specific configuration and runtime data FOR A SINGLE NODE INSTANCE.
 // It should contain properties set via the NodePropertiesPanel or runtime state.
 export interface WorkflowNodeData {

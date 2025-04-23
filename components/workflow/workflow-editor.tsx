@@ -2,12 +2,7 @@
 "use client";
 import type React from "react";
 import { useRef, useState, useEffect, useCallback } from "react";
-import {
-  useWorkflow,
-  type NodeType,
-  type WorkflowNode,
-  type NodeConnection,
-} from "./workflow-context";
+import {useWorkflow,type NodeType,type WorkflowNode,type NodeConnection,} from "./workflow-context";
 import { NodeComponent } from "./node-component";
 import { ConnectionLine } from "./connection-line";
 import { NodePropertiesPanel } from "./node-properties-panel";
@@ -324,29 +319,6 @@ export function WorkflowEditor() {
             </defs>
             <rect width="100%" height="100%" fill="url(#dot-grid)" />
           </svg>
-          {/* Grid background
-          <svg
-            className="absolute h-full w-full"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              <pattern
-                id="grid"
-                width="20"
-                height="20"
-                patternUnits="userSpaceOnUse"
-              >
-                <path
-                  d="M 20 0 L 0 0 0 20"
-                  fill="none"
-                  stroke="rgba(38, 37, 37, 0.2)"
-                  strokeWidth="0.5"
-                />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100vh" fill="url(#grid)" />
-           
-          </svg> */}
           {/* Connections */}
           <svg className="absolute h-full w-full pointer-events-none">
             {connections.map((connection) => {
