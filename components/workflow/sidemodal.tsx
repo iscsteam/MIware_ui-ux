@@ -1,7 +1,7 @@
 //sidemodal.tsx
 "use client"
 import { useState, useEffect } from "react"
-import {Play, FileText, FileInput, FileOutput, Copy, CheckCircle, X, Search, ChevronDown, ChevronRight, FolderPlus, File, FileEdit, FilePlus2, FolderOpen, Trash2, Files, Clock, Server, Send, Globe, FileCode, FileJson} from "lucide-react"
+import {Play, FileText, FileInput, FileOutput, Copy, CheckCircle, X, Search, ChevronDown, ChevronRight, FolderPlus, File, FileEdit, FilePlus2, FolderOpen, Trash2, Files, Clock, Server, Send, Globe, FileCode, FileJson, ArrowLeft} from "lucide-react"
 import type { NodeType } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 
@@ -123,13 +123,12 @@ interface SideModalProps {
   onSelectNodeType?: (nodeType: NodeType) => void;
 }
 
+type CategoryType = "main" | "file" | "general" | "http" | "xml";
+
 export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isFileOpsOpen, setIsFileOpsOpen] = useState(false);
-  const [isGeneralOpsOpen, setIsGeneralOpsOpen] = useState(false);
-  const [isHttpOpsOpen, setIsHttpOpsOpen] = useState(false);
-  const [isXmlOpsOpen, setIsXmlOpsOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<CategoryType>("main");
 
   useEffect(() => {
     if (isOpen) {
@@ -139,6 +138,14 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
         setIsVisible(false);
       }, 300);
       return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  // Reset to main view when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setCurrentView("main");
+      setSearchTerm("");
     }
   }, [isOpen]);
 
@@ -154,15 +161,240 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
     onClose();
   }
 
+  // Filter nodes based on search term
   const filteredNodeTypes = nodeTypes.filter(node =>
     node.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
     node.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Get nodes by category
   const fileOperations = filteredNodeTypes.filter(node => node.category === "file");
   const generalOperations = filteredNodeTypes.filter(node => node.category === "general");
   const httpOperations = filteredNodeTypes.filter(node => node.category === "http");
   const xmlOperations = filteredNodeTypes.filter(node => node.category === "xml");
+
+  // Search input that appears on every view
+  const searchInput = (
+    <div className="relative mb-4">
+      <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+      <input
+        type="text"
+        placeholder="Search nodes..."
+        className="w-full pl-10 pr-4 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-blue-300 outline-none bg-slate-50"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+    </div>
+  );
+
+  // Helper function to render a list of nodes - removed border
+  const renderNodeList = (nodes: NodeTypeDefinition[]) => {
+    return (
+      <div className="space-y-2">
+        {nodes.map((nodeType) => (
+          <div
+            key={nodeType.type}
+            className={`flex items-center gap-3 p-2 cursor-grab text-sm transition transform hover:scale-[1.01] ${nodeTypeStyles}`}
+            draggable
+            onDragStart={(e) => handleDragStart(e, nodeType.type)}
+            onClick={() => handleSelect(nodeType.type)}
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-md border bg-white shadow-sm">
+              {nodeType.icon}
+            </div>
+            <div className="leading-tight">
+              <div className="font-medium text-sm text-slate-800">{nodeType.label}</div>
+              <div className="text-xs text-slate-500">{nodeType.description}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderMainView = () => {
+    // Show search results directly on main view if there's a search term
+    if (searchTerm.trim() !== "") {
+      const allFilteredNodes = filteredNodeTypes;
+      
+      if (allFilteredNodes.length === 0) {
+        return (
+          <>
+            {searchInput}
+            <div className="text-center py-8 text-slate-500">
+              No nodes found matching "{searchTerm}"
+            </div>
+          </>
+        );
+      }
+      
+      // Group search results by category
+      const fileResults = allFilteredNodes.filter(node => node.category === "file");
+      const httpResults = allFilteredNodes.filter(node => node.category === "http");
+      const xmlResults = allFilteredNodes.filter(node => node.category === "xml");
+      const generalResults = allFilteredNodes.filter(node => node.category === "general");
+      
+      return (
+        <>
+          {searchInput}
+          <div className="space-y-4">
+            {fileResults.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
+                  <FolderOpen className="h-4 w-4 text-blue-500" />
+                  File Operations
+                </h3>
+                {renderNodeList(fileResults)}
+              </div>
+            )}
+            
+            {httpResults.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-emerald-500" />
+                  HTTP Operations
+                </h3>
+                {renderNodeList(httpResults)}
+              </div>
+            )}
+            
+            {xmlResults.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
+                  <FileCode className="h-4 w-4 text-violet-500" />
+                  XML Operations
+                </h3>
+                {renderNodeList(xmlResults)}
+              </div>
+            )}
+            
+            {generalResults.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
+                  <Play className="h-4 w-4 text-green-500" />
+                  Workflow Controls
+                </h3>
+                {renderNodeList(generalResults)}
+              </div>
+            )}
+          </div>
+        </>
+      );
+    }
+    
+    // Default main view with category cards
+    return (
+      <>
+        {searchInput}
+        <div className="grid gap-3">
+          {/* File Operations Card */}
+          <div 
+            className="border rounded-lg overflow-hidden shadow-sm cursor-pointer hover:bg-slate-50"
+            onClick={() => setCurrentView("file")}
+          >
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700 py-3 px-4 bg-slate-100">
+              <div className="flex items-center space-x-2">
+                <FolderOpen className="h-5 w-5 text-blue-500" />
+                <span className="font-semibold">File Operations</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
+
+          {/* HTTP Operations Card */}
+          <div 
+            className="border rounded-lg overflow-hidden shadow-sm cursor-pointer hover:bg-slate-50"
+            onClick={() => setCurrentView("http")}
+          >
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700 py-3 px-4 bg-slate-100">
+              <div className="flex items-center space-x-2">
+                <Globe className="h-5 w-5 text-emerald-500" />
+                <span className="font-semibold">HTTP Operations</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
+
+          {/* XML Operations Card */}
+          <div 
+            className="border rounded-lg overflow-hidden shadow-sm cursor-pointer hover:bg-slate-50"
+            onClick={() => setCurrentView("xml")}
+          >
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700 py-3 px-4 bg-slate-100">
+              <div className="flex items-center space-x-2">
+                <FileCode className="h-5 w-5 text-violet-500" />
+                <span className="font-semibold">XML Operations</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
+
+          {/* General Operations Card */}
+          <div 
+            className="border rounded-lg overflow-hidden shadow-sm cursor-pointer hover:bg-slate-50"
+            onClick={() => setCurrentView("general")}
+          >
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700 py-3 px-4 bg-slate-100">
+              <div className="flex items-center space-x-2">
+                <Play className="h-5 w-5 text-green-500" />
+                <span className="font-semibold">Workflow Controls</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  };
+
+  const renderCategoryView = (category: "file" | "general" | "http" | "xml", title: string, icon: React.ReactNode) => {
+    const operations = filteredNodeTypes.filter(node => node.category === category);
+    
+    return (
+      <>
+        <div className="flex items-center mb-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setCurrentView("main")}
+            className="mr-2 hover:bg-slate-200 rounded-full"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center space-x-2">
+            {icon}
+            <h3 className="font-semibold text-slate-800">{title}</h3>
+          </div>
+        </div>
+        
+        {searchInput}
+        
+        {operations.length > 0 ? (
+          renderNodeList(operations)
+        ) : (
+          <div className="text-center py-8 text-slate-500">
+            No nodes found matching "{searchTerm}"
+          </div>
+        )}
+      </>
+    );
+  };
+
+  // Content based on current view
+  const renderContent = () => {
+    switch (currentView) {
+      case "file":
+        return renderCategoryView("file", "File Operations", <FolderOpen className="h-5 w-5 text-blue-500" />);
+      case "http":
+        return renderCategoryView("http", "HTTP Operations", <Globe className="h-5 w-5 text-emerald-500" />);
+      case "xml":
+        return renderCategoryView("xml", "XML Operations", <FileCode className="h-5 w-5 text-violet-500" />);
+      case "general":
+        return renderCategoryView("general", "Workflow Controls", <Play className="h-5 w-5 text-green-500" />);
+      default:
+        return renderMainView();
+    }
+  };
 
   return (
     <div
@@ -181,178 +413,8 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search nodes..."
-            className="w-full pl-10 pr-4 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-blue-300 outline-none bg-slate-50"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        {/* File Operations Section */}
-        <div className="border rounded-lg overflow-hidden shadow-sm">
-          <button
-            onClick={() => setIsFileOpsOpen(!isFileOpsOpen)}
-            className="w-full flex justify-between items-center text-sm font-medium text-slate-700 py-3 px-4 hover:bg-slate-50 bg-slate-100 transition"
-          >
-            <div className="flex items-center space-x-2">
-              <FolderOpen className="h-5 w-5 text-blue-500" />
-              <span className="font-semibold">File Operations</span>
-            </div>
-            {isFileOpsOpen ? (
-              <ChevronDown className="h-4 w-4 text-slate-500" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-slate-500" />
-            )}
-          </button>
-
-          {isFileOpsOpen && (
-            <div className="p-3 space-y-2 bg-white">
-              {fileOperations.map((nodeType) => (
-                <div
-                  key={nodeType.type}
-                  className={`flex items-center gap-3 p-2 cursor-grab text-sm transition transform hover:scale-[1.01] ${nodeTypeStyles}`}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, nodeType.type)}
-                  onClick={() => handleSelect(nodeType.type)}
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md border bg-white shadow-sm">
-                    {nodeType.icon}
-                  </div>
-                  <div className="leading-tight">
-                    <div className="font-medium text-sm text-slate-800">{nodeType.label}</div>
-                    <div className="text-xs text-slate-500">{nodeType.description}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* HTTP Operations Section */}
-        <div className="border rounded-lg overflow-hidden shadow-sm">
-          <button
-            onClick={() => setIsHttpOpsOpen(!isHttpOpsOpen)}
-            className="w-full flex justify-between items-center text-sm font-medium text-slate-700 py-3 px-4 hover:bg-slate-50 bg-slate-100 transition"
-          >
-            <div className="flex items-center space-x-2">
-              <Globe className="h-5 w-5 text-emerald-500" />
-              <span className="font-semibold">HTTP Operations</span>
-            </div>
-            {isHttpOpsOpen ? (
-              <ChevronDown className="h-4 w-4 text-slate-500" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-slate-500" />
-            )}
-          </button>
-
-          {isHttpOpsOpen && (
-            <div className="p-3 space-y-2 bg-white">
-              {httpOperations.map((nodeType) => (
-                <div
-                  key={nodeType.type}
-                  className={`flex items-center gap-3 p-2 cursor-grab text-sm transition transform hover:scale-[1.01] ${nodeTypeStyles}`}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, nodeType.type)}
-                  onClick={() => handleSelect(nodeType.type)}
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md border bg-white shadow-sm">
-                    {nodeType.icon}
-                  </div>
-                  <div className="leading-tight">
-                    <div className="font-medium text-sm text-slate-800">{nodeType.label}</div>
-                    <div className="text-xs text-slate-500">{nodeType.description}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* XML Operations Section */}
-        <div className="border rounded-lg overflow-hidden shadow-sm">
-          <button
-            onClick={() => setIsXmlOpsOpen(!isXmlOpsOpen)}
-            className="w-full flex justify-between items-center text-sm font-medium text-slate-700 py-3 px-4 hover:bg-slate-50 bg-slate-100 transition"
-          >
-            <div className="flex items-center space-x-2">
-              <FileCode className="h-5 w-5 text-violet-500" />
-              <span className="font-semibold">XML Operations</span>
-            </div>
-            {isXmlOpsOpen ? (
-              <ChevronDown className="h-4 w-4 text-slate-500" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-slate-500" />
-            )}
-          </button>
-
-          {isXmlOpsOpen && (
-            <div className="p-3 space-y-2 bg-white">
-              {xmlOperations.map((nodeType) => (
-                <div
-                  key={nodeType.type}
-                  className={`flex items-center gap-3 p-2 cursor-grab text-sm transition transform hover:scale-[1.01] ${nodeTypeStyles}`}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, nodeType.type)}
-                  onClick={() => handleSelect(nodeType.type)}
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md border bg-white shadow-sm">
-                    {nodeType.icon}
-                  </div>
-                  <div className="leading-tight">
-                    <div className="font-medium text-sm text-slate-800">{nodeType.label}</div>
-                    <div className="text-xs text-slate-500">{nodeType.description}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* General Operations Section */}
-        <div className="border rounded-lg overflow-hidden shadow-sm">
-          <button
-            onClick={() => setIsGeneralOpsOpen(!isGeneralOpsOpen)}
-            className="w-full flex justify-between items-center text-sm font-medium text-slate-700 py-3 px-4 hover:bg-slate-50 bg-slate-100 transition"
-          >
-            <div className="flex items-center space-x-2">
-              <Play className="h-5 w-5 text-green-500" />
-              <span className="font-semibold">Workflow Controls</span>
-            </div>
-            {isGeneralOpsOpen ? (
-              <ChevronDown className="h-4 w-4 text-slate-500" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-slate-500" />
-            )}
-          </button>
-
-          {isGeneralOpsOpen && (
-            <div className="p-3 space-y-2 bg-white">
-              {generalOperations.map((nodeType) => (
-                <div
-                  key={nodeType.type}
-                  className={`flex items-center gap-3 p-2 cursor-grab text-sm transition transform hover:scale-[1.01] ${nodeTypeStyles}`}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, nodeType.type)}
-                  onClick={() => handleSelect(nodeType.type)}
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md border bg-white shadow-sm">
-                    {nodeType.icon}
-                  </div>
-                  <div className="leading-tight">
-                    <div className="font-medium text-sm text-slate-800">{nodeType.label}</div>
-                    <div className="text-xs text-slate-500">{nodeType.description}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {renderContent()}
       </div>
     </div>
-  )
+  );
 }
