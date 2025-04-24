@@ -37,19 +37,19 @@ const nodeTypes: NodeTypeDefinition[] = [
     description: "starting point of the workflow",
   },
   {
-    type: "CREATE",
+    type: "create-file",
     label: "Create File",
     icon: <DocumentTextIcon className="h-4 w-4" />,
     description: "Creates a new file or directory",
   },
   {
-    type: "READ",
+    type: "read-file",
     label: "Read File",
     icon: <ClipboardIcon className="h-4 w-4" />,
     description: "Reads content from a file",
   },
   {
-    type: "WRITE",
+    type: "write-file",
     label: "Write File",
     icon: <ClipboardIcon className="h-4 w-4" />,
     description: "Writes content to a file",
@@ -61,7 +61,7 @@ const nodeTypes: NodeTypeDefinition[] = [
   //   description: "Copies a file or directory",
   // },
   {
-    type: "END",
+    type: "end",
     label: "demo",
     icon: <ClipboardIcon className="h-4 w-4" />,
     description: "End point of the workflow",
@@ -110,8 +110,9 @@ export function NodePaletteModal({
           </div>
         </DialogContent>
       </Dialog>
+      
 
-      {/* Modal for node properties */}
+  
       
     </>
   )
