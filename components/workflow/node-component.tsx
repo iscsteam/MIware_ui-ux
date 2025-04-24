@@ -548,7 +548,7 @@ export function NodeComponent({
           //     onDragStart(node.id, e); // Use updated prop name
           //   }
           // }}
-          className={`relative flex flex-col rounded-lg border-2 ${getNodeBackgroundColor()} shadow-lg transition-all duration-150 ease-in-out w-[120px] min-h-[60px] cursor-grab ${
+          className={`relative flex flex-col rounded-lg border-2 ${getNodeBackgroundColor()} shadow-lg transition-all duration-150 ease-in-out w-[100px] min-h-[60px] cursor-grab ${
             selected
               ? "border-blue-500"
               : ""
