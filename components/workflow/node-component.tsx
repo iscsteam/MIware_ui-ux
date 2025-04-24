@@ -548,7 +548,7 @@ export function NodeComponent({
           //     onDragStart(node.id, e); // Use updated prop name
           //   }
           // }}
-          className={`relative flex flex-col rounded-lg border-2 ${getNodeBackgroundColor()} shadow-lg transition-all duration-150 ease-in-out w-[120px] min-h-[60px] cursor-grab ${
+          className={`relative flex flex-col rounded-lg border-2 ${getNodeBackgroundColor()} shadow-lg transition-all duration-150 ease-in-out w-[100px] min-h-[60px] cursor-grab ${
             selected
               ? "border-blue-500"
               : ""
@@ -622,48 +622,7 @@ export function NodeComponent({
           )}
         </div>
 
-        {/* Filename display below the node */}
-        {node.type !== "start" && node.type !== "end" && (
-
-          <div
-            className="text-center text-sm mt-1 cursor-pointer hover:text-blue-500"
-            onClick={handleFilenameClick}
-          >
-            {node.data?.filename || "Filename"}
-          </div>
-        )}
-
-        {/* Output port */}
-        {node.type !== "end" && (
-          <div
-            className={`port absolute right-0 top-1/2 h-5 w-5 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
-              isConnecting
-               ? "ring-2 ring-blue-500 scale-125 bg-primary"
-                : ""
-              
-            }`}
-            onClick={handleOutputPortClick}
-            title="Output Port (Click to start connection)"
-            style={{ top: "50px" }}
-          />
-        )}
-
-        {/* Input port */}
-        {node.type !== "start" && (
-          <div
-            className={`port absolute left-0 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
-              pendingConnection && pendingConnection.sourceId !== node.id
-                ? "ring-2 ring-blue-500 animate-pulse"
-                : ""
-            }`}
-            onClick={handleInputPortClick}
-            title={
-              pendingConnection ? "Click to complete connection" : "Input port"
-            }
-            style={{ top: "50px" }}
-          />
-
-        )}
+ 
       </div>
 
       {/* Filename Dialog */}
