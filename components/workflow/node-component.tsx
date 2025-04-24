@@ -21,7 +21,7 @@ interface NodeComponentProps {
   onSelect: () => void
   onDragstart: (nodeId: string, e: React.MouseEvent) => void
   onExecuteNode: (nodeId: string) => void
-  onOpenProperties: (nodeId: string) => void 
+  onOpenProperties: (nodeId: string) => void
 }
 
 interface LineCoords {
@@ -324,6 +324,30 @@ export function NodeComponent({
     onOpenProperties(node.id)
   }
 
+  // Function to format filename path for display
+  const formatFilename = (filename: string | undefined): string => {
+    if (!filename) return "Filename"
+
+    // If filename is short enough, return it as is
+    if (filename.length <= 20) return filename
+
+    // For longer paths, show just the filename part
+    const parts = filename.split(/[/\\]/)
+    const filenameOnly = parts[parts.length - 1]
+
+    // If just the filename is too long, truncate it
+    if (filenameOnly.length > 15) {
+      return filenameOnly.substring(0, 12) + "..."
+    }
+
+    // Otherwise show directory/.../filename format
+    if (parts.length > 2) {
+      return parts[0] + "/.../" + filenameOnly
+    }
+
+    return filename
+  }
+
   return (
     <>
       {/* --- Node Visual Representation (Unchanged) --- */}
@@ -414,17 +438,18 @@ export function NodeComponent({
         {/* Node body with header and body sections */}
         <div
           ref={nodeRef}
-          onClick={handleIconClick}
+          onClick={(e) => {
+            e.stopPropagation()
+            onSelect()
+          }}
+          // onClick={handleIconClick}
           onDoubleClick={handleIconDoubleClick}
           className={`relative flex flex-col rounded-md border ${
             selected ? "border-green-500 ring-1 ring-green-500" : "border-gray-300"
           } ${getNodeBackgroundColor()} shadow-md transition-all w-[100px] h-[100px] cursor-grab ${
             pendingConnection && pendingConnection.sourceId === node.id ? "border-blue-500" : ""
           } ${node.data?.active === false ? "opacity-50" : ""}`}
-          onClick={(e) => {
-            e.stopPropagation()
-            onSelect()
-          }}
+          
           onMouseDown={(e) => {
             const target = e.target as HTMLElement
             if (e.button === 0 && !target.closest(".port") && !target.closest(".node-action")) {
@@ -449,41 +474,41 @@ export function NodeComponent({
               </div>
             )}
           </div>
+
+          {/* Output port */}
+          {node.type !== "end" && (
+            <div
+              className={`port absolute right-0 top-1/2 h-5 w-5 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
+                pendingConnection && pendingConnection.sourceId === node.id
+                  ? "ring-2 ring-blue-500 scale-125 bg-primary"
+                  : ""
+              }`}
+              onClick={handleOutputPortClick}
+              title="Click to start connection"
+            />
+          )}
+
+          {/* Input port */}
+          {node.type !== "start" && (
+            <div
+              className={`port absolute left-0 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
+                pendingConnection && pendingConnection.sourceId !== node.id ? "ring-2 ring-blue-500 animate-pulse" : ""
+              }`}
+              onClick={handleInputPortClick}
+              title={pendingConnection ? "Click to complete connection" : "Input port"}
+            />
+          )}
         </div>
 
         {/* Filename display below the node */}
         {node.type !== "start" && node.type !== "end" && (
-          <div className="text-center text-sm mt-1 cursor-pointer hover:text-blue-500" onClick={handleFilenameClick}>
-            {node.data?.filename || "Filename"}
+          <div
+            className="text-center text-xs mt-1 cursor-pointer hover:text-blue-500 max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap"
+            onClick={handleFilenameClick}
+            title={node.data?.filename || "Filename"}
+          >
+            {formatFilename(node.data?.filename)}
           </div>
-        )}
-
-       {/* Output port */}
-       {node.type !== "end" && (
-          <div
-            className={`port absolute right-0 top-1/2 h-5 w-5 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
-              pendingConnection && pendingConnection.sourceId === node.id
-                ? "ring-2 ring-blue-500 scale-125 bg-primary"
-                : ""
-            }`}
-            onClick={handleOutputPortClick}
-            title="Click to start connection"
-            style={{ top: "50px" }}
-          />
-        )}
-
-        {/* Input port */}
-        {node.type !== "start" && (
-          <div
-            className={`port absolute left-0 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
-              pendingConnection && pendingConnection.sourceId !== node.id
-                ? "ring-2 ring-blue-500 animate-pulse"
-                : ""
-            }`}
-            onClick={handleInputPortClick}
-            title={pendingConnection ? "Click to complete connection" : "Input port"}
-            style={{ top: "50px" }}
-          />
         )}
       </div>
 
