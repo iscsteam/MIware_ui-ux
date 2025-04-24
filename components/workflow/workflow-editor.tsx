@@ -1,4 +1,5 @@
-//workflow-editor.tsx
+
+
 "use client";
 import type React from "react";
 import { useRef, useState, useEffect, useCallback } from "react";
@@ -10,11 +11,12 @@ import {
 } from "./workflow-context";
 import { NodeComponent } from "./node-component";
 import { ConnectionLine } from "./connection-line";
-import { NodePropertiesPanel } from "./node-properties-panel";
+import { NodeModal } from "./node-properties-panel";
 import { ExecutionModal } from "./execution-modal";
 import { SideModal } from "./sidemodal";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SchemaModal from "./SchemaModal";
 
 export function WorkflowEditor() {
   const {
@@ -47,6 +49,13 @@ export function WorkflowEditor() {
   const [executionModalOpen, setExecutionModalOpen] = useState(false);
   const [executingNodeId, setExecutingNodeId] = useState<string | null>(null);
   const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
+  const [activeNodeForModal, setActiveNodeForModal] =
+    useState<WorkflowNode | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
+  const [nodeTypeForSchemaModal, setNodeTypeForSchemaModal] =
+    useState<NodeType | null>(null);
 
   // Handle node drop from palette
   const handleDrop = useCallback(
@@ -130,7 +139,7 @@ export function WorkflowEditor() {
       setPendingConnection(null);
     } else {
       selectNode(null);
-      setPropertiesPanelOpen(false);
+      setModalOpen(false);
     }
   }, [pendingConnection, setPendingConnection, selectNode]);
 
@@ -148,7 +157,7 @@ export function WorkflowEditor() {
       if (e.key === "Escape") {
         setPendingConnection(null);
         setSideModalOpen(false);
-        setPropertiesPanelOpen(false);
+        setModalOpen(false);
       }
     };
 
@@ -268,14 +277,31 @@ export function WorkflowEditor() {
   const handleOpenProperties = useCallback(
     (nodeId: string) => {
       selectNode(nodeId);
-      setPropertiesPanelOpen(true);
+      setModalOpen;
     },
     [selectNode]
   );
 
   // Close properties panel
   const handleCloseProperties = useCallback(() => {
-    setPropertiesPanelOpen(false);
+    setModalOpen(false);
+  }, []);
+
+  //--- NEW: Callback to open SchemaModal ---
+  const handleOpenSchemaModal = useCallback(
+    (nodeType: NodeType) => {
+      // Prevent opening if another modal is already open? (Optional: good UX)
+      if (propertiesPanelOpen || sideModalOpen || executionModalOpen) return;
+      setNodeTypeForSchemaModal(nodeType);
+      setIsSchemaModalOpen(true);
+    },
+    [propertiesPanelOpen, sideModalOpen, executionModalOpen] // Added modal states check
+  );
+
+  // --- NEW: Callback to close SchemaModal ---
+  const handleCloseSchemaModal = useCallback(() => {
+    setIsSchemaModalOpen(false);
+    setNodeTypeForSchemaModal(null); // Clear the node type
   }, []);
 
   return (
@@ -304,27 +330,11 @@ export function WorkflowEditor() {
           className="h-full w-full"
           style={{
             transform: `scale(${canvasScale}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
-            // transformOrigin: "0 0",
+
+            transformOrigin: "0 0",
           }}
         >
-          {/* Dots Background */}
-          <svg
-            className="absolute h-full w-full"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              <pattern
-                id="dot-grid"
-                width="20"
-                height="20"
-                patternUnits="userSpaceOnUse"
-              >
-                <circle cx="1" cy="1" r="1.2" fill="rgba(38, 37, 37, 0.2)" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#dot-grid)" />
-          </svg>
-          {/* Grid background
+          {/* Grid background */}
           <svg
             className="absolute h-full w-full"
             xmlns="http://www.w3.org/2000/svg"
@@ -344,9 +354,8 @@ export function WorkflowEditor() {
                 />
               </pattern>
             </defs>
-            <rect width="100%" height="100vh" fill="url(#grid)" />
-           
-          </svg> */}
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
           {/* Connections */}
           <svg className="absolute h-full w-full pointer-events-none">
             {connections.map((connection) => {
@@ -385,7 +394,7 @@ export function WorkflowEditor() {
           </svg>
 
           {/* Nodes */}
-          {nodes.map((node) => (
+          {/* {nodes.map((node) => (
             <NodeComponent
               key={node.id}
               node={node}
@@ -393,7 +402,38 @@ export function WorkflowEditor() {
               onSelect={() => selectNode(node.id)}
               onDragstart={startNodeDrag}
               onExecuteNode={handleExecuteNode}
-               onOpenProperties={handleOpenProperties} // Pass the handler
+              onOpenProperties={handleOpenProperties} // Pass the handler
+
+              onShowModal={() => setActiveNodeForModal(node)}
+
+            />
+          ))} */}
+          {nodes.map((node) => (
+            <NodeComponent
+              key={node.id}
+              node={node}
+              selected={node.id === selectedNodeId}
+              isConnecting={
+                !!pendingConnection && pendingConnection.sourceId === node.id
+              }
+              // Pass down callbacks
+              onSelect={() => {
+                // Prevent select if modal open
+                if (
+                  isSchemaModalOpen ||
+                  propertiesPanelOpen ||
+                  sideModalOpen ||
+                  executionModalOpen
+                )
+                  return;
+                selectNode(node.id);
+              }}
+              onDragStart={startNodeDrag} // Already checks for modals
+              onExecuteNode={handleExecuteNode} // Already checks for modals
+              onOpenProperties={handleOpenProperties} // Already checks for modals
+              // --- Pass down the NEW handler ---
+              onOpenSchemaModal={handleOpenSchemaModal} // Pass the new handler
+              // onShowModal={() => setActiveNodeForModal(node)} // Remove this if SchemaModal replaces it
             />
           ))}
         </div>
@@ -406,10 +446,11 @@ export function WorkflowEditor() {
         </div>
       )}
 
-      {/* Properties panel - only show when a node is selected AND propertiesPanelOpen is true */}
-      {selectedNodeId && propertiesPanelOpen && (
-        <NodePropertiesPanel
+      {/* Node Modal */}
+      {selectedNodeId && (
+        <NodeModal
           nodeId={selectedNodeId}
+          isOpen={modalOpen}
           onClose={handleCloseProperties}
         />
       )}
@@ -427,6 +468,15 @@ export function WorkflowEditor() {
         onClose={() => setExecutionModalOpen(false)}
         nodeId={executingNodeId}
       />
+
+      {/* Schema Modal */}
+      {isSchemaModalOpen &&
+        nodeTypeForSchemaModal && ( // Check specific state & needed data
+          <SchemaModal
+            nodeType={nodeTypeForSchemaModal}
+            onClose={handleCloseSchemaModal} // Use the new specific closer
+          />
+        )}
     </div>
   );
 }
