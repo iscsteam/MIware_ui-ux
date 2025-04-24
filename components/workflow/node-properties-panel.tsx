@@ -533,6 +533,7 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
         <pre className="bg-muted p-2 rounded text-xs overflow-auto max-h-80">{JSON.stringify(output, null, 2)}</pre>
         <Button variant="outline" size="sm" className="w-full">
           Set mock data
+
         </Button>
       </div>
     )

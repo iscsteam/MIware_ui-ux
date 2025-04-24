@@ -434,18 +434,20 @@
 //     />
 //   );
 // }
-//workflow-editor.tsx
-"use client"
-import type React from "react"
-import { useRef, useState, useEffect, useCallback } from "react"
-import { useWorkflow, type NodeType, type WorkflowNode, type NodeConnection } from "./workflow-context"
-import { NodeComponent } from "./node-component"
-import { ConnectionLine } from "./connection-line"
-import { NodeModal } from "./node-properties-panel"
-import { ExecutionModal } from "./execution-modal"
-import { SideModal } from "./sidemodal"
-import { Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
+
+"use client";
+import type React from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
+import {useWorkflow,type NodeType,type WorkflowNode,type NodeConnection,} from "./workflow-context";
+import { NodeComponent } from "./node-component";
+import { ConnectionLine } from "./connection-line";
+import { NodePropertiesPanel } from "./node-properties-panel";
+import { ExecutionModal } from "./execution-modal";
+import { SideModal } from "./sidemodal";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import SchemaModal from "./SchemaModal";
+
 
 export function WorkflowEditor() {
   const {
@@ -470,13 +472,20 @@ export function WorkflowEditor() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [sideModalOpen, setSideModalOpen] = useState(false)
   const [insertPosition, setInsertPosition] = useState<{
-    x: number
-    y: number
-  }>({ x: 0, y: 0 })
-  const [connectionToSplit, setConnectionToSplit] = useState<NodeConnection | null>(null)
-  const [executionModalOpen, setExecutionModalOpen] = useState(false)
-  const [executingNodeId, setExecutingNodeId] = useState<string | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
+    x: number;
+    y: number;
+  }>({ x: 0, y: 0 });
+  const [connectionToSplit, setConnectionToSplit] =
+    useState<NodeConnection | null>(null);
+  const [executionModalOpen, setExecutionModalOpen] = useState(false);
+  const [executingNodeId, setExecutingNodeId] = useState<string | null>(null);
+  const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
+  const [activeNodeForModal, setActiveNodeForModal] = useState<WorkflowNode | null>(null);
+
+  const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
+  const [nodeTypeForSchemaModal, setNodeTypeForSchemaModal] = useState<NodeType | null>(null);
+
+
 
   // Handle node drop from palette
   const handleDrop = useCallback(
@@ -695,6 +704,23 @@ export function WorkflowEditor() {
     setModalOpen(false)
   }, [])
 
+  //--- NEW: Callback to open SchemaModal ---
+  const handleOpenSchemaModal = useCallback(
+    (nodeType: NodeType) => {
+       // Prevent opening if another modal is already open? (Optional: good UX)
+       if (propertiesPanelOpen || sideModalOpen || executionModalOpen) return;
+       setNodeTypeForSchemaModal(nodeType);
+       setIsSchemaModalOpen(true);
+    },
+    [propertiesPanelOpen, sideModalOpen, executionModalOpen] // Added modal states check
+  );
+
+  // --- NEW: Callback to close SchemaModal ---
+  const handleCloseSchemaModal = useCallback(() => {
+       setIsSchemaModalOpen(false);
+       setNodeTypeForSchemaModal(null); // Clear the node type
+  }, []);
+
   return (
     <div className="relative flex-1 overflow-hidden bg-blue">
       {/* Add Button in top-right corner */}
@@ -721,7 +747,9 @@ export function WorkflowEditor() {
           className="h-full w-full"
           style={{
             transform: `scale(${canvasScale}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
-            transformOrigin: "0 0",
+
+           transformOrigin: "0 0",
+
           }}
         >
           {/* Grid background */}
@@ -768,7 +796,7 @@ export function WorkflowEditor() {
           </svg>
 
           {/* Nodes */}
-          {nodes.map((node) => (
+          {/* {nodes.map((node) => (
             <NodeComponent
               key={node.id}
               node={node}
@@ -777,8 +805,31 @@ export function WorkflowEditor() {
               onDragstart={startNodeDrag}
               onExecuteNode={handleExecuteNode}
               onOpenProperties={handleOpenProperties} // Pass the handler
+
+              onShowModal={() => setActiveNodeForModal(node)}
+
             />
-          ))}
+          ))} */}
+         {nodes.map((node) => (
+                <NodeComponent
+                  key={node.id}
+                  node={node}
+                  selected={node.id === selectedNodeId}
+                  isConnecting={!!pendingConnection && pendingConnection.sourceId === node.id}
+                  // Pass down callbacks
+                  onSelect={() => {
+                      // Prevent select if modal open
+                      if (isSchemaModalOpen || propertiesPanelOpen || sideModalOpen || executionModalOpen) return;
+                      selectNode(node.id)
+                  }}
+                  onDragStart={startNodeDrag} // Already checks for modals
+                  onExecuteNode={handleExecuteNode} // Already checks for modals
+                  onOpenProperties={handleOpenProperties} // Already checks for modals
+                  // --- Pass down the NEW handler ---
+                  onOpenSchemaModal={handleOpenSchemaModal} // Pass the new handler
+                  // onShowModal={() => setActiveNodeForModal(node)} // Remove this if SchemaModal replaces it
+                />
+            ))}
         </div>
       </div>
 
@@ -805,8 +856,19 @@ export function WorkflowEditor() {
         onClose={() => setExecutionModalOpen(false)}
         nodeId={executingNodeId}
       />
+
+ {/* Schema Modal */}
+  {isSchemaModalOpen && nodeTypeForSchemaModal && ( // Check specific state & needed data
+    <SchemaModal
+      nodeType={nodeTypeForSchemaModal}
+      onClose={handleCloseSchemaModal} // Use the new specific closer
+    />
+  )}
     </div>
-  )
+
+    
+  );
+
 }
 
 // Component for rendering the pending connection line
