@@ -53,37 +53,42 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         description: "Path and name of the file/directory to create.",
         required: true,
       },
-      {
-        name: "content",
-        datatype: "string",
-        description: "Initial content (for files only).",
-        required: false,
-      },
-      {
-        name: "overwrite",
-        datatype: "boolean",
-        description: "Whether to overwrite if the file/directory exists.",
-        required: false,
-      },
-      {
-        name: "isDirectory",
-        datatype: "boolean",
-        description: "Set to true to create a directory instead of a file.",
-        required: false,
-      },
+      //{
+      //   name: "content",
+      //   datatype: "string",
+      //   description: "Initial content (for files only).",
+      //   required: false,
+      // },
+      // {
+      //   name: "overwrite",
+      //   datatype: "boolean",
+      //   description: "Whether to overwrite if the file/directory exists.",
+      //   required: false,
+      // },
+      // {
+      //   name: "isDirectory",
+      //   datatype: "boolean",
+      //   description: "Set to true to create a directory instead of a file.",
+      //   required: false,
+      // },
     ],
     outputSchema: [
-      {
-        name: "fileInfo",
-        datatype: "object",
-        description: "Information about the created file/directory.",
-      },
+      // {
+      //   name: "fileInfo",
+      //   datatype: "object",
+      //   description: "Information about the created file/directory.",
+      // },
       {
         name: "fileInfo.fullName",
         datatype: "string",
         description: "Full path and name of the created item.",
       },
-      // Add other relevant fileInfo properties as needed (size, location, timestamp, etc.)
+      {
+        name: "file size",
+        datatype: "Number",
+        description: "file size",
+      },
+
     ],
   },
 
@@ -103,12 +108,12 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         description: "Character encoding (default: UTF-8).",
         required: false,
       },
-      {
-        name: "readAs",
-        datatype: "string", // 'text' or 'binary'
-        description: "How to read the file content (default: text).",
-        required: false,
-      },
+      // {
+      //   name: "readAs",
+      //   datatype: "string", // 'text' or 'binary'
+      //   description: "How to read the file content (default: text).",
+      //   required: false,
+      // },
     ],
     outputSchema: [
       {
@@ -117,11 +122,38 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         description: "Content of the file.",
       },
       {
-        name: "fileInfo",
+        name: "fileName",
         datatype: "object",
         description: "Information about the read file.",
       },
-      // Add other relevant fileInfo properties
+     {
+      name :"file fullname",
+      datatype: "string",
+      description:" Context of file",
+     },
+     {
+      name :"filepath",
+      datatype: "string",
+      description:" Context of file",
+     },
+     {
+      name :"file size",
+      datatype: "Number",
+      description:" Context of file",
+     },
+     {
+      name:"file type",
+      datatype:"string",
+      description:" Context of file",
+
+     },
+     {
+      name:"lastmodified",
+      datatype:"string",
+      description:" Context of file",
+     }
+
+    
     ],
   },
 
@@ -136,37 +168,75 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         required: true,
       },
       {
-        name: "content",
+        name: "Text Content",
         datatype: "any", // Can be string or binary data
         description: "Content to write to the file.",
         required: true,
       },
-      {
-        name: "append",
-        datatype: "boolean",
-        description: "Whether to append to existing content (default: overwrite).",
-        required: false,
-      },
+      // {
+      //   name: "append",
+      //   datatype: "boolean",
+      //   description: "Whether to append to existing content (default: overwrite).",
+      //   required: false,
+      // },
       {
         name: "encoding",
         datatype: "string", // 'utf-8', 'ascii', etc. (if content is text)
         description: "Character encoding (default: UTF-8).",
         required: false,
       },
-      {
-        name: "createDirectory",
-        datatype: "boolean",
-        description: "Create parent directories if they don't exist.",
-        required: false,
-      }
+      // {
+      //   name: "createDirectory",
+      //   datatype: "boolean",
+      //   description: "Create parent directories if they don't exist.",
+      //   required: false,
+      // },
+      // {
+      //   name: "writeAs",
+      //   datatype: "string",
+      //   description: "text.",
+      //   required: false,
+      // },
+
+      
     ],
     outputSchema: [
       {
-        name: "fileInfo",
-        datatype: "object",
-        description: "Information about the written file.",
+        name: "textContent", // Or binaryContent depending on readAs
+        datatype: "string", // or 'Buffer'/'Blob'/'ArrayBuffer' if binary
+        description: "Content of the file.",
       },
-       // Add other relevant fileInfo properties
+      {
+        name: "fileName",
+        datatype: "object",
+        description: "Information about the read file.",
+      },
+     {
+      name :"file fullname",
+      datatype: "string",
+      description:" Context of file",
+     },
+     {
+      name :"filepath",
+      datatype: "string",
+      description:" Context of file",
+     },
+     {
+      name :"file size",
+      datatype: "Number",
+      description:" Context of file",
+     },
+     {
+      name:"file type",
+      datatype:"string",
+      description:" Context of file",
+
+     },
+     {
+      name:"lastmodified",
+      datatype:"string",
+      description:" Context of file",
+     }
     ],
   },
 
@@ -211,26 +281,52 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         name: "path",
         datatype: "string",
         description: "Path of the file or directory to delete.",
-        required: true,
+        // required: true,
       },
       {
-        name: "recursive",
-        datatype: "boolean",
-        description: "Required to delete non-empty directories.",
-        required: false,
+        name: "file Name",
+        datatype: "string",
+        description: "it will remove the file from flow",
+        // required: false,
       },
     ],
     outputSchema: [
       {
-        name: "success",
-        datatype: "boolean",
-        description: "Whether the deletion was successful.",
+        name: "textContent", // Or binaryContent depending on readAs
+        datatype: "string", // or 'Buffer'/'Blob'/'ArrayBuffer' if binary
+        description: "Content of the file.",
       },
       {
-        name: "deletedPath",
-        datatype: "string",
-        description: "Path of the item that was deleted.",
+        name: "fileName",
+        datatype: "object",
+        description: "Information about the read file.",
       },
+     {
+      name :"file fullname",
+      datatype: "string",
+      description:" Context of file",
+     },
+     {
+      name :"filepath",
+      datatype: "string",
+      description:" Context of file",
+     },
+     {
+      name :"file size",
+      datatype: "Number",
+      description:" Context of file",
+     },
+     {
+      name:"file type",
+      datatype:"string",
+      description:" Context of file",
+
+     },
+     {
+      name:"lastmodified",
+      datatype:"string",
+      description:" Context of file",
+     }
     ],
   },
 

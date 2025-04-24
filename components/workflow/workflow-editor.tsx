@@ -10,6 +10,7 @@ import { ExecutionModal } from "./execution-modal";
 import { SideModal } from "./sidemodal";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SchemaModal from "./SchemaModal";
 
 export function WorkflowEditor() {
   const {
@@ -42,6 +43,11 @@ export function WorkflowEditor() {
   const [executionModalOpen, setExecutionModalOpen] = useState(false);
   const [executingNodeId, setExecutingNodeId] = useState<string | null>(null);
   const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
+  const [activeNodeForModal, setActiveNodeForModal] = useState<WorkflowNode | null>(null);
+
+  const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
+  const [nodeTypeForSchemaModal, setNodeTypeForSchemaModal] = useState<NodeType | null>(null);
+
 
   // Handle node drop from palette
   const handleDrop = useCallback(
@@ -273,6 +279,23 @@ export function WorkflowEditor() {
     setPropertiesPanelOpen(false);
   }, []);
 
+  //--- NEW: Callback to open SchemaModal ---
+  const handleOpenSchemaModal = useCallback(
+    (nodeType: NodeType) => {
+       // Prevent opening if another modal is already open? (Optional: good UX)
+       if (propertiesPanelOpen || sideModalOpen || executionModalOpen) return;
+       setNodeTypeForSchemaModal(nodeType);
+       setIsSchemaModalOpen(true);
+    },
+    [propertiesPanelOpen, sideModalOpen, executionModalOpen] // Added modal states check
+  );
+
+  // --- NEW: Callback to close SchemaModal ---
+  const handleCloseSchemaModal = useCallback(() => {
+       setIsSchemaModalOpen(false);
+       setNodeTypeForSchemaModal(null); // Clear the node type
+  }, []);
+
   return (
     <div className="relative flex-1 overflow-hidden bg-blue">
       {/* Add Button in top-right corner */}
@@ -299,7 +322,7 @@ export function WorkflowEditor() {
           className="h-full w-full"
           style={{
             transform: `scale(${canvasScale}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
-            // transformOrigin: "0 0",
+           transformOrigin: "0 0",
           }}
         >
           {/* Dots Background */}
@@ -357,7 +380,7 @@ export function WorkflowEditor() {
           </svg>
 
           {/* Nodes */}
-          {nodes.map((node) => (
+          {/* {nodes.map((node) => (
             <NodeComponent
               key={node.id}
               node={node}
@@ -365,9 +388,30 @@ export function WorkflowEditor() {
               onSelect={() => selectNode(node.id)}
               onDragstart={startNodeDrag}
               onExecuteNode={handleExecuteNode}
-               onOpenProperties={handleOpenProperties} // Pass the handler
+              onOpenProperties={handleOpenProperties} // Pass the handler
+              onShowModal={() => setActiveNodeForModal(node)}
             />
-          ))}
+          ))} */}
+         {nodes.map((node) => (
+                <NodeComponent
+                  key={node.id}
+                  node={node}
+                  selected={node.id === selectedNodeId}
+                  isConnecting={!!pendingConnection && pendingConnection.sourceId === node.id}
+                  // Pass down callbacks
+                  onSelect={() => {
+                      // Prevent select if modal open
+                      if (isSchemaModalOpen || propertiesPanelOpen || sideModalOpen || executionModalOpen) return;
+                      selectNode(node.id)
+                  }}
+                  onDragStart={startNodeDrag} // Already checks for modals
+                  onExecuteNode={handleExecuteNode} // Already checks for modals
+                  onOpenProperties={handleOpenProperties} // Already checks for modals
+                  // --- Pass down the NEW handler ---
+                  onOpenSchemaModal={handleOpenSchemaModal} // Pass the new handler
+                  // onShowModal={() => setActiveNodeForModal(node)} // Remove this if SchemaModal replaces it
+                />
+            ))}
         </div>
       </div>
 
@@ -399,7 +443,16 @@ export function WorkflowEditor() {
         onClose={() => setExecutionModalOpen(false)}
         nodeId={executingNodeId}
       />
+
+ {/* Schema Modal */}
+  {isSchemaModalOpen && nodeTypeForSchemaModal && ( // Check specific state & needed data
+    <SchemaModal
+      nodeType={nodeTypeForSchemaModal}
+      onClose={handleCloseSchemaModal} // Use the new specific closer
+    />
+  )}
     </div>
+    
   );
 }
 
