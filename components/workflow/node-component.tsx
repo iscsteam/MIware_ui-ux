@@ -21,7 +21,7 @@
 //   onSelect: () => void
 //   onDragstart: (nodeId: string, e: React.MouseEvent) => void
 //   onExecuteNode: (nodeId: string) => void
-//   onOpenProperties: (nodeId: string) => void 
+//   onOpenProperties: (nodeId: string) => void
 // }
 
 // interface LineCoords {
@@ -426,7 +426,6 @@
 //             onSelect()
 //           }}
 
-
 //           onMouseDown={(e) => {
 //             const target = e.target as HTMLElement
 //             if (e.button === 0 && !target.closest(".port") && !target.closest(".node-action")) {
@@ -540,7 +539,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import type { NodeType } from "./workflow-context";
+// import type { NodeType } from "./workflow-context";
+ import type { NodeType } from "./workflow-context"
 import SchemaModal from "./SchemaModal"; // Adjust path
 
 // --- Interfaces ---
@@ -548,7 +548,6 @@ interface NodeComponentProps {
   node: WorkflowNode;
   selected: boolean;
   isConnecting: boolean;
-
 
   onSelect: () => void;
 
@@ -560,7 +559,6 @@ interface NodeComponentProps {
   // --- NEW Callback Prop ---
   onOpenSchemaModal: (nodeType: NodeType) => void;
   // onShowModal: () => void; // Remove if replaced by onOpenSchemaModal
-
 }
 
 interface LineCoords {
@@ -848,10 +846,10 @@ export function NodeComponent({
   };
 
   const getNodeBackgroundColor = () => {
-    if (node.type === "start") return "bg-white"
-    if (node.type === "end") return "bg-white"
-    return "bg-white"
-  }
+    if (node.type === "start") return "bg-white";
+    if (node.type === "end") return "bg-white";
+    return "bg-white";
+  };
 
   const handleOpenTreeModal = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -909,27 +907,27 @@ export function NodeComponent({
 
   // Function to format filename path for display
   const formatFilename = (filename: string | undefined): string => {
-    if (!filename) return "Filename"
+    if (!filename) return "Filename";
 
     // If filename is short enough, return it as is
-    if (filename.length <= 20) return filename
+    if (filename.length <= 20) return filename;
 
     // For longer paths, show just the filename part
-    const parts = filename.split(/[/\\]/)
-    const filenameOnly = parts[parts.length - 1]
+    const parts = filename.split(/[/\\]/);
+    const filenameOnly = parts[parts.length - 1];
 
     // If just the filename is too long, truncate it
     if (filenameOnly.length > 15) {
-      return filenameOnly.substring(0, 12) + "..."
+      return filenameOnly.substring(0, 12) + "...";
     }
 
     // Otherwise show directory/.../filename format
     if (parts.length > 2) {
-      return parts[0] + "/.../" + filenameOnly
+      return parts[0] + "/.../" + filenameOnly;
     }
 
-    return filename
-  }
+    return filename;
+  };
 
   return (
     <>
@@ -1049,12 +1047,11 @@ export function NodeComponent({
         <div
           ref={nodeRef}
           onClick={(e) => {
-            e.stopPropagation()
-            onSelect()
+            e.stopPropagation();
+            onSelect();
           }}
           // onClick={handleIconClick}
           onDoubleClick={handleIconDoubleClick}
-
           // onMouseDown={(e) => {
           //   // Allow dragging only with left mouse button and not on ports/actions
           //   const target = e.target as HTMLElement;
@@ -1062,10 +1059,8 @@ export function NodeComponent({
           //     onDragStart(node.id, e); // Use updated prop name
           //   }
           // }}
-          className={`relative flex flex-col rounded-lg border-2 ${getNodeBackgroundColor()} shadow-lg transition-all duration-150 ease-in-out w-[120px] min-h-[60px] cursor-grab ${
-            selected
-              ? "border-blue-500"
-              : ""
+          className={`relative flex flex-col rounded-lg border-2 ${getNodeBackgroundColor()} shadow-lg transition-all duration-150 ease-in-out w-[110px] min-h-[60px] cursor-grab ${
+            selected ? "border-blue-500" : ""
           } ${isConnecting ? "border-sky-500 dark:border-sky-400" : ""} ${
             node.data?.active === false ? "opacity-60 brightness-90" : ""
           } hover:shadow-xl`}
@@ -1121,6 +1116,7 @@ export function NodeComponent({
               }`}
               onClick={handleOutputPortClick}
               title="Click to start connection"
+              style={{ top: "50px" }}
             />
           )}
 
@@ -1128,42 +1124,45 @@ export function NodeComponent({
           {node.type !== "start" && (
             <div
               className={`port absolute left-0 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
-                pendingConnection && pendingConnection.sourceId !== node.id ? "ring-2 ring-blue-500 animate-pulse" : ""
+                pendingConnection && pendingConnection.sourceId !== node.id
+                  ? "ring-2 ring-blue-500 animate-pulse"
+                  : ""
               }`}
               onClick={handleInputPortClick}
-              title={pendingConnection ? "Click to complete connection" : "Input port"}
+              title={
+                pendingConnection
+                  ? "Click to complete connection"
+                  : "Input port"
+              }
+              style={{ top: "50px" }}
             />
           )}
         </div>
 
         {/* Filename display below the node */}
-        {node.type !== "start" && node.type !== "end" && (
-
+        {/* {node.type !== "start" && node.type !== "end" && (
           <div
             className="text-center text-sm mt-1 cursor-pointer hover:text-blue-500"
             onClick={handleFilenameClick}
           >
             {node.data?.filename || "Filename"}
           </div>
-        )}
+        )} */}
 
         {/* Output port */}
-        {node.type !== "end" && (
+        {/* {node.type !== "end" && (
           <div
             className={`port absolute right-0 top-1/2 h-5 w-5 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
-              isConnecting
-               ? "ring-2 ring-blue-500 scale-125 bg-primary"
-                : ""
-              
+              isConnecting ? "ring-2 ring-blue-500 scale-125 bg-primary" : ""
             }`}
             onClick={handleOutputPortClick}
             title="Output Port (Click to start connection)"
             style={{ top: "50px" }}
           />
-        )}
+        )} */}
 
         {/* Input port */}
-        {node.type !== "start" && (
+        {/* {node.type !== "start" && (
           <div
             className={`port absolute left-0 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
               pendingConnection && pendingConnection.sourceId !== node.id
@@ -1176,8 +1175,7 @@ export function NodeComponent({
             }
             style={{ top: "50px" }}
           />
-
-        )}
+        )} */}
       </div>
 
       {/* Filename Dialog */}
@@ -1199,8 +1197,6 @@ export function NodeComponent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-     
     </>
   );
 }
