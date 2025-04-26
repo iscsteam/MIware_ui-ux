@@ -657,6 +657,146 @@
 //       </DialogContent>
 //     </Dialog>
 //   )
+// // }
+// "use client";
+// import React, { useState, useEffect } from "react";
+// import { Code, ArrowRight, Play, Loader2 } from "lucide-react";
+// import { useWorkflow } from "./workflow-context";
+// import { Button } from "@/components/ui/button";
+// import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+// import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+// import { Badge } from "@/components/ui/badge";
+
+// import CreateFileNodeProperties from "@/components/node-properties/CreateFileNodeProperties"
+// import CopyFileNodeProperties from "@/components/node-properties/CopyFileNodeProperties"
+// import ReadFileNodeProperties from "@/components/node-properties/CopyFileNodeProperties"
+
+// const NodePropertyComponents: Record<string, React.FC<any>> = {
+//   "create-file": CreateFileNodeProperties,
+//   "read-file": ReadFileNodeProperties,
+//   "copy-file": CopyFileNodeProperties,
+//   // …add your others here
+// };
+
+// interface NodeModalProps {
+//   nodeId: string;
+//   isOpen: boolean;
+//   onClose: () => void;
+// }
+
+// export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
+//   const { getNodeById, updateNode, connections, nodes, executeNode } = useWorkflow();
+//   const [formData, setFormData] = useState<Record<string, any>>({});
+//   const [activeTab, setActiveTab] = useState<"parameters" | "settings">("parameters");
+//   const [isExecuting, setIsExecuting] = useState(false);
+//   const [executionResult, setExecutionResult] = useState<any>(null);
+
+//   const node = getNodeById(nodeId);
+//   useEffect(() => {
+//     if (node) setFormData(node.data ?? {});
+//   }, [nodeId, node]);
+
+//   // carry over your existing getNodeInputs / getAllUpstreamOutputs / renderInputs / renderOutput logic…
+
+//   const handleChange = (name: string, value: any) => {
+//     setFormData((prev) => ({ ...prev, [name]: value }));
+//   };
+//   const handleSave = () => {
+//     updateNode(nodeId, { data: formData });
+//     onClose();
+//   };
+//   const handleRun = async () => {
+//     setIsExecuting(true);
+//     await updateNode(nodeId, { data: formData });
+//     const res = await executeNode(nodeId);
+//     setExecutionResult(res);
+//     setIsExecuting(false);
+//   };
+
+//   if (!node) return null;
+//   const NodePropsComponent = NodePropertyComponents[node.type];
+
+//   const getNodeIcon = () =>
+//     node.type === "code" ? <Code className="h-5 w-5 mr-2" /> : <ArrowRight className="h-5 w-5 mr-2" />;
+
+//   return (
+//     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+//       <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden max-h-[90vh]">
+//         <DialogHeader className="p-4 border-b">
+//           <DialogTitle className="flex items-center">
+//             {getNodeIcon()}
+//             {node.type
+//               .split("-")
+//               .map((w) => w[0].toUpperCase() + w.slice(1))
+//               .join(" ")}
+//             <Button
+//               size="sm"
+//               onClick={handleRun}
+//               disabled={isExecuting}
+//               className="absolute top-2 right-12 text-xs"
+//             >
+//               {isExecuting ? (
+//                 <>
+//                   <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+//                   Running…
+//                 </>
+//               ) : (
+//                 <>
+//                   <Play className="h-3 w-3 mr-1" />
+//                   Run
+//                 </>
+//               )}
+//             </Button>
+//           </DialogTitle>
+//         </DialogHeader>
+
+//         <div className="grid grid-cols-1 md:grid-cols-3 h-[500px]">
+//           {/* INPUT column */}
+//           <div className="border-r flex flex-col">
+//             <div className="bg-muted/30 px-4 py-2 font-medium text-sm border-b">INPUT</div>
+//             <div className="p-4 overflow-y-auto flex-1">{/* your renderInputs() here */}</div>
+//           </div>
+
+//           {/* PARAMETERS & SETTINGS column */}
+//           <div className="border-r flex flex-col">
+//             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+//               <TabsList className="grid grid-cols-2 bg-background border-b">
+//                 <TabsTrigger value="parameters">Parameters</TabsTrigger>
+//                 <TabsTrigger value="settings">Settings</TabsTrigger>
+//               </TabsList>
+//               <div className="p-4 overflow-y-auto flex-1">
+//                 <TabsContent value="parameters">
+//                   {NodePropsComponent ? (
+//                     <NodePropsComponent formData={formData} onChange={handleChange} />
+//                   ) : (
+//                     <div className="italic text-sm text-muted-foreground">
+//                       No parameters for this node type.
+//                     </div>
+//                   )}
+//                 </TabsContent>
+//                 <TabsContent value="settings">
+//                   {/* your settings panel (active switch, description textarea) */}
+//                 </TabsContent>
+//               </div>
+//             </Tabs>
+//           </div>
+
+//           {/* OUTPUT column */}
+//           <div className="flex flex-col">
+//             <div className="bg-muted/30 px-4 py-2 font-medium text-sm border-b">OUTPUT</div>
+//             <div className="p-4 overflow-y-auto flex-1">{/* your renderOutput() here */}</div>
+//           </div>
+//         </div>
+
+//         <div className="flex justify-end gap-2 p-4 border-t">
+//           <Button variant="outline" onClick={onClose}>
+//             Cancel
+//           </Button>
+//           <Button onClick={handleSave}>Save</Button>
+//         </div>
+//       </DialogContent>
+//     </Dialog>
+//   );
 // }
 "use client";
 import React, { useState, useEffect } from "react";
@@ -667,9 +807,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
-import CreateFileNodeProperties from "@/components/node-properties/CreateFileNodeProperties"
-import CopyFileNodeProperties from "@/components/node-properties/CopyFileNodeProperties"
-import ReadFileNodeProperties from "@/components/node-properties/CopyFileNodeProperties"
+import CreateFileNodeProperties from "@/components/node-properties/CreateFileNodeProperties";
+import CopyFileNodeProperties from "@/components/node-properties/CopyFileNodeProperties";
+import ReadFileNodeProperties from "@/components/node-properties/ReadFileNodeProperties";
 
 const NodePropertyComponents: Record<string, React.FC<any>> = {
   "create-file": CreateFileNodeProperties,
@@ -692,19 +832,20 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
   const [executionResult, setExecutionResult] = useState<any>(null);
 
   const node = getNodeById(nodeId);
+
   useEffect(() => {
     if (node) setFormData(node.data ?? {});
   }, [nodeId, node]);
 
-  // carry over your existing getNodeInputs / getAllUpstreamOutputs / renderInputs / renderOutput logic…
-
   const handleChange = (name: string, value: any) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
   const handleSave = () => {
     updateNode(nodeId, { data: formData });
     onClose();
   };
+
   const handleRun = async () => {
     setIsExecuting(true);
     await updateNode(nodeId, { data: formData });
@@ -759,11 +900,20 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
 
           {/* PARAMETERS & SETTINGS column */}
           <div className="border-r flex flex-col">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={(val: string) => {
+                if (val === "parameters" || val === "settings") {
+                  setActiveTab(val);
+                }
+              }}
+              className="flex flex-col h-full"
+            >
               <TabsList className="grid grid-cols-2 bg-background border-b">
                 <TabsTrigger value="parameters">Parameters</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
               </TabsList>
+
               <div className="p-4 overflow-y-auto flex-1">
                 <TabsContent value="parameters">
                   {NodePropsComponent ? (
@@ -774,6 +924,7 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
                     </div>
                   )}
                 </TabsContent>
+
                 <TabsContent value="settings">
                   {/* your settings panel (active switch, description textarea) */}
                 </TabsContent>
