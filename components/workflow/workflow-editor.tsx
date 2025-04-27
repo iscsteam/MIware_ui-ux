@@ -15,8 +15,7 @@ import { SideModal } from "./sidemodal";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SchemaModal from "./SchemaModal";
-import { getNodeSchema } from './nodeSchemas'; // <-- ADD THIS LINE (Adjust path if needed)
-
+import { getNodeSchema } from "./nodeSchemas"; // <-- ADD THIS LINE (Adjust path if needed)
 
 interface SchemaModalData {
   nodeType: NodeType;
@@ -67,6 +66,80 @@ export function WorkflowEditor() {
   const [schemaModalData, setSchemaModalData] =
     useState<SchemaModalData | null>(null);
 
+  // const handleOpenSchemaModal = useCallback(
+  //   (nodeId: string) => {
+  //     const targetNode = nodes.find((n) => n.id === nodeId);
+  //     if (!targetNode) {
+  //       console.error("Target node not found for schema modal:", nodeId);
+  //       return;
+  //     }
+
+  //     const nodeType = targetNode.type;
+  //     const baseSchema = getNodeSchema(nodeType);
+
+  //     if (!baseSchema) {
+  //       console.error("Schema not found for node type:", nodeType);
+  //       // Optionally show an error message instead of just logging
+  //       setSchemaModalData({
+  //         // Still open modal but show an error state within it
+  //         nodeType: nodeType,
+  //         baseInputSchema: [],
+  //         baseOutputSchema: [],
+  //         availableInputsFromPrevious: [],
+  //         nodeLabel: targetNode.data?.label || nodeType,
+  //       });
+  //       return;
+  //     }
+
+  //     const incomingConnections = connections.filter(
+  //       (conn) => conn.targetId === nodeId
+  //     );
+  //     const availableInputs: SchemaItem[] = [];
+
+  //     incomingConnections.forEach((conn) => {
+  //       const sourceNode = nodes.find((n) => n.id === conn.sourceId);
+  //       if (sourceNode) {
+  //         const sourceSchema = getNodeSchema(sourceNode.type);
+  //         if (sourceSchema?.outputSchema) {
+  //           sourceSchema.outputSchema.forEach((outputItem) => {
+  //             // Add metadata to distinguish outputs if multiple sources exist
+  //             const uniqueName = `${
+  //               sourceNode.data?.label || sourceNode.type
+  //             } - ${outputItem.name}`;
+  //             // Check if an item with the same unique representation already exists
+  //             if (
+  //               !availableInputs.some(
+  //                 (existing) => existing.name === uniqueName
+  //               )
+  //             ) {
+  //               availableInputs.push({
+  //                 ...outputItem,
+  //                 name: uniqueName, // Use the unique name for display/key
+  //                 description: `${outputItem.description || ""} (from ${
+  //                   sourceNode.data?.label || sourceNode.type
+  //                 })`,
+  //                 // Add original name or source node ID if needed for mapping logic later
+  //                 originalName: outputItem.name,
+  //                 sourceNodeId: sourceNode.id,
+  //               });
+  //             }
+  //           });
+  //         }
+  //       }
+  //     });
+
+  //     setSchemaModalData({
+  //       nodeType: nodeType,
+  //       baseInputSchema: baseSchema.inputSchema || [],
+  //       baseOutputSchema: baseSchema.outputSchema || [],
+  //       availableInputsFromPrevious: availableInputs,
+  //       nodeLabel: targetNode.data?.label || nodeType, // Use specific label or type
+  //     });
+  //   },
+  //   [nodes, connections]
+  // ); // Depend on nodes and connections
+
+
   const handleOpenSchemaModal = useCallback(
     (nodeId: string) => {
       const targetNode = nodes.find((n) => n.id === nodeId);
@@ -74,16 +147,14 @@ export function WorkflowEditor() {
         console.error("Target node not found for schema modal:", nodeId);
         return;
       }
-
+  
       const nodeType = targetNode.type;
       const baseSchema = getNodeSchema(nodeType);
-
+  
       if (!baseSchema) {
         console.error("Schema not found for node type:", nodeType);
-        // Optionally show an error message instead of just logging
         setSchemaModalData({
-          // Still open modal but show an error state within it
-          nodeType: nodeType,
+          nodeType,
           baseInputSchema: [],
           baseOutputSchema: [],
           availableInputsFromPrevious: [],
@@ -91,54 +162,59 @@ export function WorkflowEditor() {
         });
         return;
       }
-
-      const incomingConnections = connections.filter(
-        (conn) => conn.targetId === nodeId
-      );
-      const availableInputs: SchemaItem[] = [];
-
-      incomingConnections.forEach((conn) => {
-        const sourceNode = nodes.find((n) => n.id === conn.sourceId);
-        if (sourceNode) {
-          const sourceSchema = getNodeSchema(sourceNode.type);
-          if (sourceSchema?.outputSchema) {
-            sourceSchema.outputSchema.forEach((outputItem) => {
-              // Add metadata to distinguish outputs if multiple sources exist
-              const uniqueName = `${
-                sourceNode.data?.label || sourceNode.type
-              } - ${outputItem.name}`;
-              // Check if an item with the same unique representation already exists
-              if (
-                !availableInputs.some(
-                  (existing) => existing.name === uniqueName
-                )
-              ) {
-                availableInputs.push({
+  
+      // Recursive function to collect outputs from all upstream nodes
+      const findAllUpstreamOutputs = (currentNodeId: string, visited = new Set<string>()): SchemaItem[] => {
+        if (visited.has(currentNodeId)) return [];
+        visited.add(currentNodeId);
+  
+        const incomingConnections = connections.filter(
+          (conn) => conn.targetId === currentNodeId
+        );
+  
+        let collectedOutputs: SchemaItem[] = [];
+  
+        for (const conn of incomingConnections) {
+          const sourceNode = nodes.find((n) => n.id === conn.sourceId);
+          if (sourceNode) {
+            const sourceSchema = getNodeSchema(sourceNode.type);
+  
+            if (sourceSchema?.outputSchema) {
+              sourceSchema.outputSchema.forEach((outputItem) => {
+                const uniqueName = `${sourceNode.data?.label || sourceNode.type} - ${outputItem.name}`;
+                collectedOutputs.push({
                   ...outputItem,
-                  name: uniqueName, // Use the unique name for display/key
-                  description: `${outputItem.description || ""} (from ${
-                    sourceNode.data?.label || sourceNode.type
-                  })`,
-                  // Add original name or source node ID if needed for mapping logic later
+                  name: uniqueName,
+                  description: `${outputItem.description || ""} (from ${sourceNode.data?.label || sourceNode.type})`,
                   originalName: outputItem.name,
                   sourceNodeId: sourceNode.id,
                 });
-              }
-            });
+              });
+            }
+  
+            // Recursively collect outputs from further upstream
+            const upstreamOutputs = findAllUpstreamOutputs(sourceNode.id, visited);
+            collectedOutputs = collectedOutputs.concat(upstreamOutputs);
           }
         }
-      });
-
+  
+        return collectedOutputs;
+      };
+  
+      const availableInputs = findAllUpstreamOutputs(nodeId);
+  
       setSchemaModalData({
-        nodeType: nodeType,
+        nodeType,
         baseInputSchema: baseSchema.inputSchema || [],
         baseOutputSchema: baseSchema.outputSchema || [],
         availableInputsFromPrevious: availableInputs,
-        nodeLabel: targetNode.data?.label || nodeType, // Use specific label or type
+        nodeLabel: targetNode.data?.label || nodeType,
       });
     },
     [nodes, connections]
-  ); // Depend on nodes and connections
+  );
+  
+  
 
   const handleCloseSchemaModal = () => {
     setSchemaModalData(null);
@@ -374,22 +450,30 @@ export function WorkflowEditor() {
     setModalOpen(false);
   }, []);
 
-  //--- NEW: Callback to open SchemaModal ---
-  // const handleOpenSchemaModal = useCallback(
-  //   (nodeType: NodeType) => {
-  //     // Prevent opening if another modal is already open? (Optional: good UX)
-  //     if (propertiesPanelOpen || sideModalOpen || executionModalOpen) return;
-  //     setNodeTypeForSchemaModal(nodeType);
-  //     setIsSchemaModalOpen(true);
-  //   },
-  //   [propertiesPanelOpen, sideModalOpen, executionModalOpen] // Added modal states check
-  // );
-
-  // // --- NEW: Callback to close SchemaModal ---
-  // const handleCloseSchemaModal = useCallback(() => {
-  //   setIsSchemaModalOpen(false);
-  //   setNodeTypeForSchemaModal(null); // Clear the node type
-  // }, []);
+  function DotsBackground() {
+    return (
+      <svg
+        className="absolute inset-0 pointer-events-none"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{
+          width: "100%",
+          height: "100%",
+        }}
+      >
+        <defs>
+          <pattern
+            id="dot-grid"
+            width="20"
+            height="20"
+            patternUnits="userSpaceOnUse"
+          >
+            <circle cx="1" cy="1" r="1.2" fill="rgba(38, 37, 37, 0.2)" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#dot-grid)" />
+      </svg>
+    );
+  }
 
   return (
     <div className="relative flex-1 overflow-hidden bg-blue">
@@ -413,6 +497,7 @@ export function WorkflowEditor() {
         onWheel={handleWheel}
         onClick={handleCanvasClick}
       >
+        <DotsBackground />
         <div
           className="h-full w-full"
           style={{
@@ -421,28 +506,24 @@ export function WorkflowEditor() {
             transformOrigin: "0 0",
           }}
         >
-          {/* Grid background */}
-          <svg
+          {/* Dots Background */}
+          {/* <svg
             className="absolute h-full w-full"
             xmlns="http://www.w3.org/2000/svg"
           >
             <defs>
               <pattern
-                id="grid"
+                id="dot-grid"
                 width="20"
                 height="20"
                 patternUnits="userSpaceOnUse"
               >
-                <path
-                  d="M 20 0 L 0 0 0 20"
-                  fill="none"
-                  stroke="rgba(38, 37, 37, 0.2)"
-                  strokeWidth="0.5"
-                />
+                <circle cx="1" cy="1" r="1.2" fill="rgba(38, 37, 37, 0.2)" />
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
+            <rect width="100%" height="100%" fill="url(#dot-grid)" />
+          </svg> */}
+
           {/* Connections */}
           <svg className="absolute h-full w-full pointer-events-none">
             {connections.map((connection) => {
