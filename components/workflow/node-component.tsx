@@ -31,22 +31,13 @@ import SchemaModal from "./SchemaModal"; // Adjust path
 
 // --- Interfaces ---
 interface NodeComponentProps {
-  node: WorkflowNode;
-  selected: boolean;
-  isConnecting: boolean;
+  node: WorkflowNode
+  selected: boolean
 
-
-  onSelect: () => void;
-
-  onExecuteNode: (nodeId: string) => void;
-  // onOpenProperties: (nodeId: string) => void
-  onDragStart: (nodeId: string, e: React.MouseEvent) => void; // Renamed for clarity
-
-  onOpenProperties: (nodeId: string) => void;
-  // --- NEW Callback Prop ---
-  onOpenSchemaModal: (nodeType: NodeType) => void;
-  // onShowModal: () => void; // Remove if replaced by onOpenSchemaModal
-
+  onSelect: () => void
+  onDragstart: (nodeId: string, e: React.MouseEvent) => void
+  onExecuteNode: (nodeId: string) => void
+  onOpenProperties: (nodeId: string) => void
 }
 
 interface LineCoords {
@@ -389,9 +380,9 @@ export function NodeComponent({
 
   // Handle double-click on the icon to open properties
   const handleIconDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onOpenProperties(node.id);
-  };
+    e.stopPropagation()
+    onOpenProperties(node.id)
+  }
 
   // Function to format filename path for display
   const formatFilename = (filename: string | undefined): string => {
@@ -540,26 +531,12 @@ export function NodeComponent({
           }}
           // onClick={handleIconClick}
           onDoubleClick={handleIconDoubleClick}
-
-          // onMouseDown={(e) => {
-          //   // Allow dragging only with left mouse button and not on ports/actions
-          //   const target = e.target as HTMLElement;
-          //   if (e.button === 0 && !target.closest('.port') && !target.closest('.node-action')) {
-          //     onDragStart(node.id, e); // Use updated prop name
-          //   }
-          // }}
-          className={`relative flex flex-col rounded-lg border-2 ${getNodeBackgroundColor()} shadow-lg transition-all duration-150 ease-in-out w-[100px] min-h-[60px] cursor-grab ${
-            selected
-              ? "border-blue-500"
-              : ""
-          } ${isConnecting ? "border-sky-500 dark:border-sky-400" : ""} ${
-            node.data?.active === false ? "opacity-60 brightness-90" : ""
-          } hover:shadow-xl`}
-          // onClick={(e) => {
-          //   e.stopPropagation();
-          //   onSelect();
-          // }}
-
+          className={`relative flex flex-col rounded-md border ${
+            selected ? "border-green-500 ring-1 ring-green-500" : "border-gray-300"
+          } ${getNodeBackgroundColor()} shadow-md transition-all w-[100px] h-[100px] cursor-grab ${
+            pendingConnection && pendingConnection.sourceId === node.id ? "border-blue-500" : ""
+          } ${node.data?.active === false ? "opacity-50" : ""}`}
+          
           onMouseDown={(e) => {
             const target = e.target as HTMLElement;
             if (
@@ -609,6 +586,18 @@ export function NodeComponent({
               title="Click to start connection"
             />
           )}
+          {/* Output port */}
+          {node.type !== "end" && (
+            <div
+              className={`port absolute right-0 top-1/2 h-5 w-5 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
+                pendingConnection && pendingConnection.sourceId === node.id
+                  ? "ring-2 ring-blue-500 scale-125 bg-primary"
+                  : ""
+              }`}
+              onClick={handleOutputPortClick}
+              title="Click to start connection"
+            />
+          )}
 
           {/* Input port */}
           {node.type !== "start" && (
@@ -622,7 +611,16 @@ export function NodeComponent({
           )}
         </div>
 
- 
+        {/* Filename display below the node */}
+        {node.type !== "start" && node.type !== "end" && (
+          <div
+            className="text-center text-xs mt-1 cursor-pointer hover:text-blue-500 max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap"
+            onClick={handleFilenameClick}
+            title={node.data?.filename || "Filename"}
+          >
+            {formatFilename(node.data?.filename)}
+          </div>
+        )}
       </div>
 
       {/* Filename Dialog */}
