@@ -114,8 +114,8 @@ const nodeTypes: NodeTypeDefinition[] = [
   },
 ]
 
-// Updated to use consistent white background without borders
-const nodeTypeStyles = "bg-white hover:bg-slate-50 hover:shadow-sm";
+// Updated to use minimal styling for a plain look without borders
+const nodeTypeStyles = "hover:bg-slate-50";
 
 interface SideModalProps {
   isOpen: boolean;
@@ -187,19 +187,19 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
     </div>
   );
 
-  // Helper function to render a list of nodes - removed border
+  // Helper function to render a list of nodes
   const renderNodeList = (nodes: NodeTypeDefinition[]) => {
     return (
       <div className="space-y-2">
         {nodes.map((nodeType) => (
           <div
             key={nodeType.type}
-            className={`flex items-center gap-3 p-2 cursor-grab text-sm transition transform hover:scale-[1.01] ${nodeTypeStyles}`}
+            className={`flex items-center gap-3 p-2 cursor-grab text-sm transition transform hover:scale-[1.01] rounded ${nodeTypeStyles}`}
             draggable
             onDragStart={(e) => handleDragStart(e, nodeType.type)}
             onClick={() => handleSelect(nodeType.type)}
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-md border bg-white shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md shadow-sm">
               {nodeType.icon}
             </div>
             <div className="leading-tight">
@@ -282,17 +282,17 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       );
     }
     
-    // Default main view with category cards
+    // Default main view with category cards - simplified with no borders or backgrounds
     return (
       <>
         {searchInput}
         <div className="grid gap-3">
           {/* File Operations Card */}
           <div 
-            className="border rounded-lg overflow-hidden shadow-sm cursor-pointer hover:bg-slate-50"
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
             onClick={() => setCurrentView("file")}
           >
-            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700 py-3 px-4 bg-slate-100">
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
               <div className="flex items-center space-x-2">
                 <FolderOpen className="h-5 w-5 text-blue-500" />
                 <span className="font-semibold">File Operations</span>
@@ -303,10 +303,10 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
 
           {/* HTTP Operations Card */}
           <div 
-            className="border rounded-lg overflow-hidden shadow-sm cursor-pointer hover:bg-slate-50"
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
             onClick={() => setCurrentView("http")}
           >
-            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700 py-3 px-4 bg-slate-100">
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
               <div className="flex items-center space-x-2">
                 <Globe className="h-5 w-5 text-emerald-500" />
                 <span className="font-semibold">HTTP Operations</span>
@@ -317,10 +317,10 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
 
           {/* XML Operations Card */}
           <div 
-            className="border rounded-lg overflow-hidden shadow-sm cursor-pointer hover:bg-slate-50"
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
             onClick={() => setCurrentView("xml")}
           >
-            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700 py-3 px-4 bg-slate-100">
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
               <div className="flex items-center space-x-2">
                 <FileCode className="h-5 w-5 text-violet-500" />
                 <span className="font-semibold">XML Operations</span>
@@ -331,10 +331,10 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
 
           {/* General Operations Card */}
           <div 
-            className="border rounded-lg overflow-hidden shadow-sm cursor-pointer hover:bg-slate-50"
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
             onClick={() => setCurrentView("general")}
           >
-            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700 py-3 px-4 bg-slate-100">
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
               <div className="flex items-center space-x-2">
                 <Play className="h-5 w-5 text-green-500" />
                 <span className="font-semibold">Workflow Controls</span>

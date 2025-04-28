@@ -9,7 +9,7 @@ import {
 } from "./workflow-context";
 import { NodeComponent } from "./node-component";
 import { ConnectionLine } from "./connection-line";
-import { NodeModal } from "./node-properties-panel";
+import { NodeModal } from "./node-modal";
 import { ExecutionModal } from "./execution-modal";
 import { SideModal } from "./sidemodal";
 import { Plus } from "lucide-react";

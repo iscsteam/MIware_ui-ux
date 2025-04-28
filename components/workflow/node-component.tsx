@@ -31,6 +31,7 @@ import SchemaModal from "./SchemaModal"; // Adjust path
 
 // --- Interfaces ---
 interface NodeComponentProps {
+
   node: WorkflowNode;
   selected: boolean;
   isConnecting: boolean;
@@ -46,6 +47,7 @@ interface NodeComponentProps {
   // onOpenSchemaModal: (nodeType: NodeType) => void;
   // onShowModal: () => void; // Remove if replaced by onOpenSchemaModal
   onOpenSchemaModal: (nodeId: string) => void;
+
 }
 
 interface LineCoords {
@@ -388,9 +390,9 @@ export function NodeComponent({
 
   // Handle double-click on the icon to open properties
   const handleIconDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onOpenProperties(node.id);
-  };
+    e.stopPropagation()
+    onOpenProperties(node.id)
+  }
 
   // Function to format filename path for display
   const formatFilename = (filename: string | undefined): string => {
@@ -546,6 +548,7 @@ export function NodeComponent({
           }}
           // onClick={handleIconClick}
           onDoubleClick={handleIconDoubleClick}
+
           // onMouseDown={(e) => {
           //   // Allow dragging only with left mouse button and not on ports/actions
           //   const target = e.target as HTMLElement;
@@ -600,6 +603,18 @@ export function NodeComponent({
             )}
           </div>
 
+          {/* Output port */}
+          {node.type !== "end" && (
+            <div
+              className={`port absolute right-0 top-1/2 h-5 w-5 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
+                pendingConnection && pendingConnection.sourceId === node.id
+                  ? "ring-2 ring-blue-500 scale-125 bg-primary"
+                  : ""
+              }`}
+              onClick={handleOutputPortClick}
+              title="Click to start connection"
+            />
+          )}
           {/* Output port */}
           {node.type !== "end" && (
             <div
