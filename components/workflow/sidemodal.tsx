@@ -383,6 +383,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import {Play, FileText, FileInput, FileOutput, Copy, CheckCircle, X, Search, ChevronDown, ChevronRight, FolderPlus, File, FileEdit, FilePlus2, FolderOpen, Trash2, Files, Clock, Server, Send, Globe, FileCode, FileJson, ArrowLeft} from "lucide-react"
+import {Play, FileText, FileInput, FileOutput, Copy, CheckCircle, X, Search, ChevronDown, ChevronRight, FolderPlus, File, FileEdit, FilePlus2, FolderOpen, Trash2, Files, Clock, Server, Send, Globe, FileCode, FileJson, ArrowLeft} from "lucide-react"
 import type { NodeType } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 
@@ -506,9 +507,12 @@ interface SideModalProps {
 
 type CategoryType = "main" | "file" | "general" | "http" | "xml";
 
+type CategoryType = "main" | "file" | "general" | "http" | "xml";
+
 export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentView, setCurrentView] = useState<CategoryType>("main");
   const [currentView, setCurrentView] = useState<CategoryType>("main");
 
   useEffect(() => {
@@ -519,6 +523,14 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
         setIsVisible(false);
       }, 300);
       return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  // Reset to main view when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setCurrentView("main");
+      setSearchTerm("");
     }
   }, [isOpen]);
 
@@ -543,11 +555,13 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
   }
 
   // Filter nodes based on search term
+  // Filter nodes based on search term
   const filteredNodeTypes = nodeTypes.filter(node =>
     node.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
     node.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Get nodes by category
   // Get nodes by category
   const fileOperations = filteredNodeTypes.filter(node => node.category === "file");
   const generalOperations = filteredNodeTypes.filter(node => node.category === "general");
@@ -795,7 +809,9 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
 
       <div className="p-4 space-y-4">
         {renderContent()}
+        {renderContent()}
       </div>
     </div>
+  );
   );
 }
