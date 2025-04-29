@@ -11,12 +11,14 @@ import CreateFileNodeProperties from "@/components/node-properties/CreateFileNod
 import CopyFileNodeProperties from "@/components/node-properties/CopyFileNodeProperties"
 import ReadFileNodeProperties from "@/components/node-properties/ReadFileNodeProperties"
 import WriteFileNodeProperties from "../node-properties/WriteFileNodeProperties"
+import ParseXMLNodeProperties from "../node-properties/ParseXMLNodeProperties"
 
 const NodePropertyComponents: Record<string, React.FC<any>> = {
   "create-file": CreateFileNodeProperties,
   "read-file": ReadFileNodeProperties,
   "copy-file": CopyFileNodeProperties,
   "write-file": WriteFileNodeProperties,
+  "xml-parser": ParseXMLNodeProperties,
   // …add your others here
 }
 
@@ -136,7 +138,7 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
     }
 
     // Combine all upstream node outputs into a single object
-    const combinedData = {}
+    const combinedData: Record<string, any> = {};
     upstreamNodes.forEach((node) => {
       if (node.data && typeof node.data === "object") {
         Object.entries(node.data).forEach(([key, value]) => {
@@ -693,5 +695,4 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
         </DialogContent>
       </Dialog>
     );
-    
 }

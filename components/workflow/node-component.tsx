@@ -1,3 +1,4 @@
+
 "use client";
 import type React from "react";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
@@ -478,6 +479,26 @@ export function NodeComponent({
                 <TooltipContent>Delete node</TooltipContent>
               </Tooltip>
 
+              {/* <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    // --- CORRECTED onClick ---
+                    className="node-action h-8 w-8 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md" // Ensure correct rounding
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenSchemaModal(node.type); // Call parent handler
+                    }}
+                    // --- End Correction ---
+                    aria-label="Open Data Mapping"
+                  >
+                    <AlignJustify className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Data Mapping</TooltipContent>
+              </Tooltip> */}
+
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -582,6 +603,19 @@ export function NodeComponent({
               </div>
             )}
           </div>
+
+          {/* Output port */}
+          {node.type !== "end" && (
+            <div
+              className={`port absolute right-0 top-1/2 h-5 w-5 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
+                pendingConnection && pendingConnection.sourceId === node.id
+                  ? "ring-2 ring-blue-500 scale-125 bg-primary"
+                  : ""
+              }`}
+              onClick={handleOutputPortClick}
+              title="Click to start connection"
+            />
+          )}
           {/* Output port */}
           {node.type !== "end" && (
             <div
