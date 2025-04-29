@@ -11,7 +11,10 @@ import CreateFileNodeProperties from "@/components/node-properties/CreateFileNod
 import CopyFileNodeProperties from "@/components/node-properties/CopyFileNodeProperties"
 import ReadFileNodeProperties from "@/components/node-properties/ReadFileNodeProperties"
 import DeleteFileNodeProperties from "@/components/node-properties/deletefilenodeproperties"
-import ListFilesNodeProperties from "@/components/node-properties/ListFilesNodeproperties"
+import ListFilesNodeProperties from "@/components/node-properties/listfilesnodeproperties"
+import PollerFileNodeProperties from "@/components/node-properties/pollerfilenodeproperties"
+
+
 
 const NodePropertyComponents: Record<string, React.FC<any>> = {
   "create-file": CreateFileNodeProperties,
@@ -19,6 +22,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "copy-file": CopyFileNodeProperties,
   "delete-file": DeleteFileNodeProperties,
   "list-files": ListFilesNodeProperties,
+  "file-poller": PollerFileNodeProperties,
   // …add your others here
 }
 

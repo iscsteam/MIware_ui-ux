@@ -98,10 +98,10 @@ export default function ListFilesNodeProperties({ formData, onChange }: Props) {
           placeholder="C:/files/*.log"
           onChange={(e) => onChange("filepath", e.target.value)}
         />
-        <p className="text-xs text-gray-500">
+        {/* <p className="text-xs text-gray-500">
           You can use wildcard characters like * to match specific files.
           For example, C:\\files\\*.log will match all .log files in the files directory.
-        </p>
+        </p> */}
       </div>
 
       {/* Mode Selection */}
