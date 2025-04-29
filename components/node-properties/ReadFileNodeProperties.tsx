@@ -1,113 +1,28 @@
-// import { Label } from "@/components/ui/label";
-// import { Input } from "@/components/ui/input";
-// import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-// import { Switch } from "@/components/ui/switch";
-// import React from "react";
-
-// interface Props {
-//   formData: Record<string, any>;
-//   onChange: (name: string, value: any) => void;
-// }
-
-// export default function ReadFileNodeProperties({ formData, onChange }: Props) {
-//   return (
-//     <div className="space-y-4">
-//       {/* Node Label */}
-//       <div className="space-y-2">
-//         <Label htmlFor="label">Node Label</Label>
-//         <Input
-//           id="label"
-//           value={formData.label || ""}
-//           placeholder="Read File"
-//           onChange={(e) => onChange("label", e.target.value)}
-//         />
-//       </div>
-
-//       {/* File Name */}
-//       <div className="space-y-2">
-//         <Label htmlFor="filename">File Name</Label>
-//         <Input
-//           id="filename"
-//           value={formData.filename || ""}
-//           placeholder="path/to/file.txt"
-//           onChange={(e) => onChange("filename", e.target.value)}
-//         />
-//       </div>
-
-//       {/* Encoding */}
-//       <div className="space-y-2">
-//         <Label htmlFor="encoding">Encoding</Label>
-//         <Select
-//           value={formData.encoding || "utf-8"}
-//           onValueChange={(v) => onChange("encoding", v)}
-//         >
-//           <SelectTrigger>
-//             <SelectValue placeholder="Select encoding" />
-//           </SelectTrigger>
-//           <SelectContent>
-//             {["utf-8", "ascii", "binary"].map((opt) => (
-//               <SelectItem key={opt} value={opt}>
-//                 {opt}
-//               </SelectItem>
-//             ))}
-//           </SelectContent>
-//         </Select>
-//       </div>
-
-//       {/* Read As */}
-//       <div className="space-y-2">
-//         <Label htmlFor="readAs">Read As</Label>
-//         <Select
-//           value={formData.readAs || "text"}
-//           onValueChange={(v) => onChange("readAs", v)}
-//         >
-//           <SelectTrigger>
-//             <SelectValue placeholder="Select read mode" />
-//           </SelectTrigger>
-//           <SelectContent>
-//             {["text", "binary"].map((opt) => (
-//               <SelectItem key={opt} value={opt}>
-//                 {opt}
-//               </SelectItem>
-//             ))}
-//           </SelectContent>
-//         </Select>
-//       </div>
-
-//       {/* Exclude content */}
-//       <div className="flex items-center space-x-2">
-//         <Switch
-//           id="excludeContent"
-//           checked={!!formData.excludeContent}
-//           onCheckedChange={(v) => onChange("excludeContent", v)}
-//         />
-//         <Label htmlFor="excludeContent" className="cursor-pointer">
-//           Exclude content (metadata only)
-//         </Label>
-//       </div>
-//     </div>
-//   );
-// }
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import React, { useState } from "react";
+// //readfilenodeproperties.tsx
+"use client"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { useState } from "react"
+import { useWorkflow } from "../workflow/workflow-context"
 
 interface Props {
-  formData: Record<string, any>;
-  onChange: (name: string, value: any) => void;
+  formData: Record<string, any>
+  onChange: (name: string, value: any) => void
 }
 
 export default function ReadFileNodeProperties({ formData, onChange }: Props) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const { updateNode, selectedNodeId } = useWorkflow()
 
-  // Inline readFileOperation function
+  // Read file operation function
   async function handleReadFile() {
-    setLoading(true);
-    setError(null);
-    setSuccessMessage(null);
+    setLoading(true)
+    setError(null)
+    setSuccessMessage(null)
+    
     try {
       const response = await fetch("http://localhost:5000/api/file-operations/read", {
         method: "POST",
@@ -118,22 +33,50 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
           filename: formData.filename,
           label: formData.label,
         }),
-      });
+      })
+
+      const data = await response.json()
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to read file");
+        throw new Error(data.message || "Failed to read file")
       }
 
-      const data = await response.json();
-      setSuccessMessage("File read successfully!");
-      console.log("FileMeta:", data.fileMeta);
-      // You can optionally update formData or pass this to parent
+      setSuccessMessage("File read successfully!")
+      console.log("FileMeta:", data.fileMeta)
+      
+      // Update the node output with the API response data
+      if (selectedNodeId) {
+        updateNode(selectedNodeId, { 
+          status: "success",
+          output: {
+            ...data,
+            fileContents: data.content || data.fileContents,
+            path: data.filename || formData.filename,
+            size: data.size || (data.fileMeta && data.fileMeta.size),
+            modifiedDate: data.modifiedDate || (data.fileMeta && data.fileMeta.modifiedTime),
+            success: true
+          }
+        })
+      }
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Unknown error occurred");
+      console.error(err)
+      const errorMessage = err.message || "Unknown error occurred"
+      setError(errorMessage)
+      
+      // Update the node with error status
+      if (selectedNodeId) {
+        updateNode(selectedNodeId, { 
+          status: "error",
+          error: errorMessage,
+          output: { 
+            error: errorMessage,
+            filename: formData.filename,
+            success: false
+          }
+        })
+      }
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
@@ -163,7 +106,11 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
 
       {/* Read File Button */}
       <div>
-        <Button onClick={handleReadFile} disabled={loading}>
+        <Button 
+          onClick={handleReadFile} 
+          disabled={loading}
+          className="bg-blue-500 hover:bg-blue-600 text-white"
+        >
           {loading ? "Reading..." : "Read File"}
         </Button>
       </div>
@@ -172,5 +119,5 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
       {successMessage && <p className="text-green-500">{successMessage}</p>}
       {error && <p className="text-red-500">{error}</p>}
     </div>
-  );
+  )
 }
