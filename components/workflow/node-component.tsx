@@ -427,20 +427,20 @@ export function NodeComponent({
       >
         {/* Node action buttons (Unchanged) */}
         <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-auto flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-          <div className="flex bg-gray-200 rounded-md shadow-sm">
+          <div className="flex bg-gray-200 rounded-md shadow-sm gap-2 p-1">
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="node-action h-8 w-8 rounded-l-md bg-gray-200 hover:bg-gray-300"
+                    className="node-action h-4 w-4 rounded-l-md bg-gray-200 hover:bg-gray-300"
                     onClick={(e) => {
                       e.stopPropagation();
                       onExecuteNode(node.id);
                     }}
                   >
-                    <Play className="h-4 w-4" />
+                    <Play className="h-2 w-2" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Execute node</TooltipContent>
@@ -451,10 +451,10 @@ export function NodeComponent({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="node-action h-8 w-8 bg-gray-200 hover:bg-gray-300"
+                    className="node-action h-4 w-4  bg-gray-200 hover:bg-gray-300"
                     onClick={handleDeactivateNode}
                   >
-                    <Power className="h-4 w-4" />
+                    <Power className="h-2 w-2" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -469,41 +469,21 @@ export function NodeComponent({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="node-action h-8 w-8 bg-gray-200 hover:bg-gray-300"
+                    className="node-action h-4 w-4  bg-gray-200 hover:bg-gray-300"
                     onClick={handleDeleteWithRerouting}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-2 w-2" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Delete node</TooltipContent>
               </Tooltip>
-
-              {/* <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    // --- CORRECTED onClick ---
-                    className="node-action h-8 w-8 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md" // Ensure correct rounding
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenSchemaModal(node.type); // Call parent handler
-                    }}
-                    // --- End Correction ---
-                    aria-label="Open Data Mapping"
-                  >
-                    <AlignJustify className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Data Mapping</TooltipContent>
-              </Tooltip> */}
 
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="node-action h-8 w-8 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md"
+                    className="node-action h-4 w-4  text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md"
                     onClick={(e) => {
                       e.stopPropagation();
                       console.log(
@@ -514,18 +494,18 @@ export function NodeComponent({
                     }}
                     aria-label="Open Data Mapping"
                   >
-                    <AlignJustify className="h-4 w-4" />
+                    <AlignJustify className="h-2 w-2" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Data Mapping</TooltipContent>
               </Tooltip>
 
-              <Tooltip>
+              {/* <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="node-action h-8 w-8 rounded-r-md bg-gray-200 hover:bg-gray-300"
+                    className="node-action h-4 w-4  rounded-r-md bg-gray-200 hover:bg-gray-300"
                     onClick={(e) => {
                       e.stopPropagation();
                     }}
@@ -534,7 +514,7 @@ export function NodeComponent({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>More options</TooltipContent>
-              </Tooltip>
+              </Tooltip> */}
             </TooltipProvider>
           </div>
         </div>
