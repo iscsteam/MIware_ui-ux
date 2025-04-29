@@ -16,8 +16,10 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SchemaModal from "./SchemaModal";
 import { getNodeSchema } from "./nodeSchemas"; // <-- ADD THIS LINE (Adjust path if needed)
+import { SchemaItem } from "./workflow-context";
 
 interface SchemaModalData {
+  nodeId: string;
   nodeType: NodeType;
   baseInputSchema: SchemaItem[];
   baseOutputSchema: SchemaItem[];
@@ -139,7 +141,6 @@ export function WorkflowEditor() {
   //   [nodes, connections]
   // ); // Depend on nodes and connections
 
-
   const handleOpenSchemaModal = useCallback(
     (nodeId: string) => {
       const targetNode = nodes.find((n) => n.id === nodeId);
@@ -147,13 +148,14 @@ export function WorkflowEditor() {
         console.error("Target node not found for schema modal:", nodeId);
         return;
       }
-  
+
       const nodeType = targetNode.type;
       const baseSchema = getNodeSchema(nodeType);
-  
+
       if (!baseSchema) {
         console.error("Schema not found for node type:", nodeType);
         setSchemaModalData({
+          nodeId,
           nodeType,
           baseInputSchema: [],
           baseOutputSchema: [],
@@ -162,48 +164,59 @@ export function WorkflowEditor() {
         });
         return;
       }
-  
+
       // Recursive function to collect outputs from all upstream nodes
-      const findAllUpstreamOutputs = (currentNodeId: string, visited = new Set<string>()): SchemaItem[] => {
+      const findAllUpstreamOutputs = (
+        currentNodeId: string,
+        visited = new Set<string>()
+      ): SchemaItem[] => {
         if (visited.has(currentNodeId)) return [];
         visited.add(currentNodeId);
-  
+
         const incomingConnections = connections.filter(
           (conn) => conn.targetId === currentNodeId
         );
-  
+
         let collectedOutputs: SchemaItem[] = [];
-  
+
         for (const conn of incomingConnections) {
           const sourceNode = nodes.find((n) => n.id === conn.sourceId);
           if (sourceNode) {
             const sourceSchema = getNodeSchema(sourceNode.type);
-  
+
             if (sourceSchema?.outputSchema) {
               sourceSchema.outputSchema.forEach((outputItem) => {
-                const uniqueName = `${sourceNode.data?.label || sourceNode.type} - ${outputItem.name}`;
+                const uniqueName = `${
+                  sourceNode.data?.label || sourceNode.type
+                } - ${outputItem.name}`;
                 collectedOutputs.push({
                   ...outputItem,
                   name: uniqueName,
-                  description: `${outputItem.description || ""} (from ${sourceNode.data?.label || sourceNode.type})`,
+                  description: `${outputItem.description || ""} (from ${
+                    sourceNode.data?.label || sourceNode.type
+                  })`,
                   originalName: outputItem.name,
                   sourceNodeId: sourceNode.id,
                 });
               });
             }
-  
+
             // Recursively collect outputs from further upstream
-            const upstreamOutputs = findAllUpstreamOutputs(sourceNode.id, visited);
+            const upstreamOutputs = findAllUpstreamOutputs(
+              sourceNode.id,
+              visited
+            );
             collectedOutputs = collectedOutputs.concat(upstreamOutputs);
           }
         }
-  
+
         return collectedOutputs;
       };
-  
+
       const availableInputs = findAllUpstreamOutputs(nodeId);
-  
+
       setSchemaModalData({
+        nodeId,
         nodeType,
         baseInputSchema: baseSchema.inputSchema || [],
         baseOutputSchema: baseSchema.outputSchema || [],
@@ -213,8 +226,6 @@ export function WorkflowEditor() {
     },
     [nodes, connections]
   );
-  
-  
 
   const handleCloseSchemaModal = () => {
     setSchemaModalData(null);
@@ -506,24 +517,6 @@ export function WorkflowEditor() {
             transformOrigin: "0 0",
           }}
         >
-          {/* Dots Background */}
-          {/* <svg
-            className="absolute h-full w-full"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              <pattern
-                id="dot-grid"
-                width="20"
-                height="20"
-                patternUnits="userSpaceOnUse"
-              >
-                <circle cx="1" cy="1" r="1.2" fill="rgba(38, 37, 37, 0.2)" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#dot-grid)" />
-          </svg> */}
-
           {/* Connections */}
           <svg className="absolute h-full w-full pointer-events-none">
             {connections.map((connection) => {
@@ -562,20 +555,6 @@ export function WorkflowEditor() {
           </svg>
 
           {/* Nodes */}
-          {/* {nodes.map((node) => (
-            <NodeComponent
-              key={node.id}
-              node={node}
-              selected={node.id === selectedNodeId}
-              onSelect={() => selectNode(node.id)}
-              onDragstart={startNodeDrag}
-              onExecuteNode={handleExecuteNode}
-              onOpenProperties={handleOpenProperties} // Pass the handler
-
-              onShowModal={() => setActiveNodeForModal(node)}
-
-            />
-          ))} */}
           {nodes.map((node) => (
             <NodeComponent
               key={node.id}
@@ -647,6 +626,7 @@ export function WorkflowEditor() {
 
       {schemaModalData && (
         <SchemaModal
+          nodeId={schemaModalData.nodeId}
           nodeType={schemaModalData.nodeType} // Pass the type
           nodeLabel={schemaModalData.nodeLabel} // Pass the label
           baseInputSchema={schemaModalData.baseInputSchema}
