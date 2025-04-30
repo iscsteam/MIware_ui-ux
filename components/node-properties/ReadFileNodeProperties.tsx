@@ -84,7 +84,7 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
     <div className="space-y-4">
       {/* Node Label */}
       <div className="space-y-2">
-        <Label htmlFor="label">Node Label</Label>
+        <Label htmlFor="label">File Name</Label>
         <Input
           id="label"
           value={formData.label || ""}
@@ -95,7 +95,7 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
 
       {/* File Name */}
       <div className="space-y-2">
-        <Label htmlFor="filename">File Name</Label>
+        <Label htmlFor="filename">File Path</Label>
         <Input
           id="filename"
           value={formData.filename || ""}

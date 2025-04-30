@@ -117,7 +117,7 @@ export default function CopyFileNodeProperties({ formData, onChange }: Props) {
     <div className="space-y-4">
       {/* Node Label */}
       <div className="space-y-2">
-        <Label htmlFor="label">Node Label</Label>
+        <Label htmlFor="label">File Name</Label>
         <Input
           id="label"
           value={formData.label || ""}
@@ -128,7 +128,7 @@ export default function CopyFileNodeProperties({ formData, onChange }: Props) {
 
       {/* Source */}
       <div className="space-y-2">
-        <Label htmlFor="sourceFilename">Source File</Label>
+        <Label htmlFor="sourceFilename">Source Path</Label>
         <Input
           id="sourceFilename"
           value={formData.sourceFilename || ""}
@@ -139,7 +139,7 @@ export default function CopyFileNodeProperties({ formData, onChange }: Props) {
 
       {/* Destination */}
       <div className="space-y-2">
-        <Label htmlFor="targetFilename">Destination File</Label>
+        <Label htmlFor="targetFilename">Destination Path</Label>
         <Input
           id="targetFilename"
           value={formData.targetFilename || ""}

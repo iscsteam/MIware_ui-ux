@@ -30,6 +30,7 @@ export default function CreateFileNodeProperties({ formData, onChange }: Props) 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          displayName: formData.displayName,
           label: formData.label,
           filename: formData.filename,
           overwrite: formData.overwrite,
@@ -80,12 +81,12 @@ export default function CreateFileNodeProperties({ formData, onChange }: Props) 
     <div className="space-y-4">
       {/* File Name (previously Node Label) */}
       <div className="space-y-2">
-        <Label htmlFor="label">File Name</Label>
+        <Label htmlFor="displayName">File Name</Label>
         <Input
-          id="label"
-          value={formData.label || ""}
+          id="displayName"
+          value={formData.displayName || ""}
           placeholder="Create File"
-          onChange={(e) => onChange("label", e.target.value)}
+          onChange={(e) => onChange("displayName", e.target.value)}
         />
       </div>
 

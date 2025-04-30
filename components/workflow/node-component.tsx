@@ -1,3 +1,4 @@
+
 "use client";
 import type React from "react";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
@@ -104,7 +105,7 @@ export function NodeComponent({
   const [lines, setLines] = useState<LineCoords[]>([]);
 
   const [isFilenameDialogOpen, setIsFilenameDialogOpen] = useState(false);
-  const [tempFilename, setTempFilename] = useState(node.data?.filename || "");
+  const [tempFilename, setTempFilename] = useState(node.data?.displayName || "");
 
   // --- Callback ref function to populate fieldRefs ---
   const registerFieldRef = useCallback(
@@ -364,7 +365,7 @@ export function NodeComponent({
   const handleFilenameClick = (e: React.MouseEvent) => {
     if (node.type !== "start" && node.type !== "end") {
       e.stopPropagation();
-      setTempFilename(node.data?.filename || "");
+      setTempFilename(node.data?.displayName || "");
       setIsFilenameDialogOpen(true);
     }
   };
@@ -374,7 +375,7 @@ export function NodeComponent({
     updateNode(node.id, {
       data: {
         ...node.data,
-        filename: tempFilename,
+        displayName: tempFilename,
       },
     });
     setIsFilenameDialogOpen(false);
@@ -397,24 +398,26 @@ export function NodeComponent({
   // Function to format filename path for display
   const formatFilename = (filename: string | undefined): string => {
     if (!filename) return "Filename";
+   
 
     // If filename is short enough, return it as is
     if (filename.length <= 20) return filename;
+    
 
     // For longer paths, show just the filename part
     const parts = filename.split(/[/\\]/);
     const filenameOnly = parts[parts.length - 1];
-
+   
     // If just the filename is too long, truncate it
     if (filenameOnly.length > 15) {
       return filenameOnly.substring(0, 12) + "...";
+      
     }
 
     // Otherwise show directory/.../filename format
     if (parts.length > 2) {
       return parts[0] + "/.../" + filenameOnly;
     }
-
     return filename;
   };
 
@@ -483,8 +486,7 @@ export function NodeComponent({
                   <Button
                     variant="ghost"
                     size="icon"
-
-                    className="node-action h-4 w-4  text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md"
+                    className="node-action h-8 w-8 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md"
                     onClick={(e) => {
                       e.stopPropagation();
                       console.log(
@@ -495,8 +497,7 @@ export function NodeComponent({
                     }}
                     aria-label="Open Data Mapping"
                   >
-                    <AlignJustify className="h-2 w-2" />
-
+                    <AlignJustify className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Data Mapping</TooltipContent>
@@ -507,7 +508,7 @@ export function NodeComponent({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="node-action h-8 w-8 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md"
+                    className="node-action h-4 w-4 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md"
                     onClick={(e) => {
                       e.stopPropagation();
                       console.log(
@@ -549,27 +550,16 @@ export function NodeComponent({
           onClick={(e) => {
             e.stopPropagation();
             onSelect();
+            e.stopPropagation();
+            onSelect();
           }}
           // onClick={handleIconClick}
           onDoubleClick={handleIconDoubleClick}
-
-          // onMouseDown={(e) => {
-          //   // Allow dragging only with left mouse button and not on ports/actions
-          //   const target = e.target as HTMLElement;
-          //   if (e.button === 0 && !target.closest('.port') && !target.closest('.node-action')) {
-          //     onDragStart(node.id, e); // Use updated prop name
-          //   }
-          // }}
           className={`relative flex flex-col rounded-lg border-2 ${getNodeBackgroundColor()} shadow-lg transition-all duration-150 ease-in-out w-[100px] min-h-[60px] cursor-grab ${
             selected ? "border-blue-500" : ""
           } ${isConnecting ? "border-sky-500 dark:border-sky-400" : ""} ${
             node.data?.active === false ? "opacity-60 brightness-90" : ""
           } hover:shadow-xl`}
-          // onClick={(e) => {
-          //   e.stopPropagation();
-          //   onSelect();
-          // }}
-
           onMouseDown={(e) => {
             const target = e.target as HTMLElement;
             if (
@@ -636,6 +626,7 @@ export function NodeComponent({
           {node.type !== "start" && (
             <div
               className={`port absolute left-0 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
+
                 pendingConnection && pendingConnection.sourceId !== node.id
                   ? "ring-2 ring-blue-500 animate-pulse"
                   : ""
@@ -646,9 +637,20 @@ export function NodeComponent({
                   ? "Click to complete connection"
                   : "Input port"
               }
+              
             />
           )}
         </div>
+        {/* Filename display below the node */}
+        {node.type !== "start" && node.type !== "end" && (
+          <div
+            className="text-center text-xs mt-1 cursor-pointer hover:text-blue-500 max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap"
+            onClick={handleFilenameClick}
+            title={node.data?.displayName || "Filename"}
+          >
+            {formatFilename(node.data?.displayName)}
+          </div>
+        )}
       </div>
 
       {/* Filename Dialog */}
