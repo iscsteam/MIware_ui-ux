@@ -48,7 +48,7 @@ export interface NodeSchema {
 // It should contain properties set via the NodePropertiesPanel or runtime state.
 export interface WorkflowNodeData {
   label?: string; // Optional: A user-defined label for this specific node instance
-
+  displayName?: string;
   // Configuration properties used by specific node types (make them optional)
   filename?: string;
   content?: string;

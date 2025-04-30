@@ -30,6 +30,7 @@ export default function CreateFileNodeProperties({ formData, onChange }: Props) 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          displayName: formData.displayName,
           label: formData.label,
           filename: formData.filename,
           overwrite: formData.overwrite,

@@ -105,7 +105,7 @@ export function NodeComponent({
   const [lines, setLines] = useState<LineCoords[]>([]);
 
   const [isFilenameDialogOpen, setIsFilenameDialogOpen] = useState(false);
-  const [tempFilename, setTempFilename] = useState(node.data?.filename || "");
+  const [tempFilename, setTempFilename] = useState(node.data?.displayName || "");
 
   // --- Callback ref function to populate fieldRefs ---
   const registerFieldRef = useCallback(
@@ -365,7 +365,7 @@ export function NodeComponent({
   const handleFilenameClick = (e: React.MouseEvent) => {
     if (node.type !== "start" && node.type !== "end") {
       e.stopPropagation();
-      setTempFilename(node.data?.filename || "");
+      setTempFilename(node.data?.displayName || "");
       setIsFilenameDialogOpen(true);
     }
   };
@@ -375,7 +375,7 @@ export function NodeComponent({
     updateNode(node.id, {
       data: {
         ...node.data,
-        filename: tempFilename,
+        displayName: tempFilename,
       },
     });
     setIsFilenameDialogOpen(false);
@@ -651,9 +651,9 @@ export function NodeComponent({
           <div
             className="text-center text-xs mt-1 cursor-pointer hover:text-blue-500 max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap"
             onClick={handleFilenameClick}
-            title={node.data?.filename || "Filename"}
+            title={node.data?.displayName || "Filename"}
           >
-            {formatFilename(node.data?.filename)}
+            {formatFilename(node.data?.displayName)}
           </div>
         )}
       </div>
