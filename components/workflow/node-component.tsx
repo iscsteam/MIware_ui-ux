@@ -31,13 +31,23 @@ import SchemaModal from "./SchemaModal"; // Adjust path
 
 // --- Interfaces ---
 interface NodeComponentProps {
-  node: WorkflowNode
-  selected: boolean
 
-  onSelect: () => void
-  onDragstart: (nodeId: string, e: React.MouseEvent) => void
-  onExecuteNode: (nodeId: string) => void
-  onOpenProperties: (nodeId: string) => void
+  node: WorkflowNode;
+  selected: boolean;
+  isConnecting: boolean;
+
+  onSelect: () => void;
+
+  onExecuteNode: (nodeId: string) => void;
+  // onOpenProperties: (nodeId: string) => void
+  onDragStart: (nodeId: string, e: React.MouseEvent) => void; // Renamed for clarity
+
+  onOpenProperties: (nodeId: string) => void;
+  // --- NEW Callback Prop ---
+  // onOpenSchemaModal: (nodeType: NodeType) => void;
+  // onShowModal: () => void; // Remove if replaced by onOpenSchemaModal
+  onOpenSchemaModal: (nodeId: string) => void;
+
 }
 
 interface LineCoords {
@@ -325,10 +335,10 @@ export function NodeComponent({
   };
 
   const getNodeBackgroundColor = () => {
-    if (node.type === "start") return "bg-white"
-    if (node.type === "end") return "bg-white"
-    return "bg-white"
-  }
+    if (node.type === "start") return "bg-white";
+    if (node.type === "end") return "bg-white";
+    return "bg-white";
+  };
 
   const handleOpenTreeModal = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -386,27 +396,27 @@ export function NodeComponent({
 
   // Function to format filename path for display
   const formatFilename = (filename: string | undefined): string => {
-    if (!filename) return "Filename"
+    if (!filename) return "Filename";
 
     // If filename is short enough, return it as is
-    if (filename.length <= 20) return filename
+    if (filename.length <= 20) return filename;
 
     // For longer paths, show just the filename part
-    const parts = filename.split(/[/\\]/)
-    const filenameOnly = parts[parts.length - 1]
+    const parts = filename.split(/[/\\]/);
+    const filenameOnly = parts[parts.length - 1];
 
     // If just the filename is too long, truncate it
     if (filenameOnly.length > 15) {
-      return filenameOnly.substring(0, 12) + "..."
+      return filenameOnly.substring(0, 12) + "...";
     }
 
     // Otherwise show directory/.../filename format
     if (parts.length > 2) {
-      return parts[0] + "/.../" + filenameOnly
+      return parts[0] + "/.../" + filenameOnly;
     }
 
-    return filename
-  }
+    return filename;
+  };
 
   return (
     <>
@@ -468,7 +478,7 @@ export function NodeComponent({
                 <TooltipContent>Delete node</TooltipContent>
               </Tooltip>
 
-              <Tooltip>
+              {/* <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
@@ -487,6 +497,28 @@ export function NodeComponent({
                   >
                     <AlignJustify className="h-2 w-2" />
 
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Data Mapping</TooltipContent>
+              </Tooltip> */}
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="node-action h-8 w-8 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log(
+                        "[NodeComponent] Opening schema modal for node ID:",
+                        node.id
+                      ); // Keep or remove log
+                      onOpenSchemaModal(node.id); // --- Pass node.id ---
+                    }}
+                    aria-label="Open Data Mapping"
+                  >
+                    <AlignJustify className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Data Mapping</TooltipContent>
@@ -515,17 +547,29 @@ export function NodeComponent({
         <div
           ref={nodeRef}
           onClick={(e) => {
-            e.stopPropagation()
-            onSelect()
+            e.stopPropagation();
+            onSelect();
           }}
           // onClick={handleIconClick}
           onDoubleClick={handleIconDoubleClick}
-          className={`relative flex flex-col rounded-md border ${
-            selected ? "border-green-500 ring-1 ring-green-500" : "border-gray-300"
-          } ${getNodeBackgroundColor()} shadow-md transition-all w-[100px] h-[100px] cursor-grab ${
-            pendingConnection && pendingConnection.sourceId === node.id ? "border-blue-500" : ""
-          } ${node.data?.active === false ? "opacity-50" : ""}`}
-          
+
+          // onMouseDown={(e) => {
+          //   // Allow dragging only with left mouse button and not on ports/actions
+          //   const target = e.target as HTMLElement;
+          //   if (e.button === 0 && !target.closest('.port') && !target.closest('.node-action')) {
+          //     onDragStart(node.id, e); // Use updated prop name
+          //   }
+          // }}
+          className={`relative flex flex-col rounded-lg border-2 ${getNodeBackgroundColor()} shadow-lg transition-all duration-150 ease-in-out w-[100px] min-h-[60px] cursor-grab ${
+            selected ? "border-blue-500" : ""
+          } ${isConnecting ? "border-sky-500 dark:border-sky-400" : ""} ${
+            node.data?.active === false ? "opacity-60 brightness-90" : ""
+          } hover:shadow-xl`}
+          // onClick={(e) => {
+          //   e.stopPropagation();
+          //   onSelect();
+          // }}
+
           onMouseDown={(e) => {
             const target = e.target as HTMLElement;
             if (
@@ -592,24 +636,19 @@ export function NodeComponent({
           {node.type !== "start" && (
             <div
               className={`port absolute left-0 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
-                pendingConnection && pendingConnection.sourceId !== node.id ? "ring-2 ring-blue-500 animate-pulse" : ""
+                pendingConnection && pendingConnection.sourceId !== node.id
+                  ? "ring-2 ring-blue-500 animate-pulse"
+                  : ""
               }`}
               onClick={handleInputPortClick}
-              title={pendingConnection ? "Click to complete connection" : "Input port"}
+              title={
+                pendingConnection
+                  ? "Click to complete connection"
+                  : "Input port"
+              }
             />
           )}
         </div>
-
-        {/* Filename display below the node */}
-        {node.type !== "start" && node.type !== "end" && (
-          <div
-            className="text-center text-xs mt-1 cursor-pointer hover:text-blue-500 max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap"
-            onClick={handleFilenameClick}
-            title={node.data?.filename || "Filename"}
-          >
-            {formatFilename(node.data?.filename)}
-          </div>
-        )}
       </div>
 
       {/* Filename Dialog */}
@@ -631,8 +670,6 @@ export function NodeComponent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-     
     </>
   );
 }

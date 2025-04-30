@@ -10,11 +10,19 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import CreateFileNodeProperties from "@/components/node-properties/CreateFileNodeProperties"
 import CopyFileNodeProperties from "@/components/node-properties/CopyFileNodeProperties"
 import ReadFileNodeProperties from "@/components/node-properties/ReadFileNodeProperties"
+import DeleteFileNodeProperties from "@/components/node-properties/deletefilenodeproperties"
+import ListFilesNodeProperties from "@/components/node-properties/listfilesnodeproperties"
+import PollerFileNodeProperties from "@/components/node-properties/pollerfilenodeproperties"
+
+
 
 const NodePropertyComponents: Record<string, React.FC<any>> = {
   "create-file": CreateFileNodeProperties,
   "read-file": ReadFileNodeProperties,
   "copy-file": CopyFileNodeProperties,
+  "delete-file": DeleteFileNodeProperties,
+  "list-files": ListFilesNodeProperties,
+  "file-poller": PollerFileNodeProperties,
   // …add your others here
 }
 
