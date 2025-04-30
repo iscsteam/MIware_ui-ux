@@ -35,6 +35,8 @@ export interface SchemaItem {
   datatype: "string" | "integer" | "boolean" | "complex" | "any" | string; // Added 'any'
   description: string;
   required?: boolean;
+  originalName?: string;
+  sourceNodeId?: string;
 }
 
 // Interface for the *definition* of a node's schema (used by nodeSchemas.ts)

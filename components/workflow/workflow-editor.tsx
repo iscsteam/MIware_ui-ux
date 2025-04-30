@@ -96,6 +96,7 @@ export function WorkflowEditor() {
       if (!baseSchema) {
         console.error("Schema not found for node type:", nodeType)
         setSchemaModalData({
+          nodeId,
           nodeType,
           baseInputSchema: [],
           baseOutputSchema: [],
@@ -105,6 +106,7 @@ export function WorkflowEditor() {
         setIsSchemaModalOpen(true) // Make sure to open the modal
         return
       }
+
 
       // Recursive function to collect outputs from all upstream nodes
       const findAllUpstreamOutputs = (currentNodeId: string, visited = new Set<string>()): SchemaItem[] => {
@@ -126,12 +128,15 @@ export function WorkflowEditor() {
                 collectedOutputs.push({
                   ...outputItem,
                   name: uniqueName,
-                  description: `${outputItem.description || ""} (from ${sourceNode.data?.label || sourceNode.type})`,
+                  description: `${outputItem.description || ""} (from ${
+                    sourceNode.data?.label || sourceNode.type
+                  })`,
                   originalName: outputItem.name,
                   sourceNodeId: sourceNode.id,
                 })
               })
             }
+
 
             // Recursively collect outputs from further upstream
             const upstreamOutputs = findAllUpstreamOutputs(sourceNode.id, visited)
@@ -145,6 +150,7 @@ export function WorkflowEditor() {
       const availableInputs = findAllUpstreamOutputs(nodeId)
 
       setSchemaModalData({
+        nodeId,
         nodeType,
         baseInputSchema: baseSchema.inputSchema || [],
         baseOutputSchema: baseSchema.outputSchema || [],
