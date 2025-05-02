@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import CreateFileNodeProperties from "@/components/node-properties/CreateFileNodeProperties"
 import CopyFileNodeProperties from "@/components/node-properties/CopyFileNodeProperties"
 import ReadFileNodeProperties, { readFileSchema } from "@/components/node-properties/ReadFileNodeProperties"
-import DeleteFileNodeProperties from "@/components/node-properties/deletefilenodeproperties"
+import DeleteFileNodeProperties,{deleteFileSchema}from "@/components/node-properties/deletefilenodeproperties"
 import ListFilesNodeProperties from "@/components/node-properties/listfilesnodeproperties"
 import PollerFileNodeProperties from "@/components/node-properties/pollerfilenodeproperties"
 import WriteFileNodeProperties,{writeFileSchema} from "../node-properties/WriteFileNodeProperties"
@@ -31,6 +31,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
 const componentSchemas: Record<string, any> = {
   "read-file": readFileSchema,
   "write-file": writeFileSchema,
+  "delete-file": deleteFileSchema,
   // Add other component-specific schemas here as they're implemented
 }
 
