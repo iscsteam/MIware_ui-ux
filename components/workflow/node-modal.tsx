@@ -1,20 +1,19 @@
-
+// // //node-modal.tsx
 "use client"
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { X } from "lucide-react"
 import { useWorkflow } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import CreateFileNodeProperties from "@/components/node-properties/CreateFileNodeProperties"
 import CopyFileNodeProperties from "@/components/node-properties/CopyFileNodeProperties"
-import ReadFileNodeProperties from "@/components/node-properties/ReadFileNodeProperties"
+import ReadFileNodeProperties, { readFileSchema } from "@/components/node-properties/ReadFileNodeProperties"
 import DeleteFileNodeProperties from "@/components/node-properties/deletefilenodeproperties"
 import ListFilesNodeProperties from "@/components/node-properties/listfilesnodeproperties"
 import PollerFileNodeProperties from "@/components/node-properties/pollerfilenodeproperties"
 import WriteFileNodeProperties from "../node-properties/WriteFileNodeProperties"
 import ParseXMLNodeProperties from "../node-properties/ParseXMLNodeProperties"
-import { getNodeSchema } from "./node-schemas"
+import { nodeSchemas, getNodeSchema } from "./node-schemas"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const NodePropertyComponents: Record<string, React.FC<any>> = {
@@ -26,6 +25,12 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "file-poller": PollerFileNodeProperties,
   "write-file": WriteFileNodeProperties,
   "xml-parser": ParseXMLNodeProperties,
+}
+
+// Component-specific schemas - use these instead of getNodeSchema for these node types
+const componentSchemas: Record<string, any> = {
+  "read-file": readFileSchema,
+  // Add other component-specific schemas here as they're implemented
 }
 
 interface NodeModalProps {
@@ -45,7 +50,12 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
   const [rightWidth, setRightWidth] = useState(33.33)
 
   const node = getNodeById(nodeId)
-  const nodeSchema = node ? getNodeSchema(node.type) : undefined
+  
+  // Get schema from component-specific schema if available, otherwise fall back to node-schemas.tsx
+  const nodeSchema = node 
+    ? componentSchemas[node.type] || getNodeSchema(node.type)
+    : undefined
+    
   const NodePropsComponent = node ? NodePropertyComponents[node.type] : undefined
 
   useEffect(() => {
@@ -136,6 +146,53 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
     )
   }
 
+  const renderParameterTooltip = (param: any) => {
+    return (
+      <TooltipContent className="max-w-[300px] p-3">
+        <div className="space-y-2">
+          <p className="font-medium">{param.name}</p>
+          <p className="text-sm text-gray-500">{param.description}</p>
+          <div className="flex space-x-2 text-xs">
+            <span className="bg-gray-100 px-2 py-1 rounded">{param.datatype}</span>
+            {param.required && <span className="bg-red-100 text-red-700 px-2 py-1 rounded">Required</span>}
+          </div>
+        </div>
+      </TooltipContent>
+    )
+  }
+
+  // Create JSON representation of schema parameters for display
+  const createSchemaJson = (schemaParams: any[]) => {
+    if (!schemaParams || !schemaParams.length) return "{}"
+    
+    const schemaObj: Record<string, any> = {}
+    schemaParams.forEach(param => {
+      // Set default value based on datatype
+      let defaultValue: any = null
+      switch (param.datatype) {
+        case "string":
+          defaultValue = param.required ? "required" : ""
+          break
+        case "integer":
+        case "number":
+          defaultValue = 0
+          break
+        case "boolean":
+          defaultValue = false
+          break
+        case "complex":
+          defaultValue = {}
+          break
+        default:
+          defaultValue = null
+      }
+      
+      schemaObj[param.name] = defaultValue
+    })
+    
+    return JSON.stringify(schemaObj, null, 2)
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-[90vw] p-0 overflow-hidden max-h-[90vh] flex flex-col">
@@ -151,19 +208,27 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
             <div className="px-4 py-2 font-medium text-sm border-b bg-white">INPUT</div>
             <div className="overflow-y-auto p-4 flex-1">
               {nodeSchema?.inputSchema?.length ? (
-                nodeSchema.inputSchema.map((param, index) => (
-                  <TooltipProvider key={index}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center mb-2">
-                          <div className="bg-blue-500 text-white rounded-md p-1 mr-2">#</div>
-                          <div className="text-sm">{param.name}</div>
-                          {param.required && <span className="text-red-500 ml-1">*</span>}
-                        </div>
-                      </TooltipTrigger>
-                    </Tooltip>
-                  </TooltipProvider>
-                ))
+                <div className="rounded bg-gray-50 p-4">
+                  <pre className="text-xs overflow-auto">
+                    <code>{createSchemaJson(nodeSchema.inputSchema)}</code>
+                  </pre>
+                  <div className="mt-3 space-y-2">
+                    {nodeSchema.inputSchema.map((param, index) => (
+                      <TooltipProvider key={index}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center text-sm cursor-help">
+                              <span className="text-blue-600 font-mono">{param.name}</span>
+                              {param.required && <span className="text-red-500 ml-1">*</span>}
+                              <span className="text-gray-500 ml-2">({param.datatype})</span>
+                            </div>
+                          </TooltipTrigger>
+                          {renderParameterTooltip(param)}
+                        </Tooltip>
+                      </TooltipProvider>
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <div className="text-sm text-gray-500 italic">No input parameters</div>
               )}
@@ -193,18 +258,26 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
             <div className="px-4 py-2 font-medium text-sm border-b bg-white">OUTPUT</div>
             <div className="p-4 overflow-y-auto flex-1">
               {nodeSchema?.outputSchema?.length ? (
-                nodeSchema.outputSchema.map((param, index) => (
-                  <TooltipProvider key={index}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center mb-2">
-                          <div className="bg-blue-500 text-white rounded-md p-1 mr-2">#</div>
-                          <div className="text-sm">{param.name}</div>
-                        </div>
-                      </TooltipTrigger>
-                    </Tooltip>
-                  </TooltipProvider>
-                ))
+                <div className="rounded bg-gray-50 p-4">
+                  <pre className="text-xs overflow-auto">
+                    <code>{createSchemaJson(nodeSchema.outputSchema)}</code>
+                  </pre>
+                  <div className="mt-3 space-y-2">
+                    {nodeSchema.outputSchema.map((param, index) => (
+                      <TooltipProvider key={index}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center text-sm cursor-help">
+                              <span className="text-blue-600 font-mono">{param.name}</span>
+                              <span className="text-gray-500 ml-2">({param.datatype})</span>
+                            </div>
+                          </TooltipTrigger>
+                          {renderParameterTooltip(param)}
+                        </Tooltip>
+                      </TooltipProvider>
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <div className="text-sm text-gray-500 italic">No output parameters</div>
               )}
