@@ -20,11 +20,19 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         name: "triggerData", // Example: Data that triggered the workflow (if applicable)
         datatype: "any",
         description: "Data that initiated the workflow run.",
+        sourceNodeId:"",
+
+        originalName:"",
+
+
       },
       {
         name: "startTime",
         datatype: "string", // ISO timestamp
         description: "Timestamp when the workflow instance started.",
+        sourceNodeId:"",
+
+        originalName:"",
       },
     ],
   },
@@ -38,6 +46,9 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "any",
         description: "The final data payload to conclude the workflow.",
         required: true, // Usually requires some input to signify completion
+        sourceNodeId:"",
+
+        originalName:"",
       },
     ],
     outputSchema: [], // End nodes typically don't output data via connections
@@ -52,6 +63,9 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "string",
         description: "Path and name of the file/directory to create.",
         required: true,
+        sourceNodeId:"",
+
+        originalName:"",
       },
       //{
       //   name: "content",
@@ -82,11 +96,17 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         name: "fileInfo.fullName",
         datatype: "string",
         description: "Full path and name of the created item.",
+        sourceNodeId:"",
+
+        originalName:"",
       },
       {
         name: "file size",
         datatype: "Number",
         description: "file size",
+        sourceNodeId:"",
+
+        originalName:"",
       },
 
     ],
@@ -101,12 +121,18 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "string",
         description: "Path and name of the file to read.",
         required: true,
+        sourceNodeId:"",
+
+        originalName:"",
       },
       {
         name: "encoding",
         datatype: "string", // Consider specific options: 'utf-8', 'ascii', 'binary'
         description: "Character encoding (default: UTF-8).",
         required: false,
+        sourceNodeId:"",
+
+        originalName:"",
       },
       // {
       //   name: "readAs",
@@ -120,37 +146,58 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         name: "textContent", // Or binaryContent depending on readAs
         datatype: "string", // or 'Buffer'/'Blob'/'ArrayBuffer' if binary
         description: "Content of the file.",
+        sourceNodeId:"",
+
+        originalName:"",
       },
       {
         name: "fileName",
         datatype: "object",
         description: "Information about the read file.",
+        sourceNodeId:"",
+
+        originalName:"",
       },
      {
       name :"file fullname",
       datatype: "string",
       description:" Context of file",
+      sourceNodeId:"",
+
+      originalName:"",
      },
      {
       name :"filepath",
       datatype: "string",
       description:" Context of file",
+      sourceNodeId:"",
+
+      originalName:"",
      },
      {
       name :"file size",
       datatype: "Number",
       description:" Context of file",
+      sourceNodeId:"",
+
+      originalName:"",
      },
      {
       name:"file type",
       datatype:"string",
       description:" Context of file",
+      sourceNodeId:"",
+
+      originalName:"",
 
      },
      {
       name:"lastmodified",
       datatype:"string",
       description:" Context of file",
+      sourceNodeId:"",
+
+      originalName:"",
      }
 
     
@@ -166,12 +213,18 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "string",
         description: "Path and name of the file to write.",
         required: true,
+        sourceNodeId:"",
+
+        originalName:"",
       },
       {
         name: "Text Content",
         datatype: "any", // Can be string or binary data
         description: "Content to write to the file.",
         required: true,
+        sourceNodeId:"",
+
+        originalName:"",
       },
       // {
       //   name: "append",
@@ -184,6 +237,9 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "string", // 'utf-8', 'ascii', etc. (if content is text)
         description: "Character encoding (default: UTF-8).",
         required: false,
+        sourceNodeId:"",
+
+        originalName:"",
       },
       // {
       //   name: "createDirectory",

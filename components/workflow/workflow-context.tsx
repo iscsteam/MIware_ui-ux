@@ -35,6 +35,8 @@ export interface SchemaItem {
   datatype: "string" | "integer" | "boolean" | "complex" | "any" | string; // Added 'any'
   description: string;
   required?: boolean;
+  originalName?: string;
+  sourceNodeId?: string;
 }
 
 // Interface for the *definition* of a node's schema (used by nodeSchemas.ts)
@@ -48,7 +50,7 @@ export interface NodeSchema {
 // It should contain properties set via the NodePropertiesPanel or runtime state.
 export interface WorkflowNodeData {
   label?: string; // Optional: A user-defined label for this specific node instance
-
+  displayName?: string;
   // Configuration properties used by specific node types (make them optional)
   filename?: string;
   content?: string;
@@ -546,6 +548,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
 // --- Custom Hook ---
 export function useWorkflow() {
+
   const context = useContext(WorkflowContext)
   if (context === undefined) {
     throw new Error("useWorkflow must be used within a WorkflowProvider")

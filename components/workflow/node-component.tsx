@@ -1,3 +1,4 @@
+//node-component.tsx
 "use client";
 import type React from "react";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
@@ -31,10 +32,10 @@ import SchemaModal from "./SchemaModal"; // Adjust path
 
 // --- Interfaces ---
 interface NodeComponentProps {
+
   node: WorkflowNode;
   selected: boolean;
   isConnecting: boolean;
-
 
   onSelect: () => void;
 
@@ -44,8 +45,9 @@ interface NodeComponentProps {
 
   onOpenProperties: (nodeId: string) => void;
   // --- NEW Callback Prop ---
-  onOpenSchemaModal: (nodeType: NodeType) => void;
+  // onOpenSchemaModal: (nodeType: NodeType) => void;
   // onShowModal: () => void; // Remove if replaced by onOpenSchemaModal
+  onOpenSchemaModal: (nodeId: string) => void;
 
 }
 
@@ -103,7 +105,7 @@ export function NodeComponent({
   const [lines, setLines] = useState<LineCoords[]>([]);
 
   const [isFilenameDialogOpen, setIsFilenameDialogOpen] = useState(false);
-  const [tempFilename, setTempFilename] = useState(node.data?.filename || "");
+  const [tempFilename, setTempFilename] = useState(node.data?.displayName || "");
 
   // --- Callback ref function to populate fieldRefs ---
   const registerFieldRef = useCallback(
@@ -334,10 +336,10 @@ export function NodeComponent({
   };
 
   const getNodeBackgroundColor = () => {
-    if (node.type === "start") return "bg-white"
-    if (node.type === "end") return "bg-white"
-    return "bg-white"
-  }
+    if (node.type === "start") return "bg-white";
+    if (node.type === "end") return "bg-white";
+    return "bg-white";
+  };
 
   const handleOpenTreeModal = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -363,7 +365,7 @@ export function NodeComponent({
   const handleFilenameClick = (e: React.MouseEvent) => {
     if (node.type !== "start" && node.type !== "end") {
       e.stopPropagation();
-      setTempFilename(node.data?.filename || "");
+      setTempFilename(node.data?.displayName || "");
       setIsFilenameDialogOpen(true);
     }
   };
@@ -373,7 +375,7 @@ export function NodeComponent({
     updateNode(node.id, {
       data: {
         ...node.data,
-        filename: tempFilename,
+        displayName: tempFilename,
       },
     });
     setIsFilenameDialogOpen(false);
@@ -389,33 +391,35 @@ export function NodeComponent({
 
   // Handle double-click on the icon to open properties
   const handleIconDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onOpenProperties(node.id);
-  };
+    e.stopPropagation()
+    onOpenProperties(node.id)
+  }
 
   // Function to format filename path for display
   const formatFilename = (filename: string | undefined): string => {
-    if (!filename) return "Filename"
+    if (!filename) return "Filename";
+   
 
     // If filename is short enough, return it as is
-    if (filename.length <= 20) return filename
+    if (filename.length <= 20) return filename;
+    
 
     // For longer paths, show just the filename part
-    const parts = filename.split(/[/\\]/)
-    const filenameOnly = parts[parts.length - 1]
-
+    const parts = filename.split(/[/\\]/);
+    const filenameOnly = parts[parts.length - 1];
+   
     // If just the filename is too long, truncate it
     if (filenameOnly.length > 15) {
-      return filenameOnly.substring(0, 12) + "..."
+      return filenameOnly.substring(0, 12) + "...";
+      
     }
 
     // Otherwise show directory/.../filename format
     if (parts.length > 2) {
-      return parts[0] + "/.../" + filenameOnly
+      return parts[0] + "/.../" + filenameOnly;
     }
-
-    return filename
-  }
+    return filename;
+  };
 
   return (
     <>
@@ -426,20 +430,20 @@ export function NodeComponent({
       >
         {/* Node action buttons (Unchanged) */}
         <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-auto flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-          <div className="flex bg-gray-200 rounded-md shadow-sm">
+          <div className="flex bg-gray-200 rounded-md shadow-sm gap-2 p-1">
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="node-action h-8 w-8 rounded-l-md bg-gray-200 hover:bg-gray-300"
+                    className="node-action h-4 w-4 rounded-l-md bg-gray-200 hover:bg-gray-300"
                     onClick={(e) => {
                       e.stopPropagation();
                       onExecuteNode(node.id);
                     }}
                   >
-                    <Play className="h-4 w-4" />
+                    <Play className="h-2 w-2" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Execute node</TooltipContent>
@@ -450,10 +454,10 @@ export function NodeComponent({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="node-action h-8 w-8 bg-gray-200 hover:bg-gray-300"
+                    className="node-action h-4 w-4  bg-gray-200 hover:bg-gray-300"
                     onClick={handleDeactivateNode}
                   >
-                    <Power className="h-4 w-4" />
+                    <Power className="h-2 w-2" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -468,42 +472,29 @@ export function NodeComponent({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="node-action h-8 w-8 bg-gray-200 hover:bg-gray-300"
+                    className="node-action h-4 w-4  bg-gray-200 hover:bg-gray-300"
                     onClick={handleDeleteWithRerouting}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-2 w-2" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Delete node</TooltipContent>
               </Tooltip>
-
-              {/* <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="node-action h-8 w-8 bg-gray-200 hover:bg-gray-300"
-                    // onClick={handleOpenTreeModal}
-                    onClick={(e) => handleNodeClick(node.id, node.type)}
-                  >
-                    <AlignJustify className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Data Mapping</TooltipContent>
-              </Tooltip> */}
 
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    // --- CORRECTED onClick ---
-                    className="node-action h-8 w-8 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md" // Ensure correct rounding
+                    className="node-action h-4 w-4 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onOpenSchemaModal(node.type); // Call parent handler
+                      console.log(
+                        "[NodeComponent] Opening schema modal for node ID:",
+                        node.id
+                      ); // Keep or remove log
+                      onOpenSchemaModal(node.id); // --- Pass node.id ---
                     }}
-                    // --- End Correction ---
                     aria-label="Open Data Mapping"
                   >
                     <AlignJustify className="h-4 w-4" />
@@ -512,21 +503,7 @@ export function NodeComponent({
                 <TooltipContent>Data Mapping</TooltipContent>
               </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="node-action h-8 w-8 rounded-r-md bg-gray-200 hover:bg-gray-300"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>More options</TooltipContent>
-              </Tooltip>
+            
             </TooltipProvider>
           </div>
         </div>
@@ -535,31 +512,18 @@ export function NodeComponent({
         <div
           ref={nodeRef}
           onClick={(e) => {
-            e.stopPropagation()
-            onSelect()
+            e.stopPropagation();
+            onSelect();
+            e.stopPropagation();
+            onSelect();
           }}
           // onClick={handleIconClick}
           onDoubleClick={handleIconDoubleClick}
-
-          // onMouseDown={(e) => {
-          //   // Allow dragging only with left mouse button and not on ports/actions
-          //   const target = e.target as HTMLElement;
-          //   if (e.button === 0 && !target.closest('.port') && !target.closest('.node-action')) {
-          //     onDragStart(node.id, e); // Use updated prop name
-          //   }
-          // }}
           className={`relative flex flex-col rounded-lg border-2 ${getNodeBackgroundColor()} shadow-lg transition-all duration-150 ease-in-out w-[100px] min-h-[60px] cursor-grab ${
-            selected
-              ? "border-blue-500"
-              : ""
+            selected ? "border-blue-500" : ""
           } ${isConnecting ? "border-sky-500 dark:border-sky-400" : ""} ${
             node.data?.active === false ? "opacity-60 brightness-90" : ""
           } hover:shadow-xl`}
-          // onClick={(e) => {
-          //   e.stopPropagation();
-          //   onSelect();
-          // }}
-
           onMouseDown={(e) => {
             const target = e.target as HTMLElement;
             if (
@@ -614,15 +578,31 @@ export function NodeComponent({
           {node.type !== "start" && (
             <div
               className={`port absolute left-0 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
-                pendingConnection && pendingConnection.sourceId !== node.id ? "ring-2 ring-blue-500 animate-pulse" : ""
+
+                pendingConnection && pendingConnection.sourceId !== node.id
+                  ? "ring-2 ring-blue-500 animate-pulse"
+                  : ""
               }`}
               onClick={handleInputPortClick}
-              title={pendingConnection ? "Click to complete connection" : "Input port"}
+              title={
+                pendingConnection
+                  ? "Click to complete connection"
+                  : "Input port"
+              }
+              
             />
           )}
         </div>
-
- 
+        {/* Filename display below the node */}
+        {node.type !== "start" && node.type !== "end" && (
+          <div
+            className="text-center text-xs mt-1 cursor-pointer hover:text-blue-500 max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap"
+            onClick={handleFilenameClick}
+            title={node.data?.displayName || "Filename"}
+          >
+            {formatFilename(node.data?.displayName)}
+          </div>
+        )}
       </div>
 
       {/* Filename Dialog */}
@@ -644,8 +624,6 @@ export function NodeComponent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-     
     </>
   );
 }

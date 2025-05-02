@@ -1,4 +1,4 @@
-//node-utils.tsx
+//node-utils.tsx  Node Icon
 "use client"
 import { Play, Filter, FileText, FileInput, FileOutput, Copy, CheckCircle, Code, Trash2, Files, Clock, Server, Send, Globe, FileJson, FileCode } from "lucide-react"
 import type { NodeType } from "./workflow-context"
@@ -15,7 +15,7 @@ export function getNodeIcon(type: NodeType) {
     "copy-file":"icons/copy.png",
     "delete-file":"icons/delete.png",
     "list-files":"icons/copy.png",
-    "file-poller":"icons/poller.png",
+    "file-poller":"icons/pollar.png",
     "end":"icons/stop.png",
     // add more PNG types if needed
   }

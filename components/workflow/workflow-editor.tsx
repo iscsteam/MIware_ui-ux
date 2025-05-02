@@ -1,16 +1,49 @@
-"use client";
-import type React from "react";
-import { useRef, useState, useEffect, useCallback } from "react";
-import {useWorkflow,type NodeType,type WorkflowNode,type NodeConnection,} from "./workflow-context";
-import { NodeComponent } from "./node-component";
-import { ConnectionLine } from "./connection-line";
-import { NodeModal } from "./node-properties-panel";
-import { ExecutionModal } from "./execution-modal";
-import { SideModal } from "./sidemodal";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import SchemaModal from "./SchemaModal";
 
+"use client"
+
+import type React from "react"
+import { useRef, useState, useEffect, useCallback } from "react"
+import { useWorkflow, type NodeType, type WorkflowNode, type NodeConnection } from "./workflow-context"
+import { NodeComponent } from "./node-component"
+import { ConnectionLine } from "./connection-line"
+import { NodeModal } from "./node-modal"
+import { ExecutionModal } from "./execution-modal"
+import { SideModal } from "./sidemodal"
+import { Plus } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import SchemaModal from "./SchemaModal"
+import { getNodeSchema } from "./nodeSchemas"
+
+// Define SchemaItem interface which was missing
+interface SchemaItem {
+  name: string
+  type?: string
+  description?: string
+  required?: boolean
+  originalName?: string
+  sourceNodeId?: string
+}
+
+interface SchemaModalData {
+  nodeType: NodeType
+  baseInputSchema: SchemaItem[]
+  baseOutputSchema: SchemaItem[]
+  availableInputsFromPrevious: SchemaItem[] // Outputs from connected source nodes
+  nodeLabel?: string // Optional: Pass the specific node's label
+}
+
+// Define NodeComponentProps interface to fix TypeScript error
+interface NodeComponentProps {
+  key: string
+  node: WorkflowNode
+  selected: boolean
+  isConnecting: boolean
+  onSelect: () => void
+  onDragStart: (nodeId: string, e: React.MouseEvent) => void
+  onExecuteNode: (nodeId: string) => void
+  onOpenProperties: (nodeId: string) => void
+  onOpenSchemaModal: (nodeId: string) => void
+}
 
 export function WorkflowEditor() {
   const {
@@ -35,21 +68,104 @@ export function WorkflowEditor() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [sideModalOpen, setSideModalOpen] = useState(false)
   const [insertPosition, setInsertPosition] = useState<{
-    x: number;
-    y: number;
-  }>({ x: 0, y: 0 });
-  const [connectionToSplit, setConnectionToSplit] =
-    useState<NodeConnection | null>(null);
-  const [executionModalOpen, setExecutionModalOpen] = useState(false);
-  const [executingNodeId, setExecutingNodeId] = useState<string | null>(null);
-  const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
-  const [activeNodeForModal, setActiveNodeForModal] = useState<WorkflowNode | null>(null);
+    x: number
+    y: number
+  }>({ x: 0, y: 0 })
+  const [connectionToSplit, setConnectionToSplit] = useState<NodeConnection | null>(null)
+  const [executionModalOpen, setExecutionModalOpen] = useState(false)
+  const [executingNodeId, setExecutingNodeId] = useState<string | null>(null)
+  const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false)
+  const [activeNodeForModal, setActiveNodeForModal] = useState<WorkflowNode | null>(null)
 
-  const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
-  const [nodeTypeForSchemaModal, setNodeTypeForSchemaModal] = useState<NodeType | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false)
+  const [nodeTypeForSchemaModal, setNodeTypeForSchemaModal] = useState<NodeType | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [schemaModalData, setSchemaModalData] = useState<SchemaModalData | null>(null)
+
+  const handleOpenSchemaModal = useCallback(
+    (nodeId: string) => {
+      const targetNode = nodes.find((n) => n.id === nodeId)
+      if (!targetNode) {
+        console.error("Target node not found for schema modal:", nodeId)
+        return
+      }
+
+      const nodeType = targetNode.type
+      const baseSchema = getNodeSchema(nodeType)
+
+      if (!baseSchema) {
+        console.error("Schema not found for node type:", nodeType)
+        setSchemaModalData({
+          nodeId,
+          nodeType,
+          baseInputSchema: [],
+          baseOutputSchema: [],
+          availableInputsFromPrevious: [],
+          nodeLabel: targetNode.data?.label || nodeType,
+        })
+        setIsSchemaModalOpen(true) // Make sure to open the modal
+        return
+      }
 
 
+      // Recursive function to collect outputs from all upstream nodes
+      const findAllUpstreamOutputs = (currentNodeId: string, visited = new Set<string>()): SchemaItem[] => {
+        if (visited.has(currentNodeId)) return []
+        visited.add(currentNodeId)
+
+        const incomingConnections = connections.filter((conn) => conn.targetId === currentNodeId)
+
+        let collectedOutputs: SchemaItem[] = []
+
+        for (const conn of incomingConnections) {
+          const sourceNode = nodes.find((n) => n.id === conn.sourceId)
+          if (sourceNode) {
+            const sourceSchema = getNodeSchema(sourceNode.type)
+
+            if (sourceSchema?.outputSchema) {
+              sourceSchema.outputSchema.forEach((outputItem) => {
+                const uniqueName = `${sourceNode.data?.label || sourceNode.type} - ${outputItem.name}`
+                collectedOutputs.push({
+                  ...outputItem,
+                  name: uniqueName,
+                  description: `${outputItem.description || ""} (from ${
+                    sourceNode.data?.label || sourceNode.type
+                  })`,
+                  originalName: outputItem.name,
+                  sourceNodeId: sourceNode.id,
+                })
+              })
+            }
+
+
+            // Recursively collect outputs from further upstream
+            const upstreamOutputs = findAllUpstreamOutputs(sourceNode.id, visited)
+            collectedOutputs = collectedOutputs.concat(upstreamOutputs)
+          }
+        }
+
+        return collectedOutputs
+      }
+
+      const availableInputs = findAllUpstreamOutputs(nodeId)
+
+      setSchemaModalData({
+        nodeId,
+        nodeType,
+        baseInputSchema: baseSchema.inputSchema || [],
+        baseOutputSchema: baseSchema.outputSchema || [],
+        availableInputsFromPrevious: availableInputs,
+        nodeLabel: targetNode.data?.label || nodeType,
+      })
+      setIsSchemaModalOpen(true) // Make sure to open the modal
+    },
+    [nodes, connections],
+  )
+
+  const handleCloseSchemaModal = () => {
+    setSchemaModalData(null)
+    setIsSchemaModalOpen(false)
+  }
 
   // Handle node drop from palette
   const handleDrop = useCallback(
@@ -152,6 +268,7 @@ export function WorkflowEditor() {
         setPendingConnection(null)
         setSideModalOpen(false)
         setModalOpen(false)
+        setIsSchemaModalOpen(false)
       }
     }
 
@@ -268,22 +385,25 @@ export function WorkflowEditor() {
     setModalOpen(false)
   }, [])
 
-  //--- NEW: Callback to open SchemaModal ---
-  const handleOpenSchemaModal = useCallback(
-    (nodeType: NodeType) => {
-       // Prevent opening if another modal is already open? (Optional: good UX)
-       if (propertiesPanelOpen || sideModalOpen || executionModalOpen) return;
-       setNodeTypeForSchemaModal(nodeType);
-       setIsSchemaModalOpen(true);
-    },
-    [propertiesPanelOpen, sideModalOpen, executionModalOpen] // Added modal states check
-  );
-
-  // --- NEW: Callback to close SchemaModal ---
-  const handleCloseSchemaModal = useCallback(() => {
-       setIsSchemaModalOpen(false);
-       setNodeTypeForSchemaModal(null); // Clear the node type
-  }, []);
+  function DotsBackground() {
+    return (
+      <svg
+        className="absolute inset-0 pointer-events-none"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{
+          width: "100%",
+          height: "100%",
+        }}
+      >
+        <defs>
+          <pattern id="dot-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="1.2" fill="rgba(38, 37, 37, 0.2)" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#dot-grid)" />
+      </svg>
+    )
+  }
 
   return (
     <div className="relative flex-1 overflow-hidden bg-blue">
@@ -307,24 +427,14 @@ export function WorkflowEditor() {
         onWheel={handleWheel}
         onClick={handleCanvasClick}
       >
+        <DotsBackground />
         <div
           className="h-full w-full"
           style={{
             transform: `scale(${canvasScale}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
-
-           transformOrigin: "0 0",
-
+            transformOrigin: "0 0",
           }}
         >
-          {/* Grid background */}
-          <svg className="absolute h-full w-full" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(38, 37, 37, 0.2)" strokeWidth="0.5" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
           {/* Connections */}
           <svg className="absolute h-full w-full pointer-events-none">
             {connections.map((connection) => {
@@ -360,40 +470,24 @@ export function WorkflowEditor() {
           </svg>
 
           {/* Nodes */}
-          {/* {nodes.map((node) => (
+          {nodes.map((node) => (
             <NodeComponent
               key={node.id}
               node={node}
               selected={node.id === selectedNodeId}
-              onSelect={() => selectNode(node.id)}
-              onDragstart={startNodeDrag}
-              onExecuteNode={handleExecuteNode}
-              onOpenProperties={handleOpenProperties} // Pass the handler
-
-              onShowModal={() => setActiveNodeForModal(node)}
-
+              isConnecting={!!pendingConnection && pendingConnection.sourceId === node.id}
+              // Pass down callbacks
+              onSelect={() => {
+                // Prevent select if modal open
+                if (isSchemaModalOpen || propertiesPanelOpen || sideModalOpen || executionModalOpen) return
+                selectNode(node.id)
+              }}
+              onDragStart={startNodeDrag} // Already checks for modals
+              onExecuteNode={handleExecuteNode} // Already checks for modals
+              onOpenProperties={handleOpenProperties} // Already checks for modals
+              onOpenSchemaModal={handleOpenSchemaModal} // Pass the handler
             />
-          ))} */}
-         {nodes.map((node) => (
-                <NodeComponent
-                  key={node.id}
-                  node={node}
-                  selected={node.id === selectedNodeId}
-                  isConnecting={!!pendingConnection && pendingConnection.sourceId === node.id}
-                  // Pass down callbacks
-                  onSelect={() => {
-                      // Prevent select if modal open
-                      if (isSchemaModalOpen || propertiesPanelOpen || sideModalOpen || executionModalOpen) return;
-                      selectNode(node.id)
-                  }}
-                  onDragStart={startNodeDrag} // Already checks for modals
-                  onExecuteNode={handleExecuteNode} // Already checks for modals
-                  onOpenProperties={handleOpenProperties} // Already checks for modals
-                  // --- Pass down the NEW handler ---
-                  onOpenSchemaModal={handleOpenSchemaModal} // Pass the new handler
-                  // onShowModal={() => setActiveNodeForModal(node)} // Remove this if SchemaModal replaces it
-                />
-            ))}
+          ))}
         </div>
       </div>
 
@@ -421,18 +515,19 @@ export function WorkflowEditor() {
         nodeId={executingNodeId}
       />
 
- {/* Schema Modal */}
-  {isSchemaModalOpen && nodeTypeForSchemaModal && ( // Check specific state & needed data
-    <SchemaModal
-      nodeType={nodeTypeForSchemaModal}
-      onClose={handleCloseSchemaModal} // Use the new specific closer
-    />
-  )}
+      {/* Schema Modal */}
+      {schemaModalData && (
+        <SchemaModal
+          nodeType={schemaModalData.nodeType}
+          nodeLabel={schemaModalData.nodeLabel}
+          baseInputSchema={schemaModalData.baseInputSchema}
+          baseOutputSchema={schemaModalData.baseOutputSchema}
+          availableInputsFromPrevious={schemaModalData.availableInputsFromPrevious}
+          onClose={handleCloseSchemaModal}
+        />
+      )}
     </div>
-
-    
-  );
-
+  )
 }
 
 // Component for rendering the pending connection line
