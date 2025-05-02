@@ -9,6 +9,220 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useEffect } from "react"
 import { useWorkflow } from "../workflow/workflow-context"
 
+export interface SchemaItem {
+  name: string
+  datatype: string
+  description: string
+  required?: boolean
+}
+
+export interface NodeSchema {
+  inputSchema: SchemaItem[]
+  outputSchema: SchemaItem[]
+}
+
+export const filePollerSchema: NodeSchema = {
+  inputSchema: [
+    {
+      name: "fileName",
+      datatype: "string",
+      description:
+        "The path and name of the file or directory to monitor. Supports wildcards (e.g. C:\\files\\*.log).",
+      required: true,
+    },
+    {
+      name: "pollingInterval",
+      datatype: "integer",
+      description:
+        "The polling interval in seconds to check for the specified file or directory.",
+      required: true,
+    },
+    {
+      name: "includeExistingFiles",
+      datatype: "boolean",
+      description:
+        "When true, existing files matching the specification will trigger a new process instance at startup.",
+    },
+    {
+      name: "excludeFileContent",
+      datatype: "boolean",
+      description:
+        "When true, the file’s contents are not loaded into activity output.",
+    },
+    {
+      name: "contentAs",
+      datatype: "string",
+      description:
+        "The type of content to load ('Text' or 'Binary'). Only applies when excludeFileContent is false.",
+    },
+    {
+      name: "encoding",
+      datatype: "string",
+      description:
+        "Character encoding for text content. Only used when contentAs is 'Text'.",
+    },
+    {
+      name: "includeTimestamp",
+      datatype: "boolean",
+      description:
+        "When true, timestamps are included in addition to dates in the output.",
+    },
+    // Advanced
+    {
+      name: "sequenceKey",
+      datatype: "string",
+      description:
+        "An XPath expression to group process instances so they run sequentially when values match.",
+    },
+    {
+      name: "customJobId",
+      datatype: "string",
+      description:
+        "An XPath expression defining a custom ID for each process instance.",
+    },
+    {
+      name: "pollForCreateEvents",
+      datatype: "boolean",
+      description:
+        "When true, new process instances start on file/directory creation.",
+    },
+    {
+      name: "pollForModifyEvents",
+      datatype: "boolean",
+      description:
+        "When true, new process instances start on file/directory modification.",
+    },
+    {
+      name: "pollForDeleteEvents",
+      datatype: "boolean",
+      description:
+        "When true, new process instances start on file/directory deletion.",
+    },
+    {
+      name: "includeSubDirectories",
+      datatype: "boolean",
+      description:
+        "When true, monitor events in subdirectories of the specified path.",
+    },
+    {
+      name: "mode",
+      datatype: "string",
+      description:
+        "Type of items to monitor: 'Only Files', 'Only Directories', or 'Files and Directories'.",
+    },
+    {
+      name: "sortBy",
+      datatype: "string",
+      description:
+        "Order in which detected files are processed: 'File Name', 'Date Modified', or 'None'.",
+    },
+    {
+      name: "sortOrder",
+      datatype: "string",
+      description:
+        "Sort direction when sortBy is set: 'Ascending' or 'Descending'.",
+    },
+  ],
+  outputSchema: [
+    {
+      name: "action",
+      datatype: "string",
+      description:
+        "The event that triggered the poller: 'create', 'modify', or 'remove'.",
+    },
+    {
+      name: "timeOccurred",
+      datatype: "integer",
+      description:
+        "The timestamp (in milliseconds since midnight UTC Jan 1, 1970) when the change was detected.",
+    },
+    {
+      name: "fileInfo",
+      datatype: "complex",
+      description:
+        "Metadata about the file or directory: fileName, location, type, readProtected, writeProtected, size.",
+    },
+    {
+      name: "fullName",
+      datatype: "string",
+      description:
+        "Full path and name of the file or directory that triggered the event.",
+    },
+    {
+      name: "fileName",
+      datatype: "string",
+      description:
+        "Name of the file or directory without path information.",
+    },
+    {
+      name: "location",
+      datatype: "string",
+      description:
+        "Path to the file or directory that triggered the event.",
+    },
+    {
+      name: "configuredFileName",
+      datatype: "string",
+      description:
+        "The file or directory pattern this activity was configured to monitor.",
+    },
+    {
+      name: "type",
+      datatype: "string",
+      description:
+        "Type of the item: 'file' or 'directory'.",
+    },
+    {
+      name: "readProtected",
+      datatype: "boolean",
+      description:
+        "Whether the item is protected from reading.",
+    },
+    {
+      name: "writeProtected",
+      datatype: "boolean",
+      description:
+        "Whether the item is protected from writing.",
+    },
+    {
+      name: "size",
+      datatype: "integer",
+      description:
+        "Size of the file in bytes (0 for directories).",
+    },
+    {
+      name: "lastModified",
+      datatype: "string",
+      description:
+        "Timestamp of the last modification of the item.",
+    },
+    {
+      name: "fileContent",
+      datatype: "complex",
+      description:
+        "The file’s content: contains textContent or binaryContent if excludeFileContent is false.",
+    },
+    {
+      name: "textContent",
+      datatype: "string",
+      description:
+        "Text content of the file. Only present when contentAs is 'Text' and excludeFileContent is false.",
+    },
+    {
+      name: "binaryContent",
+      datatype: "binary",
+      description:
+        "Binary content of the file. Only present when contentAs is 'Binary' and excludeFileContent is false.",
+    },
+    {
+      name: "encoding",
+      datatype: "string",
+      description:
+        "Character encoding used to read text content. Present only when textContent is returned.",
+    },
+  ],
+}
+
 interface Props {
   formData: Record<string, any>
   onChange: (name: string, value: any) => void
