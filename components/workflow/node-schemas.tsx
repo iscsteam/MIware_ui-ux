@@ -77,88 +77,9 @@ export const createFileSchema: NodeSchema = {
   ],
 }
 
-// Write File node schema
-export const writeFileSchema: NodeSchema = {
-  inputSchema: [
-    {
-      name: "fileName",
-      datatype: "string",
-      description: "The path and name of the file. Wildcards are not permitted in this field.",
-      required: true,
-    },
-    {
-      name: "textContent",
-      datatype: "string",
-      description:
-        "The contents of the file (text files). This field is present when Write as is set to Text. When Write as is set to Binary, this field is replaced by the field binaryContent.",
-    },
-    {
-      name: "addLineSeparator",
-      datatype: "boolean",
-      description:
-        "This specifies whether to add a carriage return after each input line. This field is present when the value of the Write as field on the General tab is set to Text.",
-    },
-    {
-      name: "encoding",
-      datatype: "string",
-      description:
-        "The character encoding for text files. This element is available only when Text is specified in the Write as field on the General tab.",
-    },
-  ],
-  outputSchema: [
-    {
-      name: "fileInfo",
-      datatype: "complex",
-      description: "This element contains the fileName, location, type, readProtected, writeProtected, and size data.",
-    },
-    {
-      name: "fullName",
-      datatype: "string",
-      description: "The name of the file, including the path information.",
-    },
-    {
-      name: "fileName",
-      datatype: "string",
-      description: "The name of the file without the path information.",
-    },
-    {
-      name: "location",
-      datatype: "string",
-      description: "The path to the file.",
-    },
-    {
-      name: "configuredFileName",
-      datatype: "string",
-      description: "An optional element. This element is not populated by this activity.",
-    },
-    {
-      name: "type",
-      datatype: "string",
-      description: "The file type.",
-    },
-    {
-      name: "wasProtected",
-      datatype: "boolean",
-      description: "Signifies whether the file or directory is protected from reading",
-    },
-    {
-      name: "size",
-      datatype: "integer",
-      description: "The size of the file in bytes.",
-    },
-    {
-      name: "lastModified",
-      datatype: "string",
-      description: "The timestamp indicating when the file was last modified.",
-    },
-  ],
-}
-
 // Map node types to their schemas (excluding read-file as it's now in the component)
 export const nodeSchemas: Record<string, NodeSchema> = {
   "create-file": createFileSchema,
-  "write-file": writeFileSchema,
-  // Add other node schemas here, but not read-file
 }
 
 // Helper function to get schema for a node type
