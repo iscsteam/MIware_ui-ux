@@ -1,11 +1,12 @@
-// //createfilenodeproperties.tsx
+
 "use client"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { Button } from "@/components/ui/button" 
+import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { useWorkflow } from "../workflow/workflow-context"
+import { createFileSchema } from "../workflow/node-schemas"
 
 interface Props {
   formData: Record<string, any>
@@ -17,6 +18,9 @@ export default function CreateFileNodeProperties({ formData, onChange }: Props) 
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const { updateNode, selectedNodeId } = useWorkflow()
+
+  // Expose the schema for this node
+  const schema = createFileSchema
 
   const handleSubmit = async () => {
     setLoading(true)
@@ -45,19 +49,19 @@ export default function CreateFileNodeProperties({ formData, onChange }: Props) 
         setSuccess(data.message)
         // Update the node's output with the API response data
         if (selectedNodeId) {
-          updateNode(selectedNodeId, { 
+          updateNode(selectedNodeId, {
             status: "success",
-            output: data 
+            output: data,
           })
         }
       } else {
         setError(data.message)
         // Update the node with error status and message
         if (selectedNodeId) {
-          updateNode(selectedNodeId, { 
+          updateNode(selectedNodeId, {
             status: "error",
             error: data.message,
-            output: data 
+            output: data,
           })
         }
       }
@@ -66,10 +70,10 @@ export default function CreateFileNodeProperties({ formData, onChange }: Props) 
       setError(errorMessage)
       // Update node with error status
       if (selectedNodeId) {
-        updateNode(selectedNodeId, { 
+        updateNode(selectedNodeId, {
           status: "error",
           error: errorMessage,
-          output: { error: errorMessage }
+          output: { error: errorMessage },
         })
       }
     } finally {

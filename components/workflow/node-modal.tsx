@@ -1,22 +1,21 @@
-//node-modal.tsx
+
 "use client"
 import type React from "react"
-import { useState, useEffect } from "react"
-import { Code, ArrowRight, Play, Loader2 } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { X } from "lucide-react"
 import { useWorkflow } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import CreateFileNodeProperties from "@/components/node-properties/CreateFileNodeProperties"
 import CopyFileNodeProperties from "@/components/node-properties/CopyFileNodeProperties"
 import ReadFileNodeProperties from "@/components/node-properties/ReadFileNodeProperties"
 import DeleteFileNodeProperties from "@/components/node-properties/deletefilenodeproperties"
 import ListFilesNodeProperties from "@/components/node-properties/listfilesnodeproperties"
 import PollerFileNodeProperties from "@/components/node-properties/pollerfilenodeproperties"
-
-
 import WriteFileNodeProperties from "../node-properties/WriteFileNodeProperties"
 import ParseXMLNodeProperties from "../node-properties/ParseXMLNodeProperties"
+import { getNodeSchema } from "./node-schemas"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const NodePropertyComponents: Record<string, React.FC<any>> = {
   "create-file": CreateFileNodeProperties,
@@ -27,7 +26,6 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "file-poller": PollerFileNodeProperties,
   "write-file": WriteFileNodeProperties,
   "xml-parser": ParseXMLNodeProperties,
-  // …add your others here
 }
 
 interface NodeModalProps {
@@ -37,28 +35,27 @@ interface NodeModalProps {
 }
 
 export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
-  const { getNodeById, updateNode, connections, nodes, executeNode } = useWorkflow()
+  const { getNodeById, updateNode } = useWorkflow()
   const [formData, setFormData] = useState<Record<string, any>>({})
-  const [activeTab, setActiveTab] = useState<"parameters" | "settings">("parameters")
-  const [isExecuting, setIsExecuting] = useState(false)
-  const [executionResult, setExecutionResult] = useState<any>(null)
-  const [inputFormat, setInputFormat] = useState<"schema" | "json" | "table">("schema")
-  const [outputFormat, setOutputFormat] = useState<"schema" | "json" | "table">("schema")
+  const containerRef = useRef<HTMLDivElement>(null)
+  const leftResizerRef = useRef<HTMLDivElement>(null)
+  const rightResizerRef = useRef<HTMLDivElement>(null)
+
+  const [leftWidth, setLeftWidth] = useState(33.33)
+  const [rightWidth, setRightWidth] = useState(33.33)
+
   const node = getNodeById(nodeId)
+  const nodeSchema = node ? getNodeSchema(node.type) : undefined
+  const NodePropsComponent = node ? NodePropertyComponents[node.type] : undefined
 
   useEffect(() => {
     if (node) {
-      // Get dynamic input data from upstream nodes
-      const dynamicInputs = getDynamicInputData()
-
-      // Merge dynamic inputs with existing form data
       setFormData((prev) => ({
         ...prev,
         ...node.data,
-        ...dynamicInputs,
       }))
     }
-  }, [nodeId, node, connections, nodes])
+  }, [nodeId, node])
 
   const handleChange = (name: string, value: any) => {
     setFormData((prev) => ({ ...prev, [name]: value }))
@@ -69,496 +66,159 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
     onClose()
   }
 
-  const handleRun = async () => {
-    setIsExecuting(true)
-    await updateNode(nodeId, { data: formData })
-    const res = await executeNode(nodeId)
-    setExecutionResult(res)
-    setIsExecuting(false)
-  }
+  // Column resize logic
+  useEffect(() => {
+    const container = containerRef.current
+    const leftResizer = leftResizerRef.current
+    const rightResizer = rightResizerRef.current
 
-  // Get all upstream nodes that connect to this node (directly or indirectly)
-  const getAllUpstreamNodes = (nodeId: string, visited = new Set<string>()): string[] => {
-    if (visited.has(nodeId)) return []
-    visited.add(nodeId)
+    let startX = 0
+    let startLeft = 0
+    let startRight = 0
+    let resizingLeft = false
+    let resizingRight = false
 
-    const directInputs = connections.filter((conn) => conn.targetId === nodeId).map((conn) => conn.sourceId)
+    const onMouseDown = (e: MouseEvent, side: "left" | "right") => {
+      e.preventDefault()
+      startX = e.clientX
+      const totalWidth = container?.getBoundingClientRect().width || 1
+      startLeft = leftWidth
+      startRight = rightWidth
 
-    const allUpstream = [...directInputs]
+      resizingLeft = side === "left"
+      resizingRight = side === "right"
 
-    // Recursively get upstream nodes for each direct input
-    for (const inputId of directInputs) {
-      const upstreamOfInput = getAllUpstreamNodes(inputId, visited)
-      allUpstream.push(...upstreamOfInput)
+      document.addEventListener("mousemove", onMouseMove)
+      document.addEventListener("mouseup", onMouseUp)
     }
 
-    return [...new Set(allUpstream)] // Remove duplicates
-  }
+    const onMouseMove = (e: MouseEvent) => {
+      if (!container) return
+      const deltaX = e.clientX - startX
+      const containerWidth = container.getBoundingClientRect().width
 
-  // Get node inputs - find all connections where this node is the target
-  const getNodeInputs = (nodeId: string) => {
-    if (!nodeId) return []
-
-    const inputConnections = connections.filter((conn) => conn.targetId === nodeId)
-
-    return inputConnections.map((conn) => {
-      const sourceNode = nodes.find((n) => n.id === conn.sourceId)
-      return {
-        sourceNodeId: conn.sourceId,
-        sourceNodeLabel: sourceNode?.data?.label || sourceNode?.type || "Unknown",
-        data: sourceNode?.output || {},
-        status: sourceNode?.status || "idle",
+      if (resizingLeft) {
+        const newLeft = Math.max(10, Math.min(50, startLeft + (deltaX / containerWidth) * 100))
+        const center = 100 - newLeft - rightWidth
+        if (center >= 20) setLeftWidth(newLeft)
+      } else if (resizingRight) {
+        const newRight = Math.max(10, Math.min(50, startRight - (deltaX / containerWidth) * 100))
+        const center = 100 - leftWidth - newRight
+        if (center >= 20) setRightWidth(newRight)
       }
-    })
-  }
-
-  // Get all upstream node outputs that might be relevant to this node
-  const getAllUpstreamOutputs = (nodeId: string) => {
-    const upstreamNodeIds = getAllUpstreamNodes(nodeId)
-
-    return upstreamNodeIds.map((id) => {
-      const node = nodes.find((n) => n.id === id)
-      return {
-        sourceNodeId: id,
-        sourceNodeLabel: node?.data?.label || node?.type || "Unknown",
-        data: node?.output || {},
-        status: node?.status || "idle",
-      }
-    })
-  }
-
-  // Get node output
-  const getNodeOutput = (nodeId: string) => {
-    if (!nodeId) return null
-
-    const node = nodes.find((n) => n.id === nodeId)
-    return node?.output || null
-  }
-
-  // Add this function after getAllUpstreamOutputs
-  const getDynamicInputData = () => {
-    // Get all upstream nodes that might provide input
-    const upstreamNodes = getAllUpstreamOutputs(nodeId)
-
-    // If there are no upstream nodes, return default data
-    if (upstreamNodes.length === 0) {
-      return {}
     }
 
-    // Combine all upstream node outputs into a single object
-    const combinedData: Record<string, any> = {};
-    upstreamNodes.forEach((node) => {
-      if (node.data && typeof node.data === "object") {
-        Object.entries(node.data).forEach(([key, value]) => {
-          combinedData[key] = value
-        })
-      }
-    })
-
-    return combinedData
-  }
-
-  const nodeInputs = nodeId ? getNodeInputs(nodeId) : []
-  const allUpstreamOutputs = nodeId ? getAllUpstreamOutputs(nodeId) : []
-  const nodeOutput = nodeId ? getNodeOutput(nodeId) : null
-
-  const renderInputsByFormat = () => {
-    // If no inputs, show the empty state message
-    if (nodeInputs.length === 0 && allUpstreamOutputs.length === 0) {
-      return (
-        <div className="text-sm text-muted-foreground italic p-4 border border-dashed rounded text-center">
-          No input data available. Connect this node to an output node.
-        </div>
-      )
+    const onMouseUp = () => {
+      resizingLeft = false
+      resizingRight = false
+      document.removeEventListener("mousemove", onMouseMove)
+      document.removeEventListener("mouseup", onMouseUp)
     }
 
-    // Combine direct and indirect inputs for display
-    const allInputs = [
-      ...nodeInputs,
-      ...allUpstreamOutputs.filter(
-        (upstream) => !nodeInputs.some((direct) => direct.sourceNodeId === upstream.sourceNodeId),
-      ),
-    ]
+    leftResizer?.addEventListener("mousedown", (e) => onMouseDown(e, "left"))
+    rightResizer?.addEventListener("mousedown", (e) => onMouseDown(e, "right"))
 
-    switch (inputFormat) {
-      case "schema":
-        return (
-          <div className="space-y-2">
-            {allInputs.map((input, index) => (
-              <div key={index} className="mb-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="bg-gray-200 p-1 rounded">
-                    {input.sourceNodeLabel === "On form submission" ? (
-                      <span className="flex items-center">
-                        <span className="inline-block w-5 h-5 bg-blue-500 text-white flex items-center justify-center rounded mr-2 text-xs">
-                          ⚡
-                        </span>
-                        {input.sourceNodeLabel}
-                      </span>
-                    ) : (
-                      <span className="flex items-center">
-                        <span className="inline-block w-5 h-5 bg-blue-500 text-white flex items-center justify-center rounded mr-2 text-xs">
-                          📋
-                        </span>
-                        {input.sourceNodeLabel}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-500">1 item</div>
-                </div>
-                <div className="space-y-1">
-                  {Object.entries(input.data || {}).map(([key, value]) => (
-                    <div key={key} className="flex items-center bg-gray-100 rounded">
-                      <div className="bg-gray-200 text-gray-700 px-2 py-1 rounded-l flex items-center">
-                        <span className="text-xs mr-1">A</span>
-                        {key}
-                      </div>
-                      <div className="px-2 py-1 text-gray-700 text-sm">
-                        {typeof value === "string" ? value : JSON.stringify(value)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-
-      case "table":
-        return (
-          <div className="space-y-4">
-            {allInputs.map((input, index) => {
-              const data = input.data || {}
-              const keys = Object.keys(data)
-
-              return (
-                <div key={index} className="mb-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="bg-gray-200 p-1 rounded">
-                      {input.sourceNodeLabel === "On form submission" ? (
-                        <span className="flex items-center">
-                          <span className="inline-block w-5 h-5 bg-blue-500 text-white flex items-center justify-center rounded mr-2 text-xs">
-                            ⚡
-                          </span>
-                          {input.sourceNodeLabel}
-                        </span>
-                      ) : (
-                        <span className="flex items-center">
-                          <span className="inline-block w-5 h-5 bg-blue-500 text-white flex items-center justify-center rounded mr-2 text-xs">
-                            📋
-                          </span>
-                          {input.sourceNodeLabel}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500">1 item</div>
-                  </div>
-
-                  {keys.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-gray-100">
-                            {keys.map((key) => (
-                              <th key={key} className="p-1 text-left border border-gray-200">
-                                {key}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            {keys.map((key) => (
-                              <td key={key} className="p-1 border border-gray-200 truncate max-w-[150px]">
-                                {typeof data[key] === "object"
-                                  ? JSON.stringify(data[key]).substring(0, 50) +
-                                    (JSON.stringify(data[key]).length > 50 ? "..." : "")
-                                  : String(data[key])}
-                              </td>
-                            ))}
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="italic text-muted-foreground text-center p-2">No data available</div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )
-
-      case "json":
-      default:
-        return (
-          <div className="space-y-2">
-            {allInputs.map((input, index) => (
-              <div key={index} className="mb-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="bg-gray-200 p-1 rounded">
-                    {input.sourceNodeLabel === "On form submission" ? (
-                      <span className="flex items-center">
-                        <span className="inline-block w-5 h-5 bg-blue-500 text-white flex items-center justify-center rounded mr-2 text-xs">
-                          ⚡
-                        </span>
-                        {input.sourceNodeLabel}
-                      </span>
-                    ) : (
-                      <span className="flex items-center">
-                        <span className="inline-block w-5 h-5 bg-blue-500 text-white flex items-center justify-center rounded mr-2 text-xs">
-                          📋
-                        </span>
-                        {input.sourceNodeLabel}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-500">1 item</div>
-                </div>
-                <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto max-h-40 text-gray-800">
-                  {JSON.stringify(
-                    [
-                      {
-                        ...input.data,
-                      },
-                    ],
-                    null,
-                    2,
-                  )}
-                </pre>
-              </div>
-            ))}
-          </div>
-        )
+    return () => {
+      leftResizer?.removeEventListener("mousedown", (e) => onMouseDown(e, "left"))
+      rightResizer?.removeEventListener("mousedown", (e) => onMouseDown(e, "right"))
     }
-  }
-
-  const renderOutput = () => {
-    const output = executionResult || nodeOutput
-
-    if (!output) {
-      return (
-        <div className="text-sm text-muted-foreground italic p-4 border border-dashed rounded text-center">
-          Execute this node to view output data or set mock data.
-        </div>
-      )
-    }
-
-    const outputData = Array.isArray(output) ? output : [output]
-
-    switch (outputFormat) {
-      case "schema":
-        return (
-          <div className="space-y-1">
-            {outputData.map((item, index) => (
-              <div key={index} className="space-y-1">
-                {Object.entries(item || {}).map(([key, value]) => (
-                  <div key={key} className="flex items-center bg-gray-100 rounded">
-                    <div className="bg-gray-200 text-gray-700 px-2 py-1 rounded-l flex items-center">
-                      <span className="text-xs mr-1">A</span>
-                      {key}
-                    </div>
-                    <div className="px-2 py-1 text-gray-700 text-sm">
-                      {typeof value === "string" ? value : JSON.stringify(value)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        )
-
-      case "table":
-        if (outputData.length === 0 || !outputData[0]) return <div>No data</div>
-
-        const keys = Object.keys(outputData[0])
-
-        return (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  {keys.map((key) => (
-                    <th key={key} className="p-1 text-left border border-gray-200">
-                      {key}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {outputData.map((item, idx) => (
-                  <tr key={idx}>
-                    {keys.map((key) => (
-                      <td key={key} className="p-1 border border-gray-200 truncate max-w-[150px]">
-                        {typeof item[key] === "object"
-                          ? JSON.stringify(item[key]).substring(0, 50) +
-                            (JSON.stringify(item[key]).length > 50 ? "..." : "")
-                          : String(item[key])}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-
-      case "json":
-      default:
-        return (
-          <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto max-h-[350px] text-gray-800">
-            {JSON.stringify(outputData, null, 2)}
-          </pre>
-        )
-    }
-  }
+  }, [leftWidth, rightWidth])
 
   if (!node) return null
-  const NodePropsComponent = NodePropertyComponents[node.type]
 
-  const getNodeIcon = () =>
-    node.type === "code" ? <Code className="h-5 w-5 mr-2" /> : <ArrowRight className="h-5 w-5 mr-2" />
+  const getNodeTitle = () => {
+    return (
+      node.data?.label ||
+      node.type
+        .split("-")
+        .map((w) => w[0].toUpperCase() + w.slice(1))
+        .join(" ")
+    )
+  }
 
   return (
-  
-      <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
-        <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden max-h-[90vh] flex flex-col">
-          {/* Header (fixed) */}
-          <DialogHeader className="p-4 border-b">
-            <DialogTitle className="flex items-center">
-              {getNodeIcon()}
-              {node.type
-                .split("-")
-                .map((w) => w[0].toUpperCase() + w.slice(1))
-                .join(" ")}
-              <Button size="sm" onClick={handleRun} disabled={isExecuting} className="absolute top-2 right-12 text-xs">
-                {isExecuting ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Running…
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-3 w-3 mr-1" />
-                    Run
-                  </>
-                )}
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-    
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 h-full">
-              {/* INPUT column */}
-              <div className="border-r overflow-hidden flex flex-col bg-white">
-                <div className="px-4 py-2 font-medium text-sm border-b flex items-center justify-between">
-                  <div className="uppercase text-gray-600">INPUT</div>
-                </div>
-    
-                <div className="border-b">
-                  <div className="flex bg-gray-100">
-                    <button
-                      className={`px-3 py-2 text-xs font-medium ${inputFormat === "schema" ? "bg-gray-800 text-white" : "hover:bg-gray-200"}`}
-                      onClick={() => setInputFormat("schema")}
-                    >
-                      Schema
-                    </button>
-                    <button
-                      className={`px-3 py-2 text-xs font-medium ${inputFormat === "table" ? "bg-gray-800 text-white" : "hover:bg-gray-200"}`}
-                      onClick={() => setInputFormat("table")}
-                    >
-                      Table
-                    </button>
-                    <button
-                      className={`px-3 py-2 text-xs font-medium ${inputFormat === "json" ? "bg-gray-800 text-white" : "hover:bg-gray-200"}`}
-                      onClick={() => setInputFormat("json")}
-                    >
-                      JSON
-                    </button>
-                  </div>
-                </div>
-    
-                <div className="overflow-y-auto p-4 flex-1">{renderInputsByFormat()}</div>
-              </div>
-    
-              {/* PARAMETERS & SETTINGS column */}
-              <div className="border-r flex flex-col h-full">
-                <Tabs
-                  value={activeTab}
-                  onValueChange={(val: string) => {
-                    if (val === "parameters" || val === "settings") {
-                      setActiveTab(val);
-                    }
-                  }}
-                  className="flex flex-col h-full"
-                >
-                  <TabsList className="grid grid-cols-2 bg-background border-b">
-                    <TabsTrigger value="parameters">Parameters</TabsTrigger>
-                    <TabsTrigger value="settings">Settings</TabsTrigger>
-                  </TabsList>
-    
-                  <div className="p-4 overflow-y-auto flex-1">
-                    <TabsContent value="parameters">
-                      {NodePropsComponent ? (
-                        <NodePropsComponent formData={formData} onChange={handleChange} />
-                      ) : (
-                        <div className="italic text-sm text-muted-foreground">No parameters for this node type.</div>
-                      )}
-                    </TabsContent>
-    
-                    <TabsContent value="settings">
-                      {/* your settings panel (active switch, description textarea) */}
-                    </TabsContent>
-                  </div>
-                </Tabs>
-              </div>
-    
-              {/* OUTPUT column */}
-              <div className="flex flex-col bg-white">
-                <div className="px-4 py-2 font-medium text-sm border-b flex items-center justify-between">
-                  <div className="uppercase text-gray-600 flex items-center">OUTPUT</div>
-                </div>
-    
-                <div className="border-b">
-                  <div className="flex bg-gray-100">
-                    <button
-                      className={`px-3 py-2 text-xs font-medium ${outputFormat === "table" ? "bg-gray-800 text-white" : "hover:bg-gray-200"}`}
-                      onClick={() => setOutputFormat("table")}
-                    >
-                      Table
-                    </button>
-                    <button
-                      className={`px-3 py-2 text-xs font-medium ${outputFormat === "json" ? "bg-gray-800 text-white" : "hover:bg-gray-200"}`}
-                      onClick={() => setOutputFormat("json")}
-                    >
-                      JSON
-                    </button>
-                    <button
-                      className={`px-3 py-2 text-xs font-medium ${outputFormat === "schema" ? "bg-gray-800 text-white" : "hover:bg-gray-200"}`}
-                      onClick={() => setOutputFormat("schema")}
-                    >
-                      Schema
-                    </button>
-                  </div>
-                </div>
-    
-                <div className="p-4 overflow-y-auto flex-1">
-                  <div className="text-xs text-gray-500 mb-2">1 item</div>
-                  {renderOutput()}
-                </div>
-              </div>
+    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-[90vw] p-0 overflow-hidden max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <DialogHeader className="p-4 border-b flex justify-between items-center">
+          <DialogTitle>{getNodeTitle()}</DialogTitle>  
+        </DialogHeader>
+
+        {/* Body with resizable columns */}
+        <div ref={containerRef} className="flex flex-1 overflow-hidden h-full">
+          {/* Input */}
+          <div className="bg-white border-r flex flex-col" style={{ width: `${leftWidth}%` }}>
+            <div className="px-4 py-2 font-medium text-sm border-b bg-white">INPUT</div>
+            <div className="overflow-y-auto p-4 flex-1">
+              {nodeSchema?.inputSchema?.length ? (
+                nodeSchema.inputSchema.map((param, index) => (
+                  <TooltipProvider key={index}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center mb-2">
+                          <div className="bg-blue-500 text-white rounded-md p-1 mr-2">#</div>
+                          <div className="text-sm">{param.name}</div>
+                          {param.required && <span className="text-red-500 ml-1">*</span>}
+                        </div>
+                      </TooltipTrigger>
+                    </Tooltip>
+                  </TooltipProvider>
+                ))
+              ) : (
+                <div className="text-sm text-gray-500 italic">No input parameters</div>
+              )}
             </div>
           </div>
-    
-          {/* Footer (fixed) */}
-          <div className="flex justify-end gap-2 p-4 border-t shrink-0 bg-white">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>Save</Button>
+
+          {/* Resizer Left */}
+          <div ref={leftResizerRef} className="w-1 bg-gray-200 hover:bg-blue-500 cursor-col-resize" />
+
+          {/* Configuration */}
+          <div className="flex flex-col border-r" style={{ width: `${100 - leftWidth - rightWidth}%` }}>
+            <div className="px-4 py-2 font-medium text-sm border-b bg-white">CONFIGURATION</div>
+            <div className="p-4 overflow-y-auto flex-1">
+              {NodePropsComponent ? (
+                <NodePropsComponent formData={formData} onChange={handleChange} />
+              ) : (
+                <div className="italic text-sm text-gray-500">No configuration for this node type.</div>
+              )}
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
-    );
+
+          {/* Resizer Right */}
+          <div ref={rightResizerRef} className="w-1 bg-gray-200 hover:bg-blue-500 cursor-col-resize" />
+
+          {/* Output */}
+          <div className="bg-white flex flex-col" style={{ width: `${rightWidth}%` }}>
+            <div className="px-4 py-2 font-medium text-sm border-b bg-white">OUTPUT</div>
+            <div className="p-4 overflow-y-auto flex-1">
+              {nodeSchema?.outputSchema?.length ? (
+                nodeSchema.outputSchema.map((param, index) => (
+                  <TooltipProvider key={index}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center mb-2">
+                          <div className="bg-blue-500 text-white rounded-md p-1 mr-2">#</div>
+                          <div className="text-sm">{param.name}</div>
+                        </div>
+                      </TooltipTrigger>
+                    </Tooltip>
+                  </TooltipProvider>
+                ))
+              ) : (
+                <div className="text-sm text-gray-500 italic">No output parameters</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-center gap-2 p-4 border-t shrink-0 bg-white">
+          <Button className="w-full max-w-[200px]" onClick={handleSave}>
+            Save
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
 }
