@@ -1,4 +1,4 @@
-
+//node-component.tsx
 "use client";
 import type React from "react";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
@@ -481,28 +481,6 @@ export function NodeComponent({
                 <TooltipContent>Delete node</TooltipContent>
               </Tooltip>
 
-              {/* <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="node-action h-8 w-8 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log(
-                        "[NodeComponent] Opening schema modal for node ID:",
-                        node.id
-                      ); // Keep or remove log
-                      onOpenSchemaModal(node.id); // --- Pass node.id ---
-                    }}
-                    aria-label="Open Data Mapping"
-                  >
-                    <AlignJustify className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Data Mapping</TooltipContent>
-              </Tooltip> */}
-
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -525,21 +503,7 @@ export function NodeComponent({
                 <TooltipContent>Data Mapping</TooltipContent>
               </Tooltip>
 
-              {/* <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="node-action h-4 w-4  rounded-r-md bg-gray-200 hover:bg-gray-300"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>More options</TooltipContent>
-              </Tooltip> */}
+            
             </TooltipProvider>
           </div>
         </div>
@@ -597,18 +561,6 @@ export function NodeComponent({
             )}
           </div>
 
-          {/* Output port */}
-          {node.type !== "end" && (
-            <div
-              className={`port absolute right-0 top-1/2 h-5 w-5 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
-                pendingConnection && pendingConnection.sourceId === node.id
-                  ? "ring-2 ring-blue-500 scale-125 bg-primary"
-                  : ""
-              }`}
-              onClick={handleOutputPortClick}
-              title="Click to start connection"
-            />
-          )}
           {/* Output port */}
           {node.type !== "end" && (
             <div

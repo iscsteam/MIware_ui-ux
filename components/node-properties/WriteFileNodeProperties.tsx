@@ -1,57 +1,50 @@
 
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea"; 
-import { Button } from "@/components/ui/button"; // import Button
-import React, { useState } from "react";
+"use client"
+
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button" // import Button
+import { useState } from "react"
 
 interface Props {
-  formData: Record<string, any>;
-  onChange: (name: string, value: any) => void;
+  formData: Record<string, any>
+  onChange: (name: string, value: any) => void
 }
 
 export default function WriteFileNodeProperties({ formData, onChange }: Props) {
-  const [loading, setLoading] = useState(false); // for button loading
+  const [loading, setLoading] = useState(false) // for button loading
 
   // API function inside the same file
   async function writeFileOperation(data: {
-    filename: string;
-    label: string;
-    append: boolean;
-    writeAs: string;
-    includeTimestamp: boolean;
-    content?: string; 
+    filename: string
+    label: string
+    append: boolean
+    writeAs: string
+    includeTimestamp: boolean
+    content?: string
   }) {
-    const response = await fetch(
-      "http://localhost:5000/api/file-operations/write",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      }
-    );
+    const response = await fetch("http://localhost:5000/api/file-operations/write", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to write file");
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Failed to write file")
     }
 
-    return await response.json();
+    return await response.json()
   }
 
   async function handleWriteFile() {
     try {
-      setLoading(true);
+      setLoading(true)
 
       // prepare payload
       const payload = {
@@ -60,15 +53,15 @@ export default function WriteFileNodeProperties({ formData, onChange }: Props) {
         append: formData.append || false,
         writeAs: formData.writeAs || "text",
         includeTimestamp: formData.includeTimestamp || false,
-        content: formData.append ? (formData.appendContent || "") : undefined,
-      };
+        content: formData.append ? formData.appendContent || "" : undefined,
+      }
 
-      await writeFileOperation(payload);
-      alert("File operation successful!");
+      await writeFileOperation(payload)
+      alert("File operation successful!")
     } catch (error: any) {
-      alert(error.message || "Failed to write file");
+      alert(error.message || "Failed to write file")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
@@ -98,11 +91,7 @@ export default function WriteFileNodeProperties({ formData, onChange }: Props) {
 
       {/* Append Option */}
       <div className="flex items-center space-x-2">
-        <Switch
-          id="append"
-          checked={formData.append || false}
-          onCheckedChange={(v) => onChange("append", v)}
-        />
+        <Switch id="append" checked={formData.append || false} onCheckedChange={(v) => onChange("append", v)} />
         <Label htmlFor="append" className="cursor-pointer">
           Append to existing file
         </Label>
@@ -125,10 +114,7 @@ export default function WriteFileNodeProperties({ formData, onChange }: Props) {
       {/* Write As (Text or Binary) */}
       <div className="space-y-2">
         <Label htmlFor="writeAs">Write As</Label>
-        <Select
-          value={formData.writeAs || "text"}
-          onValueChange={(v) => onChange("writeAs", v)}
-        >
+        <Select value={formData.writeAs || "text"} onValueChange={(v) => onChange("writeAs", v)}>
           <SelectTrigger>
             <SelectValue placeholder="Select write mode" />
           </SelectTrigger>
@@ -161,5 +147,5 @@ export default function WriteFileNodeProperties({ formData, onChange }: Props) {
         </Button>
       </div>
     </div>
-  );
+  )
 }
