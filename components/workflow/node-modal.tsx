@@ -8,10 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import CreateFileNodeProperties from "@/components/node-properties/CreateFileNodeProperties"
 import CopyFileNodeProperties from "@/components/node-properties/CopyFileNodeProperties"
 import ReadFileNodeProperties, { readFileSchema } from "@/components/node-properties/ReadFileNodeProperties"
-import DeleteFileNodeProperties from "@/components/node-properties/deletefilenodeproperties"
+import DeleteFileNodeProperties,{deleteFileSchema}from "@/components/node-properties/deletefilenodeproperties"
 import ListFilesNodeProperties from "@/components/node-properties/listfilesnodeproperties"
 import PollerFileNodeProperties from "@/components/node-properties/pollerfilenodeproperties"
-import WriteFileNodeProperties from "../node-properties/WriteFileNodeProperties"
+import WriteFileNodeProperties,{writeFileSchema} from "../node-properties/WriteFileNodeProperties"
 import ParseXMLNodeProperties from "../node-properties/ParseXMLNodeProperties"
 import { nodeSchemas, getNodeSchema } from "./node-schemas"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -30,6 +30,8 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
 // Component-specific schemas - use these instead of getNodeSchema for these node types
 const componentSchemas: Record<string, any> = {
   "read-file": readFileSchema,
+  "write-file": writeFileSchema,
+  "delete-file": deleteFileSchema,
   // Add other component-specific schemas here as they're implemented
 }
 

@@ -1,4 +1,4 @@
-//crearefile-node-properties.tsx
+//createfile-node-properties.tsx
 "use client"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
