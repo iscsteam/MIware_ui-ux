@@ -43,6 +43,8 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
 const componentSchemas: Record<string, any> = {
 
   "read-file": readFileSchema,
+  "write-file": writeFileSchema,
+  "delete-file": deleteFileSchema,
   "create-file":createFileSchema,
   "copy-file": copyFileSchema,
   "list-files": listFilesSchema,
