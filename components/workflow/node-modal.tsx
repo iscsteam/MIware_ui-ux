@@ -15,10 +15,10 @@ import CopyFileNodeProperties, {copyFileSchema} from "@/components/node-properti
 import ReadFileNodeProperties, {
   readFileSchema,
 } from "@/components/node-properties/ReadFileNodeProperties";
-import DeleteFileNodeProperties from "@/components/node-properties/deletefilenodeproperties";
+import DeleteFileNodeProperties,{deleteFileSchema} from "@/components/node-properties/deletefilenodeproperties";
 import ListFilesNodeProperties,{ listFilesSchema} from "@/components/node-properties/listfilesnodeproperties";
 import PollerFileNodeProperties, {filePollerSchema} from "@/components/node-properties/pollerfilenodeproperties";
-import WriteFileNodeProperties from "../node-properties/WriteFileNodeProperties";
+import WriteFileNodeProperties,{writeFileSchema} from "../node-properties/WriteFileNodeProperties";
 import ParseXMLNodeProperties from "../node-properties/ParseXMLNodeProperties";
 
 import {
