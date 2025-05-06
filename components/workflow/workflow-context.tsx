@@ -19,8 +19,10 @@ export type NodeType =
   | "send-http-request"
   | "send-http-response"
   | "xml-parser"
-  | "xml-render"
+  | "xml-render" | "transform-xml"
+  | "json-parse" | "json-render" | "transform-json"
   | "code"
+
 
 export type NodeStatus = "idle" | "running" | "success" | "error"
 
@@ -408,6 +410,46 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
               console.log(`Simulating XML RENDER object`);
               output = { xmlString: '<root><item>value1</item></root>', error: null }; // Simulate success
               break;
+          case "transform-xml":
+            // Simulate a transformation of XML (this is placeholder logic)
+            console.log(`Simulating TRANSFORM XML for node ${node.id}`);
+            const inputXml = nodeData.xmlString || (inputData?.xmlString ?? "<root></root>");
+            const transformedXml = inputXml.replace(/<(\w+)>/g, "<transformed-$1>").replace(/<\/(\w+)>/g, "</transformed-$1>");
+            output = {
+              originalXml: inputXml,
+              transformedXml,
+              success: true
+            };
+            break;
+
+          case "json-parse":
+            try {
+              const raw = nodeData.code || inputData?.json || inputData;
+              output = JSON.parse(raw);
+            } catch (err) {
+              output = { error: "Invalid JSON", raw: nodeData.code || inputData };
+            }
+            break;
+
+          case "json-render":
+            try {
+              output = {
+                json: JSON.stringify(inputData, null, 2)
+              };
+            } catch (err) {
+              output = { error: "Unable to stringify input", input: inputData };
+            }
+            break;
+
+          case "transform-json":
+            try {
+              const transformFn = new Function("input", nodeData.code || "return input;");
+              output = transformFn(inputData);
+            } catch (err) {
+              output = { error: "Transform function error", details: String(err) };
+            }
+            break;
+
           case "end":
             output = { finalStatus: "completed", endTime: new Date().toISOString(), result: inputData };
             break;

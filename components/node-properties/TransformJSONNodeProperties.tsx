@@ -1,8 +1,9 @@
+//TransformJSONNodeProperties.tsx
 "use client"
 
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { useWorkflow } from "../workflow/workflow-context"
@@ -19,35 +20,35 @@ export interface NodeSchema {
   outputSchema: SchemaItem[]
 }
 
-export const parseXMLSchema: NodeSchema = {
+export const transformJSONSchema: NodeSchema = {
   inputSchema: [
     {
-      name: "xmlInput",
+      name: "jsonInput",
       datatype: "string",
-      description: "The XML content to parse as a string.",
+      description: "Input JSON data.",
       required: true,
     },
     {
-      name: "inputStyle",
+      name: "specFilePath",
       datatype: "string",
-      description: "The style of the input: string or binary.",
+      description: "Optional path to Jolt specification file.",
     },
     {
-      name: "encoding",
+      name: "specContent",
       datatype: "string",
-      description: "The encoding type used in the XML (e.g., UTF-8).",
+      description: "Jolt specification content (JSON format).",
+    },
+    {
+      name: "description",
+      datatype: "string",
+      description: "Description of the transformation activity.",
     },
   ],
   outputSchema: [
     {
-      name: "parsedData",
+      name: "jsonOutput",
       datatype: "object",
-      description: "The result of the parsed XML as a JSON object.",
-    },
-    {
-      name: "isValid",
-      datatype: "boolean",
-      description: "Whether the XML content is valid.",
+      description: "Transformed JSON output as per the Jolt specification.",
     },
   ],
 }
@@ -57,13 +58,11 @@ interface Props {
   onChange: (name: string, value: any) => void
 }
 
-export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
+export default function TransformJSONNodeProperties({ formData, onChange }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const { updateNode, selectedNodeId } = useWorkflow()
-
-  const schema = parseXMLSchema
 
   const handleSubmit = async () => {
     setLoading(true)
@@ -71,7 +70,7 @@ export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
     setSuccess(null)
 
     try {
-      const response = await fetch("http://localhost:5000/api/xml/parse", {
+      const response = await fetch("http://localhost:5000/api/json/transform", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -82,7 +81,7 @@ export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess("XML parsed successfully.")
+        setSuccess("JSON transformed successfully.")
         if (selectedNodeId) {
           updateNode(selectedNodeId, {
             status: "success",
@@ -90,7 +89,7 @@ export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
           })
         }
       } else {
-        setError(data.message || "Failed to parse XML.")
+        setError(data.message || "Transformation failed.")
         if (selectedNodeId) {
           updateNode(selectedNodeId, {
             status: "error",
@@ -116,58 +115,62 @@ export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Display Name */}
       <div className="space-y-2">
         <Label htmlFor="displayName">Node Name</Label>
         <Input
           id="displayName"
           value={formData.displayName || ""}
-          placeholder="Parse XML"
+          placeholder="Transform JSON"
           onChange={(e) => onChange("displayName", e.target.value)}
         />
       </div>
 
-      {/* XML Input */}
       <div className="space-y-2">
-        <Label htmlFor="xmlInput">XML Input</Label>
-        <Input
-          id="xmlInput"
-          value={formData.xmlInput || ""}
-          placeholder="<root><item>value</item></root>"
-          onChange={(e) => onChange("xmlInput", e.target.value)}
+        <Label htmlFor="jsonInput">JSON Input</Label>
+        <Textarea
+          id="jsonInput"
+          value={formData.jsonInput || ""}
+          placeholder='{"example": "value"}'
+          onChange={(e) => onChange("jsonInput", e.target.value)}
         />
       </div>
 
-      {/* Input Style */}
       <div className="space-y-2">
-        <Label htmlFor="inputStyle">Input Style</Label>
+        <Label htmlFor="specFilePath">Spec File Path (optional)</Label>
         <Input
-          id="inputStyle"
-          value={formData.inputStyle || ""}
-          placeholder="string or binary"
-          onChange={(e) => onChange("inputStyle", e.target.value)}
+          id="specFilePath"
+          value={formData.specFilePath || ""}
+          placeholder="/path/to/spec.json"
+          onChange={(e) => onChange("specFilePath", e.target.value)}
         />
       </div>
 
-      {/* Encoding */}
       <div className="space-y-2">
-        <Label htmlFor="encoding">Encoding</Label>
-        <Input
-          id="encoding"
-          value={formData.encoding || ""}
-          placeholder="UTF-8"
-          onChange={(e) => onChange("encoding", e.target.value)}
+        <Label htmlFor="specContent">Spec Content</Label>
+        <Textarea
+          id="specContent"
+          value={formData.specContent || ""}
+          placeholder='[{"operation": "shift", "spec": {...}}]'
+          onChange={(e) => onChange("specContent", e.target.value)}
         />
       </div>
 
-      {/* Submit Button */}
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Input
+          id="description"
+          value={formData.description || ""}
+          placeholder="Short description"
+          onChange={(e) => onChange("description", e.target.value)}
+        />
+      </div>
+
       <div>
         <Button onClick={handleSubmit} disabled={loading} className="bg-blue-500 hover:bg-blue-600 text-white">
-          {loading ? "Parsing..." : "Parse XML"}
+          {loading ? "Transforming..." : "Transform JSON"}
         </Button>
       </div>
 
-      {/* Success/Error Messages */}
       {success && <p className="text-green-500">{success}</p>}
       {error && <p className="text-red-500">{error}</p>}
     </div>
