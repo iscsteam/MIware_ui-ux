@@ -213,7 +213,7 @@ export default function HTTPReceiverNodeProperties({ formData, onChange }: Props
         // Update the node's output with the API response data
         if (selectedNodeId) {
           updateNode(selectedNodeId, {
-            status: "stopped",
+           // status: "stopped",
             output: data,
           })
         }

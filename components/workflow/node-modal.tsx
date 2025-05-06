@@ -14,6 +14,7 @@ import PollerFileNodeProperties, {filePollerSchema} from "@/components/node-prop
 import WriteFileNodeProperties,{writeFileSchema} from "../node-properties/WriteFileNodeProperties";
 import ParseXMLNodeProperties from "../node-properties/ParseXMLNodeProperties";
 import HTTPReceiverNodeProperties,{httpReceiverSchema} from "../node-properties/HTTPreceiverNodeProperties";
+import HTTPSendRequestNodeProperties,{httpSendRequestSchema} from "../node-properties/HTTPsendrequestNodeProperties";
 
 import {
   Tooltip,
@@ -32,6 +33,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "write-file": WriteFileNodeProperties,
   "xml-parser": ParseXMLNodeProperties,
   "http-receiver": HTTPReceiverNodeProperties,
+  "send-http-request": HTTPSendRequestNodeProperties,
 };
 
 // Component-specific schemas - use these instead of getNodeSchema for these node types
@@ -45,6 +47,7 @@ const componentSchemas: Record<string, any> = {
   "list-files": listFilesSchema,
   "file-poller": filePollerSchema,
   "http-receiver": httpReceiverSchema,
+  "send-http-request": httpSendRequestSchema,
 
   // Add other component-specific schemas here as they're implemented
 };
