@@ -1,5 +1,5 @@
 //sidemodal.tsx
-"use client"
+"use client" 
 import { useState, useEffect } from "react"
 import {Play, FileText, FileInput, FileOutput, Copy, CheckCircle, X, Search, ChevronDown, ChevronRight, FolderPlus, File, FileEdit, FilePlus2, FolderOpen, Trash2, Files, Clock, Server, Send, Globe, FileCode, FileJson, ArrowLeft} from "lucide-react"
 import type { NodeType } from "./workflow-context"

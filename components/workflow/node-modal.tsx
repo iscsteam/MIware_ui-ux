@@ -4,22 +4,16 @@ import type React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useWorkflow } from "./workflow-context";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import {Dialog,DialogContent,DialogHeader,DialogTitle,} from "@/components/ui/dialog";
 import CreateFileNodeProperties,{createFileSchema} from "@/components/node-properties/CreateFileNodeProperties";
 import CopyFileNodeProperties, {copyFileSchema} from "@/components/node-properties/CopyFileNodeProperties";
-import ReadFileNodeProperties, {
-  readFileSchema,
-} from "@/components/node-properties/ReadFileNodeProperties";
+import ReadFileNodeProperties, {readFileSchema,} from "@/components/node-properties/ReadFileNodeProperties";
 import DeleteFileNodeProperties,{deleteFileSchema} from "@/components/node-properties/deletefilenodeproperties";
 import ListFilesNodeProperties,{ listFilesSchema} from "@/components/node-properties/listfilesnodeproperties";
 import PollerFileNodeProperties, {filePollerSchema} from "@/components/node-properties/pollerfilenodeproperties";
 import WriteFileNodeProperties,{writeFileSchema} from "../node-properties/WriteFileNodeProperties";
 import ParseXMLNodeProperties from "../node-properties/ParseXMLNodeProperties";
+import HTTPReceiverNodeProperties,{httpReceiverSchema} from "../node-properties/HTTPreceiverNodeProperties";
 
 import {
   Tooltip,
@@ -37,6 +31,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "file-poller": PollerFileNodeProperties,
   "write-file": WriteFileNodeProperties,
   "xml-parser": ParseXMLNodeProperties,
+  "http-receiver": HTTPReceiverNodeProperties,
 };
 
 // Component-specific schemas - use these instead of getNodeSchema for these node types
@@ -49,6 +44,7 @@ const componentSchemas: Record<string, any> = {
   "copy-file": copyFileSchema,
   "list-files": listFilesSchema,
   "file-poller": filePollerSchema,
+  "http-receiver": httpReceiverSchema,
 
   // Add other component-specific schemas here as they're implemented
 };
