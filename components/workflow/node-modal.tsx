@@ -4,12 +4,7 @@ import type React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useWorkflow } from "./workflow-context";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import {Dialog,DialogContent,DialogHeader,DialogTitle,} from "@/components/ui/dialog";
 import CreateFileNodeProperties,{createFileSchema} from "@/components/node-properties/CreateFileNodeProperties";
 import CopyFileNodeProperties, {copyFileSchema} from "@/components/node-properties/CopyFileNodeProperties";
 import ReadFileNodeProperties, {readFileSchema} from "@/components/node-properties/ReadFileNodeProperties";
@@ -23,6 +18,8 @@ import TransformXMLNodeProperties,{transformXMLSchema} from "../node-properties/
 import ParseJSONNodeProperties,{parseJSONSchema} from "../node-properties/ParseJSONNodeProperties";
 import RenderJSONNodeProperties,{renderJSONSchema} from "../node-properties/RenderJSONNodeProperties";
 import TransformJSONNodeProperties,{transformJSONSchema} from "../node-properties/TransformJSONNodeProperties";
+import HTTPReceiverNodeProperties,{httpReceiverSchema} from "../node-properties/HTTPreceiverNodeProperties";
+import HTTPSendRequestNodeProperties,{httpSendRequestSchema} from "../node-properties/HTTPsendrequestNodeProperties";
 
 import {
   Tooltip,
@@ -45,6 +42,8 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "json-parse":ParseJSONNodeProperties,
   "json-render":RenderJSONNodeProperties,
   "transform-json":TransformJSONNodeProperties,
+  "http-receiver": HTTPReceiverNodeProperties,
+  "send-http-request": HTTPSendRequestNodeProperties,
 };
 
 // Component-specific schemas - use these instead of getNodeSchema for these node types
@@ -65,6 +64,8 @@ const componentSchemas: Record<string, any> = {
   "transform-json":transformJSONSchema,
   
 
+  "http-receiver": httpReceiverSchema,
+  "send-http-request": httpSendRequestSchema,
 
   // Add other component-specific schemas here as they're implemented
 };
