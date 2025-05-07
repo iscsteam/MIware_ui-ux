@@ -19,6 +19,7 @@ export interface NodeSchema {
   outputSchema: SchemaItem[];
 }
 
+
 // Interface for the data representing a node instance on the canvas
 export interface WorkflowNodeData {
     id: string;
