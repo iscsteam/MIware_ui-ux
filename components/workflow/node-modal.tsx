@@ -21,6 +21,7 @@ import TransformJSONNodeProperties,{transformJSONSchema} from "../node-propertie
 import HTTPReceiverNodeProperties,{httpReceiverSchema} from "../node-properties/HTTPreceiverNodeProperties";
 import HTTPSendRequestNodeProperties,{httpSendRequestSchema} from "../node-properties/HTTPsendrequestNodeProperties";
 import FileNodeProperties,{fileNodeSchema} from "../node-properties/FileNodeProperties";
+import HTTPSendResponseNodeProperties,{httpSendResponseSchema} from "../node-properties/HTTPsendresponseNodeProperties";
 
 import {
   Tooltip,
@@ -44,6 +45,8 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "json-render":RenderJSONNodeProperties,
   "transform-json":TransformJSONNodeProperties,
   "http-receiver": HTTPReceiverNodeProperties,
+  "send-http-response": HTTPSendResponseNodeProperties,
+  
   "send-http-request": HTTPSendRequestNodeProperties,
   "file":FileNodeProperties,
 };
@@ -70,6 +73,7 @@ const componentSchemas: Record<string, any> = {
   "send-http-request": httpSendRequestSchema,
 
   "file":fileNodeSchema,
+  "send-http-response": httpSendResponseSchema,
 
   // Add other component-specific schemas here as they're implemented
 };
