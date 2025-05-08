@@ -1,4 +1,4 @@
-//workflow-context.tsx
+//workflow-context.tsx 
 "use client"
 import type React from "react"
 import { createContext, useContext, useState, useCallback, useEffect } from "react"
@@ -11,6 +11,7 @@ export type NodeType =
   | "delete-file" | "list-files" | "file-poller"
   | "http-receiver" | "send-http-request" | "send-http-response"
   | "xml-parser" | "xml-render" | "transform-xml"
+  |"parse-data"|"render-data"
   | "json-parse" | "json-render" | "transform-json" | "file"
   | "code" 
 

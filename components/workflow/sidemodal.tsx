@@ -1,7 +1,7 @@
 //sidemodal.tsx
-"use client" 
+"use client"  
 import { useState, useEffect } from "react"
-import {Play, FileText, FileInput, FileOutput, Copy, CheckCircle, X, Search, ChevronDown, ChevronRight, FolderPlus, File, FileEdit, FilePlus2, FolderOpen, Trash2, Files, Clock, Server, Send, Globe, FileCode, FileJson, ArrowLeft} from "lucide-react"
+import {Play, FileText, FileInput, FileOutput, Copy, CheckCircle, X, Search, ChevronDown, ChevronRight, FolderPlus, File, FileEdit, FilePlus2, FolderOpen, Trash2, Files, Clock, Server, Send, Globe, FileCode, FileJson, ArrowLeft, Database} from "lucide-react"
 import type { NodeType } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 
@@ -10,7 +10,7 @@ interface NodeTypeDefinition {
   label: string
   icon: React.ReactNode
   description: string
-  category: "file" | "general" | "http" | "xml" | "json" | "filenode"
+  category: "file" | "general" | "http" | "xml" | "json" | "filenode" | "data"
 }
 
 const nodeTypes: NodeTypeDefinition[] = [
@@ -141,6 +141,20 @@ const nodeTypes: NodeTypeDefinition[] = [
     category: "json"
   },
   {
+    type: "parse-data",
+    label: "Parse Data",
+    icon: <Database className="h-5 w-5 text-blue-500" />,
+    description: "Parses structured data into usable format",
+    category: "data"
+  },
+  {
+    type: "render-data",
+    label: "Render Data",
+    icon: <Database className="h-5 w-5 text-purple-500" />,
+    description: "Renders data in specified format",
+    category: "data"
+  },
+  {
     type: "end",
     label: "End",
     icon: <CheckCircle className="h-5 w-5 text-red-600" />,
@@ -158,7 +172,7 @@ interface SideModalProps {
   onSelectNodeType?: (nodeType: NodeType) => void;
 }
 
-type CategoryType = "main" | "file" | "general" | "http" | "xml" | "json" | "filenode";
+type CategoryType = "main" | "file" | "general" | "http" | "xml" | "json" | "filenode" | "data";
 
 export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps) {
   const [isVisible, setIsVisible] = useState(false);
@@ -209,6 +223,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
   const xmlOperations = filteredNodeTypes.filter(node => node.category === "xml");
   const jsonOperations = filteredNodeTypes.filter(node => node.category === "json");
   const fileOperation = filteredNodeTypes.filter(node => node.category === "filenode");
+  const dataOperations = filteredNodeTypes.filter(node => node.category === "data");
 
   // Search input that appears on every view
   const searchInput = (
@@ -272,6 +287,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       const jsonResults = allFilteredNodes.filter(node=>node.category==="json");
       const generalResults = allFilteredNodes.filter(node => node.category === "general");
       const fileOperation = allFilteredNodes.filter(node => node.category === "filenode");
+      const dataResults = allFilteredNodes.filter(node => node.category === "data");
       
       return (
         <>
@@ -338,6 +354,15 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
               </div>
             )}
             
+            {dataResults.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
+                  <Database className="h-4 w-4 text-blue-500" />
+                  Data Operations
+                </h3>
+                {renderNodeList(dataResults)}
+              </div>
+            )}
             
           </div>
         </>
@@ -420,6 +445,19 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
             </div>
           </div>
 
+          {/* Data Operations Card */}
+          <div 
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
+            onClick={() => setCurrentView("data")}
+          >
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
+              <div className="flex items-center space-x-2">
+                <Database className="h-5 w-5 text-blue-500" />
+                <span className="font-semibold">Data Operations</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
 
           {/* File Operation Card */}
           <div 
@@ -434,15 +472,12 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
               <ChevronRight className="h-4 w-4 text-slate-500" />
             </div>
           </div>
-
-          
-
         </div>
       </>
     );
   };
 
-  const renderCategoryView = (category: "file" | "general" | "http" | "xml" | "json" | "filenode", title: string, icon: React.ReactNode) => {
+  const renderCategoryView = (category: "file" | "general" | "http" | "xml" | "json" | "filenode" | "data", title: string, icon: React.ReactNode) => {
     const operations = filteredNodeTypes.filter(node => node.category === category);
     
     return (
@@ -486,8 +521,10 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
         return renderCategoryView("xml", "XML Operations", <FileCode className="h-5 w-5 text-violet-500" />);
       case "json":
         return renderCategoryView("json","JSON Operations", <FileCode className="h-5 w-5 text-violet-500" />); 
-        case "filenode":
-          return renderCategoryView("filenode","File Operation", <File className="h-5 w-5 text-violet-500" />); 
+      case "data":
+        return renderCategoryView("data", "Data Operations", <Database className="h-5 w-5 text-blue-500" />);
+      case "filenode":
+        return renderCategoryView("filenode","File Operation", <File className="h-5 w-5 text-violet-500" />); 
       case "general":
         return renderCategoryView("general", "Workflow Controls", <Play className="h-5 w-5 text-green-500" />);
       default:
@@ -517,4 +554,3 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
     </div>
   );
 }
-
