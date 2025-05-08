@@ -20,6 +20,7 @@ import RenderJSONNodeProperties,{renderJSONSchema} from "../node-properties/Rend
 import TransformJSONNodeProperties,{transformJSONSchema} from "../node-properties/TransformJSONNodeProperties";
 import HTTPReceiverNodeProperties,{httpReceiverSchema} from "../node-properties/HTTPreceiverNodeProperties";
 import HTTPSendRequestNodeProperties,{httpSendRequestSchema} from "../node-properties/HTTPsendrequestNodeProperties";
+import FileNodeProperties,{fileNodeSchema} from "../node-properties/FileNodeProperties";
 import HTTPSendResponseNodeProperties,{httpSendResponseSchema} from "../node-properties/HTTPsendresponseNodeProperties";
 
 import {
@@ -46,6 +47,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "http-receiver": HTTPReceiverNodeProperties,
   "send-http-response": HTTPSendResponseNodeProperties,
   "send-http-request": HTTPSendRequestNodeProperties,
+  "file":FileNodeProperties,
 };
 
 // Component-specific schemas - use these instead of getNodeSchema for these node types
@@ -68,6 +70,8 @@ const componentSchemas: Record<string, any> = {
 
   "http-receiver": httpReceiverSchema,
   "send-http-request": httpSendRequestSchema,
+
+  "file":fileNodeSchema,
   "send-http-response": httpSendResponseSchema,
 
   // Add other component-specific schemas here as they're implemented

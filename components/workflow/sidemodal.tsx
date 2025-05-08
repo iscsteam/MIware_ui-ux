@@ -10,10 +10,17 @@ interface NodeTypeDefinition {
   label: string
   icon: React.ReactNode
   description: string
-  category: "file" | "general" | "http" | "xml" | "json"
+  category: "file" | "general" | "http" | "xml" | "json" | "filenode"
 }
 
 const nodeTypes: NodeTypeDefinition[] = [
+  {
+    type: "file",
+    label: "File",
+    icon: <File className="h-5 w-5 text-green-600" />,
+    description: "this will convert file from one to another format",
+    category: "filenode"
+  },
   {
     type: "start",
     label: "Start",
@@ -151,7 +158,7 @@ interface SideModalProps {
   onSelectNodeType?: (nodeType: NodeType) => void;
 }
 
-type CategoryType = "main" | "file" | "general" | "http" | "xml" | "json";
+type CategoryType = "main" | "file" | "general" | "http" | "xml" | "json" | "filenode";
 
 export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps) {
   const [isVisible, setIsVisible] = useState(false);
@@ -201,6 +208,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
   const httpOperations = filteredNodeTypes.filter(node => node.category === "http");
   const xmlOperations = filteredNodeTypes.filter(node => node.category === "xml");
   const jsonOperations = filteredNodeTypes.filter(node => node.category === "json");
+  const fileOperation = filteredNodeTypes.filter(node => node.category === "filenode");
 
   // Search input that appears on every view
   const searchInput = (
@@ -263,11 +271,22 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       const xmlResults = allFilteredNodes.filter(node => node.category === "xml");
       const jsonResults = allFilteredNodes.filter(node=>node.category==="json");
       const generalResults = allFilteredNodes.filter(node => node.category === "general");
+      const fileOperation = allFilteredNodes.filter(node => node.category === "filenode");
       
       return (
         <>
           {searchInput}
           <div className="space-y-4">
+
+            {fileOperation.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
+                  <Play className="h-4 w-4 text-green-500" />
+                  File Operation
+                </h3>
+                {renderNodeList(fileOperation)}
+              </div>
+            )}
 
             {generalResults.length > 0 && (
               <div className="space-y-2">
@@ -401,6 +420,21 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
             </div>
           </div>
 
+
+          {/* File Operation Card */}
+          <div 
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
+            onClick={() => setCurrentView("filenode")}
+          >
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
+              <div className="flex items-center space-x-2">
+                <FileCode className="h-5 w-5 text-violet-500" />
+                <span className="font-semibold">File Operation</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
+
           
 
         </div>
@@ -408,7 +442,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
     );
   };
 
-  const renderCategoryView = (category: "file" | "general" | "http" | "xml" | "json", title: string, icon: React.ReactNode) => {
+  const renderCategoryView = (category: "file" | "general" | "http" | "xml" | "json" | "filenode", title: string, icon: React.ReactNode) => {
     const operations = filteredNodeTypes.filter(node => node.category === category);
     
     return (
@@ -451,7 +485,9 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       case "xml":
         return renderCategoryView("xml", "XML Operations", <FileCode className="h-5 w-5 text-violet-500" />);
       case "json":
-        return renderCategoryView("json","JSON Operations", <FileCode className="h-5 w-5 text-violet-500" />);  
+        return renderCategoryView("json","JSON Operations", <FileCode className="h-5 w-5 text-violet-500" />); 
+        case "filenode":
+          return renderCategoryView("filenode","File Operation", <File className="h-5 w-5 text-violet-500" />); 
       case "general":
         return renderCategoryView("general", "Workflow Controls", <Play className="h-5 w-5 text-green-500" />);
       default:
