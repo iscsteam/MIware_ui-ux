@@ -46,6 +46,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "transform-json":TransformJSONNodeProperties,
   "http-receiver": HTTPReceiverNodeProperties,
   "send-http-response": HTTPSendResponseNodeProperties,
+  
   "send-http-request": HTTPSendRequestNodeProperties,
   "file":FileNodeProperties,
 };
