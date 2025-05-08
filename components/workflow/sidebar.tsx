@@ -1,22 +1,24 @@
-// // // // // // node-palette.tsx(sidebar.tsx)
+// // // // // //sidebar.tsx
 import { useState, useEffect } from "react";
-import {HelpCircle, Plus, ChevronDown, FileText, Folder, Layers,Shield, Settings, Plug, Puzzle, Variable, Boxes} from "lucide-react";
+import {ChevronDown,FileText,Folder,Layers,Shield,Settings,Plug,Puzzle,Variable,ActivitySquare,HelpCircle,Plus,} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {Collapsible,CollapsibleContent,CollapsibleTrigger,} from "@/components/ui/collapsible";
 import {Tooltip,TooltipProvider,TooltipTrigger,TooltipContent,} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [isSampleOpen, setIsSampleOpen] = useState(true);
+  const [isProjectOpen, setIsProjectOpen] = useState(true);
+  const [isWorkflowsOpen, setIsWorkflowsOpen] = useState(false);
   const [isModuleOpen, setIsModuleOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  
-  // Auto-close all sections when sidebar collapses 
+
+  // Auto-close all sections when sidebar collapses
   useEffect(() => {
     if (isCollapsed) {
-      setIsHelpOpen(false);
+      setIsProjectOpen(false);
+      setIsWorkflowsOpen(false);
       setIsModuleOpen(false);
+      setIsHelpOpen(false);
     }
   }, [isCollapsed]);
 
@@ -37,12 +39,16 @@ export function Sidebar() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className={cn("flex items-center gap-2", isCollapsed && "justify-center")}>
+                <div
+                  className={cn(
+                    "flex items-center gap-2",
+                    isCollapsed && "justify-center"
+                  )}
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width={isCollapsed ? "24" : "32"}
                     height={isCollapsed ? "22" : "30"}
-                    className="_logo_1x25c_123"
                   >
                     <path
                       fill="#EA4B71"
@@ -87,94 +93,142 @@ export function Sidebar() {
         {/* Sidebar Body - Custom scrollbar styles */}
         <div className="flex-grow overflow-auto scrollbar-thin scrollbar-thumb-rose-200 scrollbar-track-transparent hover:scrollbar-thumb-rose-300">
           <div className="pt-4 pb-2 px-3 space-y-1">
-            {/* Project Structure Button */}
+            {/* Project Name (Collapsible) */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    onClick={() => !isCollapsed && setIsSampleOpen(!isSampleOpen)}
+                    onClick={() =>
+                      !isCollapsed && setIsProjectOpen(!isProjectOpen)
+                    }
                     className={cn(
-                      "w-full flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200 font-semibold",
+                      "w-full flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200 font-bold",
                       isCollapsed && "justify-center px-2"
                     )}
                   >
-                    <span className="flex items-center gap-2">
-                      <Boxes className="h-4 w-4 text-rose-500" />
-                      {!isCollapsed && "Project Structure"}
+                    <span className="flex items-center gap-3">
+                      <Folder className="h-5 w-5 text-rose-500 ml-1 mr-3" />
+                      {!isCollapsed && "Project Name"}
                     </span>
                     {!isCollapsed && (
                       <ChevronDown
                         className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-                          isSampleOpen ? "rotate-180" : ""
+                          isProjectOpen ? "rotate-180" : ""
                         }`}
                       />
                     )}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={5}>
-                  {isCollapsed ? "Project Structure" : ""}
+                  {isCollapsed ? "Project Name" : ""}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
-            {/* Project Structure Items */}
-            {!isCollapsed && isSampleOpen && (
-              <div className="pl-6 space-y-1">
-                {[
-                  { label: "Service Descriptors", icon: FileText },
-                  { label: "Resources", icon: Folder },
-                  { label: "Schemas", icon: Layers },
-                  { label: "Policies", icon: Shield },
-                ].map((item, idx) => (
-                  <Button
-                    key={idx}
-                    variant="ghost"
-                    className="w-full flex items-center gap-3 px-4 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg"
-                  >
-                    <item.icon className="h-4 w-4 text-rose-500" />
-                    {item.label}
-                  </Button>
-                ))}
+            {/* Project content - only visible when Project is expanded */}
+            {!isCollapsed && isProjectOpen && (
+              <div className="space-y-1">
+                {/* Main Navigation Items - All aligned with the same left margin */}
+                {/* Workflows */}
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsWorkflowsOpen(!isWorkflowsOpen)}
+                  className="w-full flex items-center justify-between pl-8 pr-4 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200 font-medium"
+                >
+                  <span className="flex items-center gap-3">
+                    <ActivitySquare className="h-5 w-5 text-rose-500" />
+                    <span>Workflows</span>
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
+                      isWorkflowsOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </Button>
 
-                {/* Module Descriptors Collapsible */}
-                <div className="pt-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setIsModuleOpen(!isModuleOpen)}
-                    className="w-full flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Folder className="h-4 w-4 text-rose-500" />
-                      Module Descriptors
-                    </span>
-                    <ChevronDown
-                      className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-                        isModuleOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </Button>
+                {/* Workflows content - only visible when Workflows is expanded */}
+                {isWorkflowsOpen && (
+                  <div className="pl-14 space-y-1">
+                    {/* Add your workflow items here if needed */}
+                  </div>
+                )}
 
-                  {isModuleOpen && (
-                    <div className="pl-6 pt-1 space-y-1">
-                      {[
-                        { label: "Module Properties", icon: Settings },
-                        { label: "Dependencies", icon: Plug },
-                        { label: "Components", icon: Puzzle },
-                        { label: "Shared Variables", icon: Variable },
-                      ].map((item, idx) => (
-                        <Button
-                          key={idx}
-                          variant="ghost"
-                          className="w-full flex items-center gap-3 px-4 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg"
-                        >
-                          <item.icon className="h-4 w-4 text-rose-500" />
-                          {item.label}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {/* Service Descriptors */}
+                <Button
+                  variant="ghost"
+                  className="w-full flex items-center pl-1 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
+                >
+                  <FileText className="h-5 w-5 text-rose-500 mr-3" />
+                  <span>Service Descriptors</span>
+                </Button>
+
+                {/* Resources */}
+                <Button
+                  variant="ghost"
+                  className="w-full flex items-center pl-0 px-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
+                >
+                  <Folder className="h-5 w-5 text-rose-500 mr-3" />
+                  <span>Resources</span>
+                </Button>
+
+                {/* Schemas */}
+                <Button
+                  variant="ghost"
+                  className="w-full flex items-center pl-1 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
+                >
+                  <Layers className="h-5 w-5 text-rose-500 mr-3" />
+                  <span>Schemas</span>
+                </Button>
+
+                {/* Policies */}
+
+                <Button
+                  variant="ghost"
+                  className="w-full flex items-center pl-1 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
+                >
+                  <Shield className="h-5 w-5 text-rose-500 mr-3" />
+                  <span>Policies</span>
+                </Button>
+
+                {/* Module Descriptors at the same level as other items */}
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsModuleOpen(!isModuleOpen)}
+                  className="w-full flex items-center justify-between pl-8 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200 font-medium"
+                >
+                  <span className="flex items-center gap-3">
+                    <Folder className="h-5 w-5 text-rose-500 mr-3" />
+                    <span>Module Descriptors</span>
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
+                      isModuleOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </Button>
+
+                {/* Module Descriptors Items */}
+                {isModuleOpen && (
+                  <div className="pl-14 space-y-1">
+                    {[
+                      { label: "Overview", icon: FileText },
+                      { label: "Module Properties", icon: Settings },
+                      { label: "Dependencies", icon: Plug },
+                      { label: "Components", icon: Puzzle },
+                      { label: "Shared Variables", icon: Variable },
+                    ].map((item, idx) => (
+                      <Button
+                        key={idx}
+                        variant="ghost"
+                        className="w-full flex items-center pl-8 pr-4 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg"
+                      >
+                        <item.icon className="h-4 w-4 text-rose-500 mr-3" />
+                        {item.label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -199,25 +253,24 @@ export function Sidebar() {
               </Tooltip>
             </TooltipProvider>
           ) : (
-            <Collapsible open={isHelpOpen} onOpenChange={setIsHelpOpen}>
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full flex items-center justify-between px-5 py-4 text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-colors duration-200"
-                >
-                  <div className="flex items-center gap-3">
-                    <HelpCircle className="h-5 w-5 text-amber-500" />
-                    <span className="font-medium">Help & Support</span>
-                  </div>
-                  <ChevronDown
-                    className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-                      isHelpOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="animate-slide-down">
-                <div className="px-3 py-2 bg-amber-50 bg-opacity-30 text-sm text-gray-600 space-y-1">
+            <div>
+              <Button
+                variant="ghost"
+                onClick={() => setIsHelpOpen(!isHelpOpen)}
+                className="w-full flex items-center justify-between px-5 py-4 text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-colors duration-200"
+              >
+                <div className="flex items-center gap-3">
+                  <HelpCircle className="h-5 w-5 text-amber-500" />
+                  <span className="font-medium">Help & Support</span>
+                </div>
+                <ChevronDown
+                  className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
+                    isHelpOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </Button>
+              {isHelpOpen && (
+                <div className="animate-slide-down px-3 py-2 bg-amber-50 bg-opacity-30 text-sm text-gray-600 space-y-1">
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-left pl-10 py-2 hover:bg-white hover:shadow-sm rounded-lg"
@@ -231,13 +284,13 @@ export function Sidebar() {
                     Contact Support
                   </Button>
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
+              )}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Stylish Collapse Element - Not a button */}
+      {/* Stylish Collapse Element */}
       <div
         onClick={handleCollapse}
         className={cn(
@@ -248,19 +301,19 @@ export function Sidebar() {
         <div className="relative">
           {/* Decorative vertical line */}
           <div className="absolute top-0 left-0 bottom-0 w-px bg-gradient-to-b from-transparent via-rose-200 to-transparent"></div>
-          
+
           {/* Circle toggle */}
           <div className="flex items-center justify-center w-6 h-6 bg-gradient-to-r from-rose-400 to-rose-500 rounded-full shadow-md transform translate-x-2 hover:from-rose-500 hover:to-rose-600 transition-all duration-200">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="14" 
-              height="14" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
               className={cn(
                 "text-white transition-transform duration-300",
                 isCollapsed ? "rotate-180" : ""
@@ -269,14 +322,18 @@ export function Sidebar() {
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </div>
-          
+
           {/* Tooltip */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="w-6 h-6"></div>
               </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={10} className="bg-rose-500 text-white border-rose-600">
+              <TooltipContent
+                side="right"
+                sideOffset={10}
+                className="bg-rose-500 text-white border-rose-600"
+              >
                 {isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
               </TooltipContent>
             </Tooltip>
