@@ -6,22 +6,13 @@ import { v4 as uuidv4 } from "uuid"
 
 // Keep NodeType definition as is
 export type NodeType =
-  | "start"
-  | "end"
-  | "create-file"
-  | "read-file"
-  | "write-file"
-  | "copy-file"
-  | "delete-file"
-  | "list-files"
-  | "file-poller"
-  | "http-receiver"
-  | "send-http-request"
-  | "send-http-response"
-  | "xml-parser"
-  | "xml-render" | "transform-xml"
-  | "json-parse" | "json-render" | "transform-json"
-  | "code"
+  | "start" | "end" | "file"
+  | "create-file" | "read-file" | "write-file" | "copy-file"
+  | "delete-file" | "list-files" | "file-poller"
+  | "http-receiver" | "send-http-request" | "send-http-response"
+  | "xml-parser" | "xml-render" | "transform-xml"
+  | "json-parse" | "json-render" | "transform-json" | "file"
+  | "code" 
 
 
 export type NodeStatus = "idle" | "running" | "success" | "error"
@@ -421,6 +412,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
               success: true
             };
             break;
+
 
           case "json-parse":
             try {
