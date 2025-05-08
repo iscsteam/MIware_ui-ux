@@ -1,4 +1,4 @@
-
+ 
 "use client"
 import { toast } from "sonner";
 import type React from "react"
@@ -10,22 +10,15 @@ const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
 
 // Keep NodeType definition as is
 export type NodeType =
-  | "start"
-  | "end"
-  | "create-file"
-  | "read-file"
-  | "write-file"
-  | "copy-file"
-  | "delete-file"
-  | "list-files"
-  | "file-poller"
-  | "http-receiver"
-  | "send-http-request"
-  | "send-http-response"
-  | "xml-parser"
-  | "xml-render"
-  | "code"
-  | "file"
+  | "start" | "end" | "file"
+  | "create-file" | "read-file" | "write-file" | "copy-file"
+  | "delete-file" | "list-files" | "file-poller"
+  | "http-receiver" | "send-http-request" | "send-http-response"
+  | "xml-parser" | "xml-render" | "transform-xml"
+  |"parse-data"|"render-data"
+  | "json-parse" | "json-render" | "transform-json" | "file"
+  | "code" 
+
 
 export type NodeStatus = "idle" | "running" | "success" | "error"
 
