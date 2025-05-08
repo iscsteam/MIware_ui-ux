@@ -18,7 +18,7 @@ export default function WorkflowAutomationDashboard() {
       <WorkflowProvider>
         <div className="flex h-screen overflow-hidden bg-background">
           {/* Sidebar with collapsible functionality */}
-          <Sidebar />
+          <Sidebar activeView={activeView} setActiveView={setActiveView}/>
           
           {/* Main content area with top menu, editor, and bottom panel */}
           <div className="flex flex-1 flex-col overflow-hidden">
