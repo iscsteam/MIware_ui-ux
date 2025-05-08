@@ -22,6 +22,8 @@ import HTTPReceiverNodeProperties,{httpReceiverSchema} from "../node-properties/
 import HTTPSendRequestNodeProperties,{httpSendRequestSchema} from "../node-properties/HTTPsendrequestNodeProperties";
 import FileNodeProperties,{fileNodeSchema} from "../node-properties/FileNodeProperties";
 import HTTPSendResponseNodeProperties,{httpSendResponseSchema} from "../node-properties/HTTPsendresponseNodeProperties";
+import ParsedDataNodeProperties,{parseDataSchema} from "../node-properties/ParsedataNodeProperties";
+import RenderDataNodeProperties,{renderDataSchema} from "../node-properties/RenderdataNodeProperties";
 
 import {
   Tooltip,
@@ -46,9 +48,10 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "transform-json":TransformJSONNodeProperties,
   "http-receiver": HTTPReceiverNodeProperties,
   "send-http-response": HTTPSendResponseNodeProperties,
-  
   "send-http-request": HTTPSendRequestNodeProperties,
   "file":FileNodeProperties,
+  "parse-data": ParsedDataNodeProperties,
+  "render-data": RenderDataNodeProperties,
 };
 
 // Component-specific schemas - use these instead of getNodeSchema for these node types
@@ -67,13 +70,12 @@ const componentSchemas: Record<string, any> = {
   "json-parse":parseJSONSchema,
   "json-render":renderJSONSchema,
   "transform-json":transformJSONSchema,
-  
-
   "http-receiver": httpReceiverSchema,
   "send-http-request": httpSendRequestSchema,
-
   "file":fileNodeSchema,
   "send-http-response": httpSendResponseSchema,
+  "parse-data": parseDataSchema,
+  "render-data": renderDataSchema,
 
   // Add other component-specific schemas here as they're implemented
 };
