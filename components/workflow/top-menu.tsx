@@ -1,16 +1,20 @@
+
 // // // // // top-menu.tsx(navbar.tsx)
 "use client"
 import { useState } from "react"
 import { Share2, UserPlus } from "lucide-react"
+
 import { useWorkflow } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogFooter,} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {createClient} from "@/services/client"
 import {ClientCreateResponse} from "@/services/interface"
+
 
 const topTabs = ["File", "Edit", "Project", "Run"]
 
@@ -23,6 +27,7 @@ export function TopMenu({
 }) {
   const { runWorkflow, saveWorkflowToBackend } = useWorkflow()
   const [activeTab, setActiveTab] = useState("ORGANIZATION")
+
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false)
   const [clientName, setClientName] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -70,6 +75,7 @@ export function TopMenu({
   };
   
 
+
   return (
     <div className="w-full">
       {/* Top Menu */}
@@ -104,18 +110,21 @@ export function TopMenu({
           </Tabs>
         </div>
 
+
         {/* Right: Share + Saved + Create Client */}
         <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" onClick={() => setCreateClientDialogOpen(true)}>
             <UserPlus className="h-4 w-4 mr-1" />
             Create Client
           </Button>
+
           <Button variant="outline" size="sm">
             <Share2 className="h-4 w-4 mr-1" />
             Share
           </Button>
         </div>
       </div>
+
 
       {/* Create Client Dialog */}
       <Dialog open={createClientDialogOpen} onOpenChange={setCreateClientDialogOpen}>
@@ -189,6 +198,7 @@ export function TopMenu({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   )
 }
