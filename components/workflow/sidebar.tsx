@@ -29,7 +29,7 @@ function CreateProjectModal({ isOpen, onClose, onProjectCreate }: {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center font-semibold text-rose-600">Create New Project</DialogTitle>
+          <DialogTitle className="text-center font-semibold text-black-600">Create New Project</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-2">
@@ -37,7 +37,6 @@ function CreateProjectModal({ isOpen, onClose, onProjectCreate }: {
               placeholder="Enter project name"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              className="focus-visible:ring-rose-500"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleSubmit()
@@ -48,7 +47,7 @@ function CreateProjectModal({ isOpen, onClose, onProjectCreate }: {
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button 
-              className="bg-rose-500 hover:bg-rose-600 text-white" 
+              className="bg-blue-500  text-white" 
               onClick={handleSubmit}
               disabled={!projectName.trim()}
             >
