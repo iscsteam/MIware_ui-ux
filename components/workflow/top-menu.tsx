@@ -1,12 +1,12 @@
 "use client"
-
 import { useState } from "react"
-import { Share2, Plus, Save } from "lucide-react"
+import { Share2, UserPlus, Plus, Save } from "lucide-react"
 import { useWorkflow } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { CreateWorkflowModal } from "./create-workflow-modal"
+import { CreateClientModal } from "./create-client-modal"
 
 const topTabs = ["File", "Edit", "Project", "Run"]
 
@@ -19,7 +19,8 @@ export function TopMenu({
 }) {
   const { runWorkflow, saveWorkflowToBackend } = useWorkflow()
   const [activeTab, setActiveTab] = useState("ORGANIZATION")
-  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [createWorkflowModalOpen, setCreateWorkflowModalOpen] = useState(false)
+  const [createClientModalOpen, setCreateClientModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   const handleSaveWorkflow = async () => {
@@ -65,22 +66,34 @@ export function TopMenu({
           </Tabs>
         </div>
 
-        {/* Right: Create Workflow + Share + Saved */}
+        {/* Right: Create Client + Create Workflow + Save + Share */}
         <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setCreateClientModalOpen(true)}
+          >
+            <UserPlus className="h-4 w-4 mr-1" />
+            Create Client
+          </Button>
           <Button
             variant="outline"
             size="sm"
             className="bg-gray-200 text-black hover:bg-gray-300 border-none"
-            onClick={() => setCreateModalOpen(true)}
+            onClick={() => setCreateWorkflowModalOpen(true)}
           >
             <Plus className="h-4 w-4 mr-1" />
             Create Workflow
           </Button>
-          <Button variant="outline" size="sm" onClick={handleSaveWorkflow} disabled={isSaving}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleSaveWorkflow} 
+            disabled={isSaving}
+          >
             <Save className="h-4 w-4 mr-1" />
             {isSaving ? "Saving..." : "Save"}
           </Button>
-
           <Button variant="outline" size="sm">
             <Share2 className="h-4 w-4 mr-1" />
             Share
@@ -88,8 +101,17 @@ export function TopMenu({
         </div>
       </div>
 
+      {/* Create Client Modal */}
+      <CreateClientModal 
+        isOpen={createClientModalOpen}
+        onClose={() => setCreateClientModalOpen(false)}
+      />
+
       {/* Create Workflow Modal */}
-      <CreateWorkflowModal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} />
+      <CreateWorkflowModal 
+        isOpen={createWorkflowModalOpen} 
+        onClose={() => setCreateWorkflowModalOpen(false)} 
+      />
     </div>
   )
 }
