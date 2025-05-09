@@ -1,46 +1,36 @@
 //workflow-context.tsx
-"use client";
-import { toast } from "sonner";
-import type React from "react";
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-} from "react";
-import { v4 as uuidv4 } from "uuid";
-import { useToast } from "@/hooks/use-toast";
+
+"use client"
+import type React from "react"
+import { createContext, useContext, useState, useCallback, useEffect } from "react"
+import { v4 as uuidv4 } from "uuid"
+import {NodeType , SchemaItem} from "@/services/interface";
+import { useToast } from "@/components/ui/use-toast"
+
+// import { useToast } from "@/hooks/use-toast"
+
 
 const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
 
 // Keep NodeType definition as is
-export type NodeType =
-  | "start"
-  | "end"
-  | "file"
-  | "create-file"
-  | "read-file"
-  | "write-file"
-  | "copy-file"
-  |"rename-file"
-  | "delete-file"
-  | "list-files"
-  | "file-poller"
-  | "rename-file"
-  | "http-receiver"
-  | "send-http-request"
-  | "send-http-response"
-  | "xml-parser"
-  | "xml-render"
-  | "transform-xml"
-  | "parse-data"
-  | "render-data"
-  | "json-parse"
-  | "json-render"
-  | "transform-json"
-  | "file"
-  | "code";
+
+// export type NodeType =
+//   | "start"
+//   | "end"
+//   | "create-file"
+//   | "read-file"
+//   | "write-file"
+//   | "copy-file"
+//   | "delete-file"
+//   | "list-files"
+//   | "file-poller"
+//   | "http-receiver"
+//   | "send-http-request"
+//   | "send-http-response"
+//   | "xml-parser"
+//   | "xml-render"
+//   | "code"
+
 
 export type NodeStatus = "idle" | "running" | "success" | "error";
 
@@ -50,14 +40,14 @@ export interface NodePosition {
 }
 
 // Interface for schema items (used by nodeSchemas.ts and SchemaModal)
-export interface SchemaItem {
-  name: string;
-  datatype: "string" | "integer" | "boolean" | "complex" | "any" | string; // Added 'any'
-  description: string;
-  required?: boolean;
-  originalName?: string;
-  sourceNodeId?: string;
-}
+// export interface SchemaItem {
+//   name: string;
+//   datatype: "string" | "integer" | "boolean" | "complex" | "any" | string; // Added 'any'
+//   description: string;
+//   required?: boolean;
+//   originalName?: string;
+//   sourceNodeId?: string;
+// }
 
 // Interface for the *definition* of a node's schema (used by nodeSchemas.ts)
 export interface NodeSchema {

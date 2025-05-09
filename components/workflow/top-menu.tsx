@@ -1,12 +1,20 @@
+
+// // // // // top-menu.tsx(navbar.tsx)
 "use client"
 import { useState } from "react"
-import { Share2, UserPlus, Plus, Save } from "lucide-react"
+import { Share2, UserPlus } from "lucide-react"
+
 import { useWorkflow } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
-import { CreateWorkflowModal } from "./create-workflow-modal"
-import { CreateClientModal } from "./create-client-modal"
+
+import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogFooter,} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {createClient} from "@/services/client"
+import {ClientCreateResponse} from "@/services/interface"
+
 
 const topTabs = ["File", "Edit", "Project", "Run"]
 
@@ -19,18 +27,54 @@ export function TopMenu({
 }) {
   const { runWorkflow, saveWorkflowToBackend } = useWorkflow()
   const [activeTab, setActiveTab] = useState("ORGANIZATION")
-  const [createWorkflowModalOpen, setCreateWorkflowModalOpen] = useState(false)
-  const [createClientModalOpen, setCreateClientModalOpen] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
 
-  const handleSaveWorkflow = async () => {
-    setIsSaving(true)
+  const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false)
+  const [clientName, setClientName] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [createdClient, setCreatedClient] = useState<ClientCreateResponse | null>(null)
+  const [error, SetError] = useState<string | null>(null)
+
+  // API base URL for the backend service
+  // Update this URL to match your actual Kubernetes service URL
+  // This could be a cluster IP, NodePort, LoadBalancer IP, or Ingress URL
+  // const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:30010"
+  // const API_BASE_URL = "http://localhost:8000" // Example for local development          ;
+  
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleCreateClient = async () => {
+    if (!clientName) return;
+  
+    setIsSubmitting(true);
+    setErrorMessage("");
+  
     try {
-      await saveWorkflowToBackend()
-    } finally {
-      setIsSaving(false)
+      const created = await createClient({ name: clientName });
+  
+      if (!created) {
+        throw new Error("Client creation returned null");
+      }
+  
+      setCreatedClient(created);
+      setClientName("");
+    } catch (error: unknown) {
+      console.error("Failed to create client:", error);
+      if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+        setErrorMessage("Cannot connect to the API server. Please ensure the backend service is accessible.");
+      } else if (error instanceof Error) {
+        setErrorMessage(`Error: ${error.message}`);
+      } else {
+        setErrorMessage("An unknown error occurred.");
+      
     }
-  }
+    
+   
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+
 
   return (
     <div className="w-full">
@@ -66,34 +110,14 @@ export function TopMenu({
           </Tabs>
         </div>
 
-        {/* Right: Create Client + Create Workflow + Save + Share */}
+
+        {/* Right: Share + Saved + Create Client */}
         <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setCreateClientModalOpen(true)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setCreateClientDialogOpen(true)}>
             <UserPlus className="h-4 w-4 mr-1" />
             Create Client
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="bg-gray-200 text-black hover:bg-gray-300 border-none"
-            onClick={() => setCreateWorkflowModalOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Create Workflow
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleSaveWorkflow} 
-            disabled={isSaving}
-          >
-            <Save className="h-4 w-4 mr-1" />
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
+
           <Button variant="outline" size="sm">
             <Share2 className="h-4 w-4 mr-1" />
             Share
@@ -101,17 +125,80 @@ export function TopMenu({
         </div>
       </div>
 
-      {/* Create Client Modal */}
-      <CreateClientModal 
-        isOpen={createClientModalOpen}
-        onClose={() => setCreateClientModalOpen(false)}
-      />
 
-      {/* Create Workflow Modal */}
-      <CreateWorkflowModal 
-        isOpen={createWorkflowModalOpen} 
-        onClose={() => setCreateWorkflowModalOpen(false)} 
-      />
+      {/* Create Client Dialog */}
+      <Dialog open={createClientDialogOpen} onOpenChange={setCreateClientDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Client</DialogTitle>
+          </DialogHeader>
+
+          <hr/>
+          
+          {!createdClient ? (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="client-name" className="text-right">
+                  Client Name
+                </Label>
+                <Input
+                  id="client-name"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Enter client name"
+                />
+              </div>
+              
+              {errorMessage && (
+                <div className="col-span-4 bg-red-50 border border-red-200 text-red-800 rounded-md p-3 text-sm">
+                  {errorMessage}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-4 py-4">
+              <div className="bg-muted p-4 rounded-md">
+                <h3 className="font-medium mb-2">Client Created Successfully</h3>
+              <hr/>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">ID:</span>
+                  <span>{createdClient.id}</span>
+                  <span className="text-muted-foreground">Name:</span>
+                  <span>{createdClient.name}</span>
+                  {/* <span className="text-muted-foreground">API Key:</span> */}
+                  {/* <span className="break-all">{createdClient.api_key}</span> */}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <hr/>
+          <DialogFooter>
+            {!createdClient ? (
+              <>
+                <Button variant="outline" onClick={() => setCreateClientDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreateClient} 
+                  disabled={!clientName || isSubmitting}
+                >
+                  {isSubmitting ? "Creating..." : "Create"}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => {
+                setCreateClientDialogOpen(false);
+                setCreatedClient(null);
+              }}>
+                Done
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }
