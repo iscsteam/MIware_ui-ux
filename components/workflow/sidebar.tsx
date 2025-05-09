@@ -1,31 +1,11 @@
-
 "use client";
 
 //sidebar.tsx
 import { useState, useEffect } from "react";
-import {
-  ChevronDown,
-  FileText,
-  Folder,
-  Layers,
-  Shield,
-  Settings,
-  Plug,
-  Puzzle,
-  Variable,
-  ActivitySquare,
-  HelpCircle,
-  Plus,
-} from "lucide-react";
+import { ChevronDown, FileText, Folder, Layers, Shield, Settings, Plug, Puzzle, Variable, ActivitySquare, HelpCircle, Plus,} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipProvider,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import {Tooltip,TooltipProvider,TooltipTrigger,TooltipContent,} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-// import { CreateWorkflowModal } from "./create-workflow-modal"
 import WorkflowModal from "@/components/Model"; // Import the modal
 
 
@@ -33,7 +13,6 @@ export function Sidebar({
   activeView,
   setActiveView,
 }: {
-
   activeView: string;
   setActiveView: (view: string) => void;
 }) {
@@ -44,6 +23,8 @@ export function Sidebar({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [projectName, setProjectName] = useState("Project Name");
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
 
   // Function to handle opening the modal
   const openModal = () => {
@@ -55,26 +36,35 @@ export function Sidebar({
     setIsModalOpen(false);
   };
 
+  // Function to handle opening the project modal
+  const openProjectModal = () => {
+    setIsProjectModalOpen(true);
+  };
+
+  // Function to handle closing the project modal
+  const closeProjectModal = () => {
+    setIsProjectModalOpen(false);
+  };
+
+  // Function to handle saving the project name
+  const handleSaveProjectName = (name: string) => {
+    setProjectName(name);
+    closeProjectModal();
+    setIsProjectOpen(true); // Ensure the project section is open to show the submenus
+  };
 
   // Auto-close all sections when sidebar collapses
   useEffect(() => {
     if (isCollapsed) {
-
       setIsProjectOpen(false);
       setIsWorkflowsOpen(false);
       setIsModuleOpen(false);
       setIsHelpOpen(false);
-
     }
   }, [isCollapsed])
 
   const handleCollapse = () => {
     setIsCollapsed(!isCollapsed)
-  }
-
-  const handleProjectCreate = (name: string) => {
-    setProjectName(name)
-    setIsProjectOpen(true)
   }
 
   return (
@@ -124,14 +114,15 @@ export function Sidebar({
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="bg-rose-50 hover:bg-rose-100 hover:text-rose-600 transition-all duration-200 shadow-sm rounded-full"
-
-                  
-
+                    className="bg-rose-50 hover:bg-white-100 hover:text-white-600 transition-all duration-200 shadow-sm rounded-full"
+                    onClick={openProjectModal}
                   >
                     <Plus className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={5}>
+                  Create Project
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           ) : null}
@@ -146,21 +137,17 @@ export function Sidebar({
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-
                     onClick={() =>
                       !isCollapsed && setIsProjectOpen(!isProjectOpen)
                     }
                     className={cn(
                       "w-full flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200 font-bold",
                       isCollapsed && "justify-center px-2"
-
                     )}
                   >
                     <span className="flex items-center gap-3">
                       <Folder className="h-5 w-5 text-rose-500 ml-1 mr-3" />
-
-                      {!isCollapsed && "Project Name"}
-
+                      {!isCollapsed && projectName}
                     </span>
                     {!isCollapsed && (
                       <ChevronDown
@@ -172,9 +159,7 @@ export function Sidebar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={5}>
-
-                  {isCollapsed ? "Project Name" : ""}
-
+                  {isCollapsed ? projectName : ""}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -196,13 +181,10 @@ export function Sidebar({
                   <div className="flex items-center">
                     <div
                       className="h-6 w-6 mr-1 hover:bg-rose-100 rounded-full flex items-center justify-center cursor-pointer"
-
-                      // onClick={(e) => {
-                      //   e.stopPropagation();
-                      //   setIsWorkflowModalOpen(true);
-                      // }}
-                      onClick={openModal}
-
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openModal();
+                      }}
                     >
                       <Plus className="h-4 w-4 text-rose-500" />
                     </div>
@@ -216,17 +198,15 @@ export function Sidebar({
 
                 {/* Workflows content - only visible when Workflows is expanded */}
                 {isWorkflowsOpen && (
-
                   <div className="pl-14 space-y-1">
                     {/* Add your workflow items here if needed */}
                   </div>
-
                 )}
 
                 {/* Service Descriptors */}
                 <Button
                   variant="ghost"
-                  className="w-full flex items-center pl-1 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
+                  className="w-full flex items-center pl-8 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
                 >
                   <FileText className="h-5 w-5 text-rose-500 mr-3" />
                   <span>Service Descriptors</span>
@@ -235,7 +215,7 @@ export function Sidebar({
                 {/* Resources */}
                 <Button
                   variant="ghost"
-                  className="w-full flex items-center pl-0 px-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
+                  className="w-full flex items-center pl-8 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
                 >
                   <Folder className="h-5 w-5 text-rose-500 mr-3" />
                   <span>Resources</span>
@@ -244,19 +224,16 @@ export function Sidebar({
                 {/* Schemas */}
                 <Button
                   variant="ghost"
-                  className="w-full flex items-center pl-1 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
+                  className="w-full flex items-center pl-8 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
                 >
                   <Layers className="h-5 w-5 text-rose-500 mr-3" />
                   <span>Schemas</span>
                 </Button>
 
                 {/* Policies */}
-
-
-
                 <Button
                   variant="ghost"
-                  className="w-full flex items-center pl-1 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
+                  className="w-full flex items-center pl-8 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
                 >
                   <Shield className="h-5 w-5 text-rose-500 mr-3" />
                   <span>Policies</span>
@@ -361,11 +338,6 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* CreateWorkflowModal */}
-
-      {/* <CreateWorkflowModal isOpen={isWorkflowModalOpen} onClose={() => setIsWorkflowModalOpen(false)} /> */}
-
-
       {/* Stylish Collapse Element */}
       <div
         onClick={handleCollapse}
@@ -380,7 +352,6 @@ export function Sidebar({
 
           {/* Circle toggle */}
           <div className="flex items-center justify-center w-6 h-6 bg-gradient-to-r from-rose-400 to-rose-500 rounded-full shadow-md transform translate-x-2 hover:from-rose-500 hover:to-rose-600 transition-all duration-200">
-
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="14"
@@ -395,7 +366,6 @@ export function Sidebar({
                 "text-white transition-transform duration-300",
                 isCollapsed ? "rotate-180" : ""
               )}
-
             >
               <polyline points="15 18 9 12 15 6" />
             </svg>
@@ -418,10 +388,46 @@ export function Sidebar({
           </TooltipProvider>
         </div>
       </div>
-      {/* Modal for creating a workflow */}
-      <WorkflowModal isOpen={isModalOpen} onClose={closeModal} />
-    </div>
 
+      {/* Workflow Modal */}
+      <WorkflowModal isOpen={isModalOpen} onClose={closeModal} />
+      
+      {/* Project Name Modal */}
+      {isProjectModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-96 transform transition-all">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Create New Project</h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+              <input 
+                type="text"
+                id="projectName"
+                className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none "
+                placeholder="Enter project name"
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closeProjectModal}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const input = document.getElementById('projectName') as HTMLInputElement;
+                  if (input && input.value.trim()) {
+                    handleSaveProjectName(input.value.trim());
+                  }
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-md "
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
-
