@@ -1,15 +1,31 @@
 // src/types/workflow.ts
 
 // Define the possible node types
-export type NodeType = 'READ' | 'WRITE' | 'COPY' | 'CREATE' | 'start' | 'END';
+
+export type NodeType =
+  | "start"
+  | "end"
+  | "create-file"
+  | "read-file"
+  | "write-file"
+  | "copy-file"
+  | "delete-file"
+  | "list-files"
+  | "file-poller"
+  | "http-receiver"
+  | "send-http-request"
+  | "send-http-response"
+  | "xml-parser"
+  | "xml-render"
+  | "code"
 
 // Interface for a single item within an input or output schema
-export interface SchemaItem {
-  name: string;
-  datatype: 'string' | 'integer' | 'boolean' | 'complex' | string; // Allow string for extensibility
-  description: string;
-  required?: boolean; // Optional flag
-}
+// export interface SchemaItem {
+//   name: string;
+//   datatype: 'string' | 'integer' | 'boolean' | 'complex' | string; // Allow string for extensibility
+//   description: string;
+//   required?: boolean; // Optional flag
+// }
 
 // Interface for the complete schema definition of a node
 export interface NodeSchema {
@@ -27,4 +43,175 @@ export interface WorkflowNodeData {
     position: { x: number; y: number };
     // You might add other node-specific instance data here later
     // e.g., configuredInputValues: Record<string, any>;
+}
+
+
+export interface DAG {
+  id?: number;
+  dag_id?: string;
+  name: string;
+  created_at?: string;
+  updated_at?: string;
+  schedule?: string | null;
+  active: boolean;
+  dag_sequence: object[];
+  active_dag_run?: number | null;
+}
+
+
+export type MappingSourceInfo = {
+  name: string; // Name of the source property
+  nodeId: string; // ID of the source node
+  nodeLabel?: string; // Label of the source node
+  nodeType?: string; // Type of the source node
+};
+
+export type ExtendedSchemaItem = SchemaItem & {
+  // For items in availableInputsFromPrevious (source items)
+  sourceNodeId?: string;
+  sourceNodeType?: string;
+  sourceNodeLabel?: string;
+  datatype?:string;
+
+  // For items in localInputSchema (target items / current node's inputs)
+  mappings?: MappingSourceInfo[]; // Array of sources mapped to this input
+};
+
+
+export interface SchemaModalProps {
+  nodeType: NodeType | null;
+  nodeId: string;
+  nodeLabel?: string;
+  // baseInputSchema can now be ExtendedSchemaItem[] if loading saved state with multiple mappings
+  baseInputSchema: (SchemaItem | ExtendedSchemaItem)[];
+  baseOutputSchema: SchemaItem[];
+  availableInputsFromPrevious: ExtendedSchemaItem[]; // These are the potential sources
+  onClose: () => void;
+  onSaveMappings?: (updatedInputs: ExtendedSchemaItem[]) => void;
+}
+
+
+export interface GroupedSource {
+  nodeId: string;
+  nodeLabel: string;
+  nodeType: string;
+  outputs: ExtendedSchemaItem[]; // These are source items
+}
+
+export interface Connection {
+  sourceItemId: string; // Ref ID: source-<nodeId>-<propName>
+  targetItemId: string; // Ref ID: target-<nodeId>-<propName>
+}
+
+
+export interface Client {
+  id?: number;
+  name: string;
+}
+export interface ClientCreateResponse {
+  id: number;
+  name: string;
+  api_key: string;
+  created_at: string;
+  updated_at: string;
+  file_conversion_configs: any[];
+  read_salesforce_configs: any[];
+  write_salesforce_configs: any[];
+}
+
+
+export interface SchemaItem {
+  name: string
+  type?: string
+  description?: string
+  required?: boolean
+  originalName?: string
+  sourceNodeId?: string
+}
+
+export interface SchemaModalData {
+  nodeId: string
+  nodeType: NodeType
+  baseInputSchema: SchemaItem[]
+  baseOutputSchema: SchemaItem[]
+  availableInputsFromPrevious: SchemaItem[] // Outputs from connected source nodes
+  nodeLabel?: string // Optional: Pass the specific node's label
+}
+
+
+export interface WorkflowNodeData {
+  label?: string; // Optional: A user-defined label for this specific node instance
+  displayName?: string;
+  // Configuration properties used by specific node types (make them optional)
+  filename?: string;
+  content?: string;
+  textContent?: string;
+  toFilename?: string; // Often used for write/copy destination
+  sourceFilename?: string; // Explicitly for copy source
+  targetFilename?: string; // <<<<<<<<<<<< ADD THIS LINE (Explicitly for copy target)
+  overwrite?: boolean;
+  isDirectory?: boolean;
+  includeTimestamp?: boolean;
+  encoding?: string;
+  readAs?: string;
+  excludeContent?: boolean;
+  append?: boolean;
+  writeAs?: string;
+  addLineSeparator?: boolean;
+  // fromFilename?: string; // Duplicate of sourceFilename? Standardize if possible.
+  includeSubDirectories?: boolean;
+  createNonExistingDirs?: boolean;
+  mode?: string; // For code node
+  language?: string; // For code node
+  code?: string; // For code node
+  recursive?: boolean; // For delete/list node
+  directory?: string; // For list/poller node
+  filter?: string; // For list/poller node
+  interval?: number; // For poller node
+  path?: string; // For http-receiver node
+  method?: string; // For http-receiver/sender node
+  port?: number; // For http-receiver node
+  url?: string; // For http-sender node
+  headers?: Record<string, string>; // For http nodes
+  body?: any; // For http nodes
+  timeout?: number; // For http-sender/code node
+  options?: Record<string, any>; // For XML parser/render options
+  jsonObject?: object; // For xml-render node
+  xmlString?: string; // For xml-parser node
+  // Add other config properties from NodePropertiesPanel as needed...
+  inputSchema?: string;
+  outputSchema?: string;
+
+  // Runtime/UI state flags
+  active?: boolean; // The flag to control if the node runs
+}
+
+export interface NodePosition {
+  x: number;
+  y: number;
+}
+
+export type NodeStatus = "idle" | "running" | "success" | "error"
+
+
+export interface WorkflowNode {
+  id: string; // Unique ID for this node instance
+  type: NodeType; // The type of node (determines behavior and schema)
+  position: NodePosition; // Position on the canvas
+  data: WorkflowNodeData; // Node-specific configuration and runtime data
+  status?: NodeStatus; // Current execution status
+  output?: any; // Result of successful execution
+  error?: string; // Error message on failure
+}
+
+interface NodeComponentProps {
+  key: string
+  node: WorkflowNode
+  selected: boolean
+  isConnecting: boolean
+  onSelect: () => void
+  onDragStart: (nodeId: string, e: React.MouseEvent) => void
+  onExecuteNode: (nodeId: string) => void
+  onOpenProperties: (nodeId: string) => void
+  onOpenSchemaModal: (nodeId: string) => void
 }

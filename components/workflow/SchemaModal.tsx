@@ -7,52 +7,32 @@ import React, {
   useMemo,
   JSX,
 } from "react";
-import { NodeType, SchemaItem } from "./workflow-context"; // Adjust path
+import { NodeType, SchemaItem } from "@/services/interface"; // Adjust path
 import { Badge } from "@/components/ui/badge"; // Adjust path
+import {GroupedSource,Connection ,SchemaModalProps , MappingSourceInfo ,ExtendedSchemaItem} from "@/services/interface"; // Adjust path
 
 // --- Data Types ---
 
 // Information about a single source mapped to an input property
-type MappingSourceInfo = {
-  name: string; // Name of the source property
-  nodeId: string; // ID of the source node
-  nodeLabel?: string; // Label of the source node
-  nodeType?: string; // Type of the source node
-};
+// type MappingSourceInfo = {
+//   name: string; // Name of the source property
+//   nodeId: string; // ID of the source node
+//   nodeLabel?: string; // Label of the source node
+//   nodeType?: string; // Type of the source node
+// };
 
-type ExtendedSchemaItem = SchemaItem & {
-  // For items in availableInputsFromPrevious (source items)
-  sourceNodeId?: string;
-  sourceNodeType?: string;
-  sourceNodeLabel?: string;
+// type ExtendedSchemaItem = SchemaItem & {
+//   // For items in availableInputsFromPrevious (source items)
+//   sourceNodeId?: string;
+//   sourceNodeType?: string;
+//   sourceNodeLabel?: string;
+//   datatype?:string;
 
-  // For items in localInputSchema (target items / current node's inputs)
-  mappings?: MappingSourceInfo[]; // Array of sources mapped to this input
-};
+//   // For items in localInputSchema (target items / current node's inputs)
+//   mappings?: MappingSourceInfo[]; // Array of sources mapped to this input
+// };
 
-interface SchemaModalProps {
-  nodeType: NodeType | null;
-  nodeId: string;
-  nodeLabel?: string;
-  // baseInputSchema can now be ExtendedSchemaItem[] if loading saved state with multiple mappings
-  baseInputSchema: (SchemaItem | ExtendedSchemaItem)[];
-  baseOutputSchema: SchemaItem[];
-  availableInputsFromPrevious: ExtendedSchemaItem[]; // These are the potential sources
-  onClose: () => void;
-  onSaveMappings?: (updatedInputs: ExtendedSchemaItem[]) => void;
-}
 
-interface GroupedSource {
-  nodeId: string;
-  nodeLabel: string;
-  nodeType: string;
-  outputs: ExtendedSchemaItem[]; // These are source items
-}
-
-interface Connection {
-  sourceItemId: string; // Ref ID: source-<nodeId>-<propName>
-  targetItemId: string; // Ref ID: target-<nodeId>-<propName>
-}
 
 interface Point {
   x: number;
@@ -492,11 +472,11 @@ const SchemaModal: React.FC<SchemaModalProps> = ({
        
           {svgContainerRef.current && (
             <svg width="100%" height="100%" style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none", zIndex: 10, overflow: "visible" }}>
-              <defs>
+              {/* <defs>
                 <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
                   <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" />
                 </marker>
-              </defs>
+              </defs> */}
               {connectionPaths}
             </svg>
           )}

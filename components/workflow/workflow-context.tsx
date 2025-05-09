@@ -3,24 +3,25 @@
 import type React from "react"
 import { createContext, useContext, useState, useCallback, useEffect } from "react"
 import { v4 as uuidv4 } from "uuid"
+import {NodeType , SchemaItem} from "@/services/interface";
 
 // Keep NodeType definition as is
-export type NodeType =
-  | "start"
-  | "end"
-  | "create-file"
-  | "read-file"
-  | "write-file"
-  | "copy-file"
-  | "delete-file"
-  | "list-files"
-  | "file-poller"
-  | "http-receiver"
-  | "send-http-request"
-  | "send-http-response"
-  | "xml-parser"
-  | "xml-render"
-  | "code"
+// export type NodeType =
+//   | "start"
+//   | "end"
+//   | "create-file"
+//   | "read-file"
+//   | "write-file"
+//   | "copy-file"
+//   | "delete-file"
+//   | "list-files"
+//   | "file-poller"
+//   | "http-receiver"
+//   | "send-http-request"
+//   | "send-http-response"
+//   | "xml-parser"
+//   | "xml-render"
+//   | "code"
 
 export type NodeStatus = "idle" | "running" | "success" | "error"
 
@@ -30,14 +31,14 @@ export interface NodePosition {
 }
 
 // Interface for schema items (used by nodeSchemas.ts and SchemaModal)
-export interface SchemaItem {
-  name: string;
-  datatype: "string" | "integer" | "boolean" | "complex" | "any" | string; // Added 'any'
-  description: string;
-  required?: boolean;
-  originalName?: string;
-  sourceNodeId?: string;
-}
+// export interface SchemaItem {
+//   name: string;
+//   datatype: "string" | "integer" | "boolean" | "complex" | "any" | string; // Added 'any'
+//   description: string;
+//   required?: boolean;
+//   originalName?: string;
+//   sourceNodeId?: string;
+// }
 
 // Interface for the *definition* of a node's schema (used by nodeSchemas.ts)
 export interface NodeSchema {

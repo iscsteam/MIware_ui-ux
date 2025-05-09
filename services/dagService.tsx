@@ -10,7 +10,7 @@ export interface DAG {
   updated_at?: string;
   schedule?: string | null;
   active: boolean;
-  dag_sequence: object[];    // or better: define the object structure
+  dag_sequence: object[];
   active_dag_run?: number | null;
 }
 
@@ -28,10 +28,16 @@ export async function fetchDAGs(): Promise<DAG[] | null> {
 
 export async function createDAG(newDAG: DAG): Promise<DAG | null> {
   try {
+    // --- Add these logs ---
+    console.log("dagService: Object received by createDAG function:", newDAG);
+    const requestBody = JSON.stringify(newDAG);
+    console.log("dagService: JSON string being sent to API:", requestBody);
+    // --- End log ---
+
     const res = await fetch(buildUrl(URLS.listCreateDAGs), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newDAG),
+      body: requestBody, // Use the logged string
     });
     if (!res.ok) throw new Error("Failed to create DAG");
     return await res.json(); // This will include the new `dag_id`
