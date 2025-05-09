@@ -1,26 +1,65 @@
-
-"use client"
-
 //sidebar.tsx
+"use client"
 import { useState, useEffect } from "react"
-import {
-  ChevronDown,
-  FileText,
-  Folder,
-  Layers,
-  Shield,
-  Settings,
-  Plug,
-  Puzzle,
-  Variable,
-  ActivitySquare,
-  HelpCircle,
-  Plus,
-} from "lucide-react"
+import {ChevronDown,FileText,Folder,Layers,Shield,Settings,Plug,Puzzle,Variable,ActivitySquare,HelpCircle,Plus,} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { CreateWorkflowModal } from "./create-workflow-modal"
+import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+
+// New Project Modal Component
+function CreateProjectModal({ isOpen, onClose, onProjectCreate }: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onProjectCreate: (name: string) => void;
+}) {
+  const [projectName, setProjectName] = useState("")
+
+  const handleSubmit = () => {
+    if (projectName.trim()) {
+      onProjectCreate(projectName.trim())
+      setProjectName("")
+      onClose()
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-center font-semibold text-rose-600">Create New Project</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="space-y-2">
+            <Input
+              placeholder="Enter project name"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              className="focus-visible:ring-rose-500"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSubmit()
+                }
+              }}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button 
+              className="bg-rose-500 hover:bg-rose-600 text-white" 
+              onClick={handleSubmit}
+              disabled={!projectName.trim()}
+            >
+              Save Project
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 export function Sidebar({
   activeView,
@@ -35,6 +74,8 @@ export function Sidebar({
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false)
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+  const [projectName, setProjectName] = useState("Project Name")
 
   // Auto-close all sections when sidebar collapses
   useEffect(() => {
@@ -48,6 +89,11 @@ export function Sidebar({
 
   const handleCollapse = () => {
     setIsCollapsed(!isCollapsed)
+  }
+
+  const handleProjectCreate = (name: string) => {
+    setProjectName(name)
+    setIsProjectOpen(true)
   }
 
   return (
@@ -93,13 +139,11 @@ export function Sidebar({
                     size="icon"
                     variant="ghost"
                     className="bg-rose-50 hover:bg-rose-100 hover:text-rose-600 transition-all duration-200 shadow-sm rounded-full"
+                    onClick={() => setIsProjectModalOpen(true)}
                   >
                     <Plus className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={5}>
-                  Add New Item
-                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           ) : null}
@@ -122,7 +166,7 @@ export function Sidebar({
                   >
                     <span className="flex items-center gap-3">
                       <Folder className="h-5 w-5 text-rose-500 ml-1 mr-3" />
-                      {!isCollapsed && "Project Name"}
+                      {!isCollapsed && projectName}
                     </span>
                     {!isCollapsed && (
                       <ChevronDown
@@ -134,7 +178,7 @@ export function Sidebar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={5}>
-                  {isCollapsed ? "Project Name" : ""}
+                  {isCollapsed ? projectName : ""}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -204,7 +248,6 @@ export function Sidebar({
                 </Button>
 
                 {/* Policies */}
-
                 <Button
                   variant="ghost"
                   className="w-full flex items-center pl-1 py-1 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg font-medium"
@@ -315,6 +358,13 @@ export function Sidebar({
       {/* CreateWorkflowModal */}
       <CreateWorkflowModal isOpen={isWorkflowModalOpen} onClose={() => setIsWorkflowModalOpen(false)} />
 
+      {/* CreateProjectModal */}
+      <CreateProjectModal 
+        isOpen={isProjectModalOpen} 
+        onClose={() => setIsProjectModalOpen(false)} 
+        onProjectCreate={handleProjectCreate}
+      />
+
       {/* Stylish Collapse Element */}
       <div
         onClick={handleCollapse}
@@ -329,17 +379,7 @@ export function Sidebar({
 
           {/* Circle toggle */}
           <div className="flex items-center justify-center w-6 h-6 bg-gradient-to-r from-rose-400 to-rose-500 rounded-full shadow-md transform translate-x-2 hover:from-rose-500 hover:to-rose-600 transition-all duration-200">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={cn("text-white transition-transform duration-300", isCollapsed ? "rotate-180" : "")}
+            <svg xmlns="http://www.w3.org/2000/svg"width="14"height="14"viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"strokeLinecap="round"strokeLinejoin="round"className={cn("text-white transition-transform duration-300", isCollapsed ? "rotate-180" : "")}
             >
               <polyline points="15 18 9 12 15 6" />
             </svg>
