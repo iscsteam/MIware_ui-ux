@@ -110,11 +110,11 @@ const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose }) => {
 
         <div className="mt-6 flex justify-end gap-2">
           <DialogClose asChild>
-            <Button variant="outline" onClick={onClose}>
+            {/* <Button variant="outline" onClick={onClose}>
               Cancel
-            </Button>
+            </Button> */}
           </DialogClose>
-          <Button onClick={handleSave} disabled={!name.trim()}>Save</Button>
+          <Button onClick={handleSave} disabled={!name.trim()}>create</Button>
         </div>
       </DialogContent>
     </Dialog>

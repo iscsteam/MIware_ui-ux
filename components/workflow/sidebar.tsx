@@ -1,8 +1,7 @@
-
-"use client"
+"use client";
 
 //sidebar.tsx
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import {
   ChevronDown,
   FileText,
@@ -16,46 +15,63 @@ import {
   ActivitySquare,
   HelpCircle,
   Plus,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
-import { CreateWorkflowModal } from "./create-workflow-modal"
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+// import { CreateWorkflowModal } from "./create-workflow-modal"
+import WorkflowModal from "@/components/Model"; // Import the modal
 
 export function Sidebar({
   activeView,
   setActiveView,
 }: {
-  activeView: string
-  setActiveView: (view: string) => void
+  activeView: string;
+  setActiveView: (view: string) => void;
 }) {
-  const [isProjectOpen, setIsProjectOpen] = useState(true)
-  const [isWorkflowsOpen, setIsWorkflowsOpen] = useState(false)
-  const [isModuleOpen, setIsModuleOpen] = useState(false)
-  const [isHelpOpen, setIsHelpOpen] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false)
+  const [isProjectOpen, setIsProjectOpen] = useState(true);
+  const [isWorkflowsOpen, setIsWorkflowsOpen] = useState(false);
+  const [isModuleOpen, setIsModuleOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Function to handle opening the modal
+  const openModal = () => {
+    setIsModalOpen(true);
+  };
+
+  // Function to handle closing the modal
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
 
   // Auto-close all sections when sidebar collapses
   useEffect(() => {
     if (isCollapsed) {
-      setIsProjectOpen(false)
-      setIsWorkflowsOpen(false)
-      setIsModuleOpen(false)
-      setIsHelpOpen(false)
+      setIsProjectOpen(false);
+      setIsWorkflowsOpen(false);
+      setIsModuleOpen(false);
+      setIsHelpOpen(false);
     }
-  }, [isCollapsed])
+  }, [isCollapsed]);
 
   const handleCollapse = () => {
-    setIsCollapsed(!isCollapsed)
-  }
+    setIsCollapsed(!isCollapsed);
+  };
 
   return (
     <div className="relative h-full">
       <div
         className={cn(
           "border-r bg-gradient-to-b from-slate-50 to-white flex flex-col h-full shadow-md transition-all duration-300 overflow-hidden",
-          isCollapsed ? "w-16" : "w-64",
+          isCollapsed ? "w-16" : "w-64"
         )}
       >
         {/* Header */}
@@ -63,7 +79,12 @@ export function Sidebar({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className={cn("flex items-center gap-2", isCollapsed && "justify-center")}>
+                <div
+                  className={cn(
+                    "flex items-center gap-2",
+                    isCollapsed && "justify-center"
+                  )}
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width={isCollapsed ? "24" : "32"}
@@ -76,7 +97,11 @@ export function Sidebar({
                       clipRule="evenodd"
                     />
                   </svg>
-                  {!isCollapsed && <span className="font-bold text-lg text-gray-800 tracking-wide">MI-WARE</span>}
+                  {!isCollapsed && (
+                    <span className="font-bold text-lg text-gray-800 tracking-wide">
+                      MI-WARE
+                    </span>
+                  )}
                 </div>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
@@ -93,6 +118,7 @@ export function Sidebar({
                     size="icon"
                     variant="ghost"
                     className="bg-rose-50 hover:bg-rose-100 hover:text-rose-600 transition-all duration-200 shadow-sm rounded-full"
+                  
                   >
                     <Plus className="h-5 w-5" />
                   </Button>
@@ -114,10 +140,12 @@ export function Sidebar({
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    onClick={() => !isCollapsed && setIsProjectOpen(!isProjectOpen)}
+                    onClick={() =>
+                      !isCollapsed && setIsProjectOpen(!isProjectOpen)
+                    }
                     className={cn(
                       "w-full flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200 font-bold",
-                      isCollapsed && "justify-center px-2",
+                      isCollapsed && "justify-center px-2"
                     )}
                   >
                     <span className="flex items-center gap-3">
@@ -156,10 +184,11 @@ export function Sidebar({
                   <div className="flex items-center">
                     <div
                       className="h-6 w-6 mr-1 hover:bg-rose-100 rounded-full flex items-center justify-center cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setIsWorkflowModalOpen(true)
-                      }}
+                      // onClick={(e) => {
+                      //   e.stopPropagation();
+                      //   setIsWorkflowModalOpen(true);
+                      // }}
+                      onClick={openModal}
                     >
                       <Plus className="h-4 w-4 text-rose-500" />
                     </div>
@@ -173,7 +202,9 @@ export function Sidebar({
 
                 {/* Workflows content - only visible when Workflows is expanded */}
                 {isWorkflowsOpen && (
-                  <div className="pl-14 space-y-1">{/* Add your workflow items here if needed */}</div>
+                  <div className="pl-14 space-y-1">
+                    {/* Add your workflow items here if needed */}
+                  </div>
                 )}
 
                 {/* Service Descriptors */}
@@ -313,14 +344,14 @@ export function Sidebar({
       </div>
 
       {/* CreateWorkflowModal */}
-      <CreateWorkflowModal isOpen={isWorkflowModalOpen} onClose={() => setIsWorkflowModalOpen(false)} />
+      {/* <CreateWorkflowModal isOpen={isWorkflowModalOpen} onClose={() => setIsWorkflowModalOpen(false)} /> */}
 
       {/* Stylish Collapse Element */}
       <div
         onClick={handleCollapse}
         className={cn(
           "absolute top-1/2 transform -translate-y-1/2 h-20 flex items-center cursor-pointer z-10 transition-all duration-300",
-          isCollapsed ? "right-0" : "right-0",
+          isCollapsed ? "right-0" : "right-0"
         )}
       >
         <div className="relative">
@@ -339,7 +370,10 @@ export function Sidebar({
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className={cn("text-white transition-transform duration-300", isCollapsed ? "rotate-180" : "")}
+              className={cn(
+                "text-white transition-transform duration-300",
+                isCollapsed ? "rotate-180" : ""
+              )}
             >
               <polyline points="15 18 9 12 15 6" />
             </svg>
@@ -351,13 +385,19 @@ export function Sidebar({
               <TooltipTrigger asChild>
                 <div className="w-6 h-6"></div>
               </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={10} className="bg-rose-500 text-white border-rose-600">
+              <TooltipContent
+                side="right"
+                sideOffset={10}
+                className="bg-rose-500 text-white border-rose-600"
+              >
                 {isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
       </div>
+      {/* Modal for creating a workflow */}
+      <WorkflowModal isOpen={isModalOpen} onClose={closeModal} />
     </div>
-  )
+  );
 }
