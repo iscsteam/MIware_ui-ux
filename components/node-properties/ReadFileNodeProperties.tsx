@@ -1,10 +1,107 @@
-// //readfilenodeproperties.tsx
+// // //readfilenodeproperties.tsx
 "use client"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
+import { useState } from "react" 
 import { useWorkflow } from "../workflow/workflow-context"
+
+// Define the read file node schema directly in this component
+export interface SchemaItem {
+  name: string
+  datatype: string
+  description: string
+  required?: boolean
+}
+
+export interface NodeSchema {
+  inputSchema: SchemaItem[]
+  outputSchema: SchemaItem[]
+}
+
+// Read File node schema
+export const readFileSchema: NodeSchema = {
+  inputSchema: [
+    {
+      name: "filename",
+      datatype: "string",
+      description: "The path and name of the file to read.",
+      required: true,
+    },
+    {
+      name: "encoding",
+      datatype: "string",
+      description: "The character encoding of the file (e.g., UTF-8, ASCII).",
+    }
+  ],
+  outputSchema: [
+    {
+      name: "fileContents",
+      datatype: "string",
+      description: "The contents of the file that was read.",
+    },
+    {
+      name: "fileInfo",
+      datatype: "complex",
+      description: "This element contains fullName, fileName, location, type, readProtected, writeProtected, size, and lastModified data.",
+    },
+    {
+      name: "fullName",
+      datatype: "string",
+      description: "The name of the file with the path information.",
+    },
+    {
+      name: "fileName",
+      datatype: "string",
+      description: "The name of the file without the path information.",
+    },
+    {
+      name: "location",
+      datatype: "string",
+      description: "The path to the file.",
+    },
+    {
+      name: "configuredFileName",
+      datatype: "string",
+      description: "An optional element. It is not populated by this activity.",
+    },
+    {
+      name: "type",
+      datatype: "string",
+      description: "The file type.",
+    },
+    {
+      name: "readProtected",
+      datatype: "boolean",
+      description: "Signifies whether the file or directory is protected from reading.",
+    },
+    {
+      name: "writeProtected",
+      datatype: "boolean",
+      description: "Signifies whether the file or directory is protected from writing.",
+    },
+    {
+      name: "size",
+      datatype: "integer",
+      description: "The size of the file in bytes.",
+    },
+    {
+      name: "lastModified",
+      datatype: "string",
+      description: "The timestamp indicating when the file was last modified.",
+    },
+    {
+      name: "success",
+      datatype: "boolean",
+      description: "Indicates whether the file read operation was successful.",
+    },
+    {
+      name: "error",
+      datatype: "string",
+      description: "Error message if the operation failed.",
+    }
+  ],
+}
 
 interface Props {
   formData: Record<string, any>
@@ -32,6 +129,7 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
         body: JSON.stringify({
           filename: formData.filename,
           label: formData.label,
+          encoding: formData.encoding || "utf-8"
         }),
       })
 
@@ -84,7 +182,7 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
     <div className="space-y-4">
       {/* Node Label */}
       <div className="space-y-2">
-        <Label htmlFor="label">File Name</Label>
+        <Label htmlFor="label">Node Label</Label>
         <Input
           id="label"
           value={formData.label || ""}
@@ -102,13 +200,31 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
           placeholder="path/to/file.txt"
           onChange={(e) => onChange("filename", e.target.value)}
         />
+        <p className="text-xs text-gray-500">
+          {readFileSchema.inputSchema[0].description}
+          {readFileSchema.inputSchema[0].required && " (Required)"}
+        </p>
+      </div>
+
+      {/* Encoding */}
+      <div className="space-y-2">
+        <Label htmlFor="encoding">Encoding</Label>
+        <Input
+          id="encoding"
+          value={formData.encoding || ""}
+          placeholder="UTF-8"
+          onChange={(e) => onChange("encoding", e.target.value)}
+        />
+        <p className="text-xs text-gray-500">
+          {readFileSchema.inputSchema[1].description}
+        </p>
       </div>
 
       {/* Read File Button */}
       <div>
         <Button 
           onClick={handleReadFile} 
-          disabled={loading}
+          disabled={loading || !formData.filename}
           className="bg-blue-500 hover:bg-blue-600 text-white"
         >
           {loading ? "Reading..." : "Read File"}
@@ -116,8 +232,8 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
       </div>
 
       {/* Success or Error messages */}
-      {successMessage && <p className="text-green-500">{successMessage}</p>}
-      {error && <p className="text-red-500">{error}</p>}
+      {successMessage && <p className="text-green-500 mt-2">{successMessage}</p>}
+      {error && <p className="text-red-500 mt-2">{error}</p>}
     </div>
   )
 }

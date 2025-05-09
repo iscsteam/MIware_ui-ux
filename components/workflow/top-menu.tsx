@@ -1,6 +1,5 @@
 // // // // // top-menu.tsx(navbar.tsx)
 "use client"
-
 import { useState } from "react"
 import { Share2, UserPlus } from "lucide-react"
 import { useWorkflow } from "./workflow-context"
@@ -15,11 +14,14 @@ import {ClientCreateResponse} from "@/services/interface"
 
 const topTabs = ["File", "Edit", "Project", "Run"]
 
-export function TopMenu({ activeView, setActiveView }: { 
-  activeView: string, 
-  setActiveView: (view: string) => void 
+export function TopMenu({
+  activeView,
+  setActiveView,
+}: {
+  activeView: string
+  setActiveView: (view: string) => void
 }) {
-  const { runWorkflow } = useWorkflow()
+  const { runWorkflow, saveWorkflowToBackend } = useWorkflow()
   const [activeTab, setActiveTab] = useState("ORGANIZATION")
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false)
   const [clientName, setClientName] = useState("")
@@ -79,13 +81,11 @@ export function TopMenu({ activeView, setActiveView }: {
               onClick={() => setActiveTab(tab)}
               className={cn(
                 "relative pb-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors",
-                activeTab === tab && "text-foreground"
+                activeTab === tab && "text-foreground",
               )}
             >
               {tab}
-              {activeTab === tab && (
-                <span className="absolute left-0 bottom-0 h-1 w-full bg-purple-600 rounded-sm" />
-              )}
+              {activeTab === tab && <span className="absolute left-0 bottom-0 h-1 w-full bg-purple-600 rounded-sm" />}
             </button>
           ))}
         </div>
@@ -94,8 +94,12 @@ export function TopMenu({ activeView, setActiveView }: {
         <div className="flex items-center gap-1 mt-11">
           <Tabs value={activeView} onValueChange={setActiveView}>
             <TabsList className="h-8">
-              <TabsTrigger value="editor" className="text-xs px-2">Studio</TabsTrigger>
-              <TabsTrigger value="executions" className="text-xs px-2">History</TabsTrigger>
+              <TabsTrigger value="editor" className="text-xs px-2">
+                Studio
+              </TabsTrigger>
+              <TabsTrigger value="executions" className="text-xs px-2">
+                History
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -110,7 +114,6 @@ export function TopMenu({ activeView, setActiveView }: {
             <Share2 className="h-4 w-4 mr-1" />
             Share
           </Button>
-          <span className="text-xs text-muted-foreground">Saved</span>
         </div>
       </div>
 

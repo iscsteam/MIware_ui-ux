@@ -8,6 +8,102 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react"
 import { useWorkflow } from "../workflow/workflow-context"
 
+
+export interface SchemaItem {
+  name: string
+  datatype: string
+  description: string
+  required?: boolean
+}
+
+export interface NodeSchema {
+  inputSchema: SchemaItem[]
+  outputSchema: SchemaItem[]
+}
+
+export const listFilesSchema: NodeSchema = {
+  inputSchema: [
+    {
+      name: "fileName",
+      datatype: "string",
+      description:
+        "The path and name of the file or directory to list. Supports wildcards (e.g. C:\\files\\*.log).",
+      required: true,
+    },
+    {
+      name: "mode",
+      datatype: "string",
+      description:
+        "The type of listing to retrieve. One of: 'Only Files', 'Only Directories', or 'Files and Directories'.",
+      required: true,
+    },
+    {
+      name: "includeTimestamp",
+      datatype: "boolean",
+      description:
+        "Whether to include timestamps in addition to dates in the listing.",
+    },
+    {
+      name: "description",
+      datatype: "string",
+      description: "Optional description for this activity.",
+    },
+  ],
+  outputSchema: [
+    {
+      name: "fileInfo",
+      datatype: "complex[]",
+      description:
+        "A repeating element containing metadata for each matched file or directory: fullName, fileName, location, configuredFileName, type, readProtected, writeProtected, size, lastModified.",
+    },
+    {
+      name: "fullName",
+      datatype: "string",
+      description: "The full path and name of the file or directory.",
+    },
+    {
+      name: "fileName",
+      datatype: "string",
+      description: "The file or directory name without path information.",
+    },
+    {
+      name: "location",
+      datatype: "string",
+      description: "The base path of the file or directory.",
+    },
+    {
+      name: "configuredFileName",
+      datatype: "string",
+      description: "The exact file or directory pattern that was queried.",
+    },
+    {
+      name: "type",
+      datatype: "string",
+      description: "The type (file or directory).",
+    },
+    {
+      name: "readProtected",
+      datatype: "boolean",
+      description: "Whether the item is protected from reading.",
+    },
+    {
+      name: "writeProtected",
+      datatype: "boolean",
+      description: "Whether the item is protected from writing.",
+    },
+    {
+      name: "size",
+      datatype: "integer",
+      description: "Size of the file in bytes (0 for directories).",
+    },
+    {
+      name: "lastModified",
+      datatype: "string",
+      description: "Timestamp when the item was last modified.",
+    },
+  ],
+}
+
 interface Props {
   formData: Record<string, any>
   onChange: (name: string, value: any) => void

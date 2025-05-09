@@ -1,7 +1,7 @@
-//node-utils.tsx  Node Icon
+//node-utils.tsx 
 "use client"
-import { Play, Filter, FileText, FileInput, FileOutput, Copy, CheckCircle, Code, Trash2, Files, Clock, Server, Send, Globe, FileJson, FileCode } from "lucide-react"
-import type { NodeType } from "./workflow-context"
+import { Play, Filter, FileText, FileInput, FileOutput, Copy, CheckCircle, Code, Trash2, Files, Clock, Server, Send, Globe, FileJson, FileCode, Database, FilePenLine } from "lucide-react"
+import  { NodeType } from "@/services/interface"
 
 export function getNodeIcon(type: NodeType) {
   const iconClass = "h-10 w-10"
@@ -10,13 +10,14 @@ export function getNodeIcon(type: NodeType) {
   const pngIconMap: Partial<Record<NodeType, string>> = {
     start: "/icons/play.png",
     "create-file": "/icons/create.png",
-    "read-file":"icons/reading.png",
-    "write-file":"icons/write.png",
-    "copy-file":"icons/copy.png",
-    "delete-file":"icons/delete.png",
-    "list-files":"icons/copy.png",
-    "file-poller":"icons/pollar.png",
-    "end":"icons/stop.png",
+    "read-file": "/icons/reading.png",
+    "write-file": "/icons/write.png",
+    "copy-file": "/icons/copy.png",
+    "delete-file": "/icons/delete.png", 
+    "list-files": "/icons/copy.png",
+    "file-poller": "/icons/pollar.png",
+    "rename-file": "/icons/rename.png", // Added rename-file icon
+    "end": "/icons/stop.png",
     // add more PNG types if needed
   }
 
@@ -37,8 +38,14 @@ export function getNodeIcon(type: NodeType) {
       return <FileCode className="h-10 w-10 text-slate-800" />
     case "xml-render":
       return <FileJson className="h-10 w-10 text-slate-800" />
+    case "parse-data":
+      return <Database className="h-10 w-10 text-blue-500" />
+    case "render-data":
+      return <Database className="h-10 w-10 text-purple-500" />
     case "code":
       return <Code className="h-10 w-10 text-slate-800" />
+    case "rename-file":
+      return <FilePenLine className="h-10 w-10 text-slate-800" />
     default:
       return <Filter className="h-10 w-10 text-slate-800" />
   }

@@ -5,19 +5,29 @@
 export type NodeType =
   | "start"
   | "end"
+  | "file"
   | "create-file"
   | "read-file"
   | "write-file"
   | "copy-file"
+  |"rename-file"
   | "delete-file"
   | "list-files"
   | "file-poller"
+  | "rename-file"
   | "http-receiver"
   | "send-http-request"
   | "send-http-response"
   | "xml-parser"
   | "xml-render"
-  | "code"
+  | "transform-xml"
+  | "parse-data"
+  | "render-data"
+  | "json-parse"
+  | "json-render"
+  | "transform-json"
+  | "file"
+  | "code";
 
 // Interface for a single item within an input or output schema
 // export interface SchemaItem {
@@ -71,7 +81,8 @@ export type ExtendedSchemaItem = SchemaItem & {
   sourceNodeId?: string;
   sourceNodeType?: string;
   sourceNodeLabel?: string;
-  datatype?:string;
+
+  datatype: 'string' | 'integer' | 'boolean' | 'complex' | string; // Allow string for extensibility
 
   // For items in localInputSchema (target items / current node's inputs)
   mappings?: MappingSourceInfo[]; // Array of sources mapped to this input
@@ -123,6 +134,7 @@ export interface ClientCreateResponse {
 export interface SchemaItem {
   name: string
   type?: string
+  datatype: 'string' | 'integer' | 'boolean' | 'complex' | string; // Allow string for extensibility
   description?: string
   required?: boolean
   originalName?: string

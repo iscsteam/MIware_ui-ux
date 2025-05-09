@@ -1,5 +1,5 @@
 // src/components/workflow/nodeSchemas.ts
-import { NodeType, SchemaItem } from "./workflow-context"; // Assuming SchemaItem is also in workflow-context
+import { NodeType, SchemaItem } from "@/services/interface"; // Assuming SchemaItem is also in workflow-context
 
 export interface NodeSchema {
   label: string;

@@ -4,6 +4,11 @@ import type React from "react"
 import { createContext, useContext, useState, useCallback, useEffect } from "react"
 import { v4 as uuidv4 } from "uuid"
 import {NodeType , SchemaItem} from "@/services/interface";
+import { useToast } from "@/components/ui/use-toast"
+
+// import { useToast } from "@/hooks/use-toast"
+
+const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
 
 // Keep NodeType definition as is
 // export type NodeType =
@@ -23,7 +28,7 @@ import {NodeType , SchemaItem} from "@/services/interface";
 //   | "xml-render"
 //   | "code"
 
-export type NodeStatus = "idle" | "running" | "success" | "error"
+export type NodeStatus = "idle" | "running" | "success" | "error";
 
 export interface NodePosition {
   x: number;
@@ -91,12 +96,12 @@ export interface WorkflowNodeData {
   // Add other config properties from NodePropertiesPanel as needed...
   inputSchema?: string;
   outputSchema?: string;
-
+  oldFilename?: string; // Source file to be renamed
+  newFilename?: string; // New name for the file
   // Runtime/UI state flags
   active?: boolean; // The flag to control if the node runs
 }
 // --- END OF CORRECTION ---
-
 
 // Interface for the actual node object used in the workflow state/canvas
 export interface WorkflowNode {
@@ -129,108 +134,189 @@ export interface LogEntry {
   details?: any; // Optional extra details (like node output/error object)
 }
 
+// Interface for backend DAG format
+export interface DAG {
+  id: number;
+  name: string;
+  dag_id: string;
+  schedule: string | null;
+  active: boolean;
+  dag_sequence: Array<{
+    id: string;
+    type: string;
+    config_id: number;
+    next: string[];
+  }>;
+  active_dag_run: number | null;
+  created_at: string;
+  updated_at: string;
+}
 
 // --- Context Type Definition ---
 interface WorkflowContextType {
-  nodes: WorkflowNode[]
-  connections: NodeConnection[]
-  logs: LogEntry[]
-  selectedNodeId: string | null
+  nodes: WorkflowNode[];
+  connections: NodeConnection[];
+  logs: LogEntry[];
+  selectedNodeId: string | null;
   // UI Interaction States
-  pendingConnection: { sourceId: string; sourceHandle?: string } | null // Added handle
-  propertiesModalNodeId: string | null
-  dataMappingModalNodeId: string | null // Consider removing if not used
-  draggingNodeInfo: { id: string; offset: { x: number; y: number } } | null
-  setPendingConnection: (connection: { sourceId: string; sourceHandle?: string } | null) => void
-  setPropertiesModalNodeId: (nodeId: string | null) => void
-  setDataMappingModalNodeId: (nodeId: string | null) => void
-  setDraggingNodeInfo: (info: { id: string; offset: { x: number; y: number } } | null) => void
+  pendingConnection: { sourceId: string; sourceHandle?: string } | null; // Added handle
+  propertiesModalNodeId: string | null;
+  dataMappingModalNodeId: string | null; // Consider removing if not used
+  draggingNodeInfo: { id: string; offset: { x: number; y: number } } | null;
+  setPendingConnection: (
+    connection: { sourceId: string; sourceHandle?: string } | null
+  ) => void;
+  setPropertiesModalNodeId: (nodeId: string | null) => void;
+  setDataMappingModalNodeId: (nodeId: string | null) => void;
+  setDraggingNodeInfo: (
+    info: { id: string; offset: { x: number; y: number } } | null
+  ) => void;
   // Core Workflow Actions
-  addNode: (type: NodeType, position: NodePosition, initialData?: Partial<WorkflowNodeData>) => string // Allow initial data
-  updateNode: (id: string, updates: Partial<Omit<WorkflowNode, 'data'>> & { data?: Partial<WorkflowNodeData> }) => void // Better update typing
-  removeNode: (id: string) => void
-  selectNode: (id: string | null) => void
-  addConnection: (sourceId: string, targetId: string, sourceHandle?: string, targetHandle?: string) => void // Added handles
-  removeConnection: (connectionId: string) => void
-  clearWorkflow: () => void
+  addNode: (
+    type: NodeType,
+    position: NodePosition,
+    initialData?: Partial<WorkflowNodeData>
+  ) => string; // Allow initial data
+  updateNode: (
+    id: string,
+    updates: Partial<Omit<WorkflowNode, "data">> & {
+      data?: Partial<WorkflowNodeData>;
+    }
+  ) => void; // Better update typing
+  removeNode: (id: string) => void;
+  selectNode: (id: string | null) => void;
+  addConnection: (
+    sourceId: string,
+    targetId: string,
+    sourceHandle?: string,
+    targetHandle?: string
+  ) => void; // Added handles
+  removeConnection: (connectionId: string) => void;
+  clearWorkflow: () => void;
   // Persistence & Execution
-  saveWorkflow: () => { nodes: WorkflowNode[]; connections: NodeConnection[] } // Return type
-  loadWorkflow: (data: { nodes: WorkflowNode[]; connections: NodeConnection[] }) => void // Param type
-  runWorkflow: () => Promise<void>
-  executeNode: (nodeId: string, inputData?: any) => Promise<any> // Input data for execution
+  saveWorkflow: () => { nodes: WorkflowNode[]; connections: NodeConnection[] }; // Return type
+  saveWorkflowToBackend: () => Promise<void>; // New function to save to backend
+  loadWorkflow: (data: {
+    nodes: WorkflowNode[];
+    connections: NodeConnection[];
+  }) => void; // Param type
+  runWorkflow: () => Promise<void>;
+  executeNode: (nodeId: string, inputData?: any) => Promise<any>; // Input data for execution
   // Logging
-  addLog: (log: Omit<LogEntry, "id" | "timestamp">) => void
-  clearLogs: () => void
+  addLog: (log: Omit<LogEntry, "id" | "timestamp">) => void;
+  clearLogs: () => void;
   // Helpers
-  getNodeById: (id: string) => WorkflowNode | undefined
+  getNodeById: (id: string) => WorkflowNode | undefined;
+  getCurrentWorkflowId: () => string | null; // New helper function
 }
 
-const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined)
+const WorkflowContext = createContext<WorkflowContextType | undefined>(
+  undefined
+);
 
 export function WorkflowProvider({ children }: { children: React.ReactNode }) {
-  const [nodes, setNodes] = useState<WorkflowNode[]>([])
-  const [connections, setConnections] = useState<NodeConnection[]>([])
-  const [logs, setLogs] = useState<LogEntry[]>([])
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [isRunning, setIsRunning] = useState(false)
+  const [nodes, setNodes] = useState<WorkflowNode[]>([]);
+  const [connections, setConnections] = useState<NodeConnection[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   // --- UI State ---
-  const [pendingConnection, setPendingConnection] = useState<{ sourceId: string; sourceHandle?: string } | null>(null)
-  const [propertiesModalNodeId, setPropertiesModalNodeId] = useState<string | null>(null)
-  const [dataMappingModalNodeId, setDataMappingModalNodeId] = useState<string | null>(null)
-  const [draggingNodeInfo, setDraggingNodeInfo] = useState<{ id: string; offset: { x: number; y: number } } | null>(null)
+  const [pendingConnection, setPendingConnection] = useState<{
+    sourceId: string;
+    sourceHandle?: string;
+  } | null>(null);
+  const [propertiesModalNodeId, setPropertiesModalNodeId] = useState<
+    string | null
+  >(null);
+  const [dataMappingModalNodeId, setDataMappingModalNodeId] = useState<
+    string | null
+  >(null);
+  const [draggingNodeInfo, setDraggingNodeInfo] = useState<{
+    id: string;
+    offset: { x: number; y: number };
+  } | null>(null);
+
+  // Get toast hook for notifications
+  const toast = useToast();
 
   // --- Node Management ---
-  const addNode = useCallback((type: NodeType, position: NodePosition, initialData?: Partial<WorkflowNodeData>) => {
-    const newNode: WorkflowNode = {
-      id: uuidv4(),
-      type,
-      position,
-      // Initialize data with active: true and any provided initial data
-      data: { label: type, active: true, ...initialData }, // Default label to type, ensure active is true
-      status: "idle",
-    }
-    setNodes((prev) => [...prev, newNode])
-    return newNode.id
-  }, [])
+  const addNode = useCallback(
+    (
+      type: NodeType,
+      position: NodePosition,
+      initialData?: Partial<WorkflowNodeData>
+    ) => {
+      const newNode: WorkflowNode = {
+        id: uuidv4(),
+        type,
+        position,
+        // Initialize data with active: true and any provided initial data
+        data: { label: type, active: true, ...initialData }, // Default label to type, ensure active is true
+        status: "idle",
+      };
+      setNodes((prev) => [...prev, newNode]);
+      return newNode.id;
+    },
+    []
+  );
 
-  const updateNode = useCallback((id: string, updates: Partial<Omit<WorkflowNode, 'data'>> & { data?: Partial<WorkflowNodeData> }) => {
-    setNodes((prevNodes) =>
-      prevNodes.map((node) => {
-        if (node.id === id) {
-          // Merge node-level updates and data updates separately
-          const { data: dataUpdates, ...nodeUpdates } = updates;
-          return {
-            ...node,
-            ...nodeUpdates, // Apply updates like position, status, etc.
-            data: { // Merge data ensuring previous data isn't lost
-              ...node.data,
-              ...dataUpdates,
-            },
-          };
-        }
-        return node;
-      })
-    );
-  }, []);
+  const updateNode = useCallback(
+    (
+      id: string,
+      updates: Partial<Omit<WorkflowNode, "data">> & {
+        data?: Partial<WorkflowNodeData>;
+      }
+    ) => {
+      setNodes((prevNodes) =>
+        prevNodes.map((node) => {
+          if (node.id === id) {
+            // Merge node-level updates and data updates separately
+            const { data: dataUpdates, ...nodeUpdates } = updates;
+            return {
+              ...node,
+              ...nodeUpdates, // Apply updates like position, status, etc.
+              data: {
+                // Merge data ensuring previous data isn't lost
+                ...node.data,
+                ...dataUpdates,
+              },
+            };
+          }
+          return node;
+        })
+      );
+    },
+    []
+  );
 
-
-  const removeNode = useCallback((id: string) => {
-    setNodes((prev) => prev.filter((node) => node.id !== id))
-    // Also remove connections associated with this node
-    setConnections((prev) => prev.filter((conn) => conn.sourceId !== id && conn.targetId !== id))
-    // Clear selection/modals if the removed node was active
-    if (selectedNodeId === id) setSelectedNodeId(null)
-    if (propertiesModalNodeId === id) setPropertiesModalNodeId(null)
-    // if (dataMappingModalNodeId === id) setDataMappingModalNodeId(null); // If using this modal
-  }, [selectedNodeId, propertiesModalNodeId /*, dataMappingModalNodeId*/])
+  const removeNode = useCallback(
+    (id: string) => {
+      setNodes((prev) => prev.filter((node) => node.id !== id));
+      // Also remove connections associated with this node
+      setConnections((prev) =>
+        prev.filter((conn) => conn.sourceId !== id && conn.targetId !== id)
+      );
+      // Clear selection/modals if the removed node was active
+      if (selectedNodeId === id) setSelectedNodeId(null);
+      if (propertiesModalNodeId === id) setPropertiesModalNodeId(null);
+      // if (dataMappingModalNodeId === id) setDataMappingModalNodeId(null); // If using this modal
+    },
+    [selectedNodeId, propertiesModalNodeId /*, dataMappingModalNodeId*/]
+  );
 
   const selectNode = useCallback((id: string | null) => {
-    setSelectedNodeId(id)
-  }, [])
+    setSelectedNodeId(id);
+  }, []);
 
   // --- Connection Management ---
   const addConnection = useCallback(
-    (sourceId: string, targetId: string, sourceHandle?: string, targetHandle?: string) => {
+    (
+      sourceId: string,
+      targetId: string,
+      sourceHandle?: string,
+      targetHandle?: string
+    ) => {
       if (sourceId === targetId) return; // Prevent self-connections
 
       // Check for existing connection (consider handles if they are relevant)
@@ -249,9 +335,9 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         (conn) => conn.sourceId === targetId && conn.targetId === sourceId
       );
       if (isCircular) {
-          console.warn("Preventing direct circular connection");
-          return;
-      };
+        console.warn("Preventing direct circular connection");
+        return;
+      }
 
       const newConnection: NodeConnection = {
         id: uuidv4(),
@@ -259,57 +345,191 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         targetId,
         sourceHandle,
         targetHandle,
-      }
-      setConnections((prev) => [...prev, newConnection])
+      };
+      setConnections((prev) => [...prev, newConnection]);
     },
-    [connections], // Dependency array
-  )
+    [connections] // Dependency array
+  );
 
   const removeConnection = useCallback((connectionId: string) => {
-    setConnections((prev) => prev.filter((conn) => conn.id !== connectionId))
-  }, [])
+    setConnections((prev) => prev.filter((conn) => conn.id !== connectionId));
+  }, []);
 
   // --- Workflow Management ---
-  const clearWorkflow = useCallback(() => {
-    setNodes([])
-    setConnections([])
-    setSelectedNodeId(null)
-    setPropertiesModalNodeId(null)
-    // setDataMappingModalNodeId(null);
-    setPendingConnection(null)
-    setDraggingNodeInfo(null)
-    clearLogs() // Assuming clearLogs is defined elsewhere or added here
-  }, [/* dependency: clearLogs */]) // Add clearLogs if defined outside
+  const clearWorkflow = useCallback(
+    () => {
+      setNodes([]);
+      setConnections([]);
+      setSelectedNodeId(null);
+      setPropertiesModalNodeId(null);
+      // setDataMappingModalNodeId(null);
+      setPendingConnection(null);
+      setDraggingNodeInfo(null);
+      clearLogs(); // Assuming clearLogs is defined elsewhere or added here
+    },
+    [
+      /* dependency: clearLogs */
+    ]
+  ); // Add clearLogs if defined outside
+
+  // Helper function to get current workflow ID
+  const getCurrentWorkflowId = useCallback(() => {
+    try {
+      const workflowData = localStorage.getItem("currentWorkflow");
+      if (workflowData) {
+        const parsed = JSON.parse(workflowData);
+        return parsed.dag_id;
+      }
+    } catch (error) {
+      console.error("Error getting current workflow ID:", error);
+    }
+    return null;
+  }, []);
+
+  // Convert workflow to backend DAG format
+  const convertWorkflowToDAG = useCallback(() => {
+    // Create a map of node connections
+    const nodeConnectionMap: Record<string, string[]> = {};
+
+    // Initialize with empty arrays for all nodes
+    nodes.forEach((node) => {
+      nodeConnectionMap[node.id] = [];
+    });
+
+    // Fill in the connections
+    connections.forEach((connection) => {
+      if (nodeConnectionMap[connection.sourceId]) {
+        nodeConnectionMap[connection.sourceId].push(connection.targetId);
+      }
+    });
+
+    // Convert to DAG sequence format
+    const dagSequence = nodes.map((node) => {
+      return {
+        id: node.id,
+        type: node.type,
+        config_id: 1, // Default config_id
+        next: nodeConnectionMap[node.id] || [],
+      };
+    });
+
+    return {
+      dag_sequence: dagSequence,
+    };
+  }, [nodes, connections]);
+
+  // Save workflow to backend
+  const saveWorkflowToBackend = useCallback(async () => {
+    const workflowId = getCurrentWorkflowId();
+    const saveWorkflow = () => {
+      const workflowData = { nodes, connections };
+      // Example: Save to localStorage
+      try {
+        localStorage.setItem("workflowData", JSON.stringify(workflowData));
+        console.log("Workflow saved successfully.");
+      } catch (error) {
+        console.error("Failed to save workflow:", error);
+      }
+      // In a real app, you might send this to a backend API
+      return workflowData;
+    };
+
+    if (!workflowId) {
+      toast.toast({
+        title: "Error",
+        description:
+          "No active workflow to save. Please create a workflow first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (nodes.length === 0) {
+      toast.toast({
+        title: "Error",
+        description: "Cannot save an empty workflow. Please add nodes first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // Convert workflow to DAG format
+      const dagData = convertWorkflowToDAG();
+
+      // Update the workflow in the backend
+      const response = await fetch(`${baseurl}/dags/${workflowId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dagData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to save workflow");
+      }
+
+      // Save to localStorage as well
+      saveWorkflow();
+
+      toast.toast({
+        title: "Success",
+        description: "Workflow saved successfully",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error saving workflow:", error);
+      toast.toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to save workflow",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [nodes, connections, getCurrentWorkflowId, convertWorkflowToDAG, toast]);
 
   const saveWorkflow = useCallback(() => {
-    const workflowData = { nodes, connections }
+    const workflowData = { nodes, connections };
     // Example: Save to localStorage
     try {
-      localStorage.setItem("workflowData", JSON.stringify(workflowData))
-      console.log("Workflow saved successfully.")
+      localStorage.setItem("workflowData", JSON.stringify(workflowData));
+      console.log("Workflow saved successfully.");
     } catch (error) {
-      console.error("Failed to save workflow:", error)
+      console.error("Failed to save workflow:", error);
     }
     // In a real app, you might send this to a backend API
-    return workflowData
-  }, [nodes, connections])
+    return workflowData;
+  }, [nodes, connections]);
 
-  const loadWorkflow = useCallback((data: { nodes: WorkflowNode[]; connections: NodeConnection[] }) => {
-    // Basic validation might be good here
-    if (data && Array.isArray(data.nodes) && Array.isArray(data.connections)) {
-      setNodes(data.nodes)
-      setConnections(data.connections)
-      // Reset UI state after loading
-      setSelectedNodeId(null)
-      setPropertiesModalNodeId(null)
-      // setDataMappingModalNodeId(null);
-      setPendingConnection(null)
-      setDraggingNodeInfo(null)
-      console.log("Workflow loaded.")
-    } else {
-      console.error("Invalid data format for loading workflow.")
-    }
-  }, [])
+  const loadWorkflow = useCallback(
+    (data: { nodes: WorkflowNode[]; connections: NodeConnection[] }) => {
+      // Basic validation might be good here
+      if (
+        data &&
+        Array.isArray(data.nodes) &&
+        Array.isArray(data.connections)
+      ) {
+        setNodes(data.nodes);
+        setConnections(data.connections);
+        // Reset UI state after loading
+        setSelectedNodeId(null);
+        setPropertiesModalNodeId(null);
+        // setDataMappingModalNodeId(null);
+        setPendingConnection(null);
+        setDraggingNodeInfo(null);
+        console.log("Workflow loaded.");
+      } else {
+        console.error("Invalid data format for loading workflow.");
+      }
+    },
+    []
+  );
 
   // --- Logging ---
   const addLog = useCallback((log: Omit<LogEntry, "id" | "timestamp">) => {
@@ -317,17 +537,20 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       ...log,
       id: uuidv4(),
       timestamp: new Date(),
-    }
+    };
     // Keep logs manageable, e.g., limit to last 100 entries
-    setLogs((prev) => [newLog, ...prev.slice(0, 99)])
-  }, [])
+    setLogs((prev) => [newLog, ...prev.slice(0, 99)]);
+  }, []);
 
   const clearLogs = useCallback(() => {
-    setLogs([])
-  }, [])
+    setLogs([]);
+  }, []);
 
   // --- Execution Logic ---
-  const getNodeById = useCallback((id: string) => nodes.find((node) => node.id === id), [nodes])
+  const getNodeById = useCallback(
+    (id: string) => nodes.find((node) => node.id === id),
+    [nodes]
+  );
 
   const executeNode = useCallback(
     async (nodeId: string, inputData?: any): Promise<any> => {
@@ -347,12 +570,14 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         });
 
         // Find outgoing connections and execute next nodes *with the current inputData*
-        const outgoingConnections = connections.filter((conn) => conn.sourceId === nodeId);
+        const outgoingConnections = connections.filter(
+          (conn) => conn.sourceId === nodeId
+        );
         let lastOutput = inputData; // Pass data through inactive node
         for (const connection of outgoingConnections) {
-             // TODO: Handle data mapping based on source/target handles if necessary
-             // For now, just pass the entire output
-             lastOutput = await executeNode(connection.targetId, inputData);
+          // TODO: Handle data mapping based on source/target handles if necessary
+          // For now, just pass the entire output
+          lastOutput = await executeNode(connection.targetId, inputData);
         }
         return lastOutput; // Return data from the last node in the chain after the inactive one
       }
@@ -370,7 +595,9 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       try {
         // --- Node Execution Simulation ---
         // Replace this with actual backend calls or logic execution
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 500 + 100)); // Simulate async work
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.random() * 500 + 100)
+        ); // Simulate async work
 
         let output: any;
         const nodeData = node.data || {}; // Use node.data safely
@@ -378,47 +605,109 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         // Example execution logic (expand significantly for real app)
         switch (node.type) {
           case "start":
-            output = { trigger: "manual", startTime: new Date().toISOString(), ...(inputData || {}) };
+            output = {
+              trigger: "manual",
+              startTime: new Date().toISOString(),
+              ...(inputData || {}),
+            };
             break;
           case "create-file":
-             console.log(`Simulating CREATE file: ${nodeData.filename} with overwrite: ${nodeData.overwrite}`);
-             output = { filePath: nodeData.filename || 'default.txt', created: true };
-             break;
+            console.log(
+              `Simulating CREATE file: ${nodeData.filename} with overwrite: ${nodeData.overwrite}`
+            );
+            output = {
+              filePath: nodeData.filename || "default.txt",
+              created: true,
+            };
+            break;
           case "read-file":
-             console.log(`Simulating READ file: ${nodeData.filename}`);
-             output = { content: `Content of ${nodeData.filename || 'default.txt'}`, encoding: nodeData.encoding || 'utf-8' };
-             break;
+            console.log(`Simulating READ file: ${nodeData.filename}`);
+            output = {
+              content: `Content of ${nodeData.filename || "default.txt"}`,
+              encoding: nodeData.encoding || "utf-8",
+            };
+            break;
           case "write-file":
-             console.log(`Simulating WRITE file: ${nodeData.filename} with content: ${nodeData.content?.substring(0, 50)}...`);
-             output = { filePath: nodeData.filename || 'default.txt', written: true, bytes: nodeData.content?.length || 0 };
-             break;
-           case "copy-file":
-             console.log(`Simulating COPY file: ${nodeData.sourceFilename} to ${nodeData.targetFilename || nodeData.toFilename}`); // Use consistent naming
-             output = { source: nodeData.sourceFilename, target: nodeData.targetFilename || nodeData.toFilename, copied: true };
-             break;
-           case "code":
-              console.log(`Simulating EXECUTE code: ${nodeData.language || 'unknown'}`);
-              // In real scenario, execute nodeData.code with inputData
-              output = { result: `Executed code successfully`, inputReceived: !!inputData, logs: ["Log line 1"] };
-              break;
+            console.log(
+              `Simulating WRITE file: ${
+                nodeData.filename
+              } with content: ${nodeData.content?.substring(0, 50)}...`
+            );
+            output = {
+              filePath: nodeData.filename || "default.txt",
+              written: true,
+              bytes: nodeData.content?.length || 0,
+            };
+            break;
+          case "copy-file":
+            console.log(
+              `Simulating COPY file: ${nodeData.sourceFilename} to ${
+                nodeData.targetFilename || nodeData.toFilename
+              }`
+            ); // Use consistent naming
+            output = {
+              source: nodeData.sourceFilename,
+              target: nodeData.targetFilename || nodeData.toFilename,
+              copied: true,
+            };
+            break;
+          case "rename-file":
+            console.log(
+              `Simulating RENAME file: ${nodeData.oldFilename} to ${nodeData.newFilename}`
+            );
+            output = {
+              oldPath: nodeData.oldFilename,
+              newPath: nodeData.newFilename,
+              renamed: true,
+            };
+            break;
+          case "code":
+            console.log(
+              `Simulating EXECUTE code: ${nodeData.language || "unknown"}`
+            );
+            // In real scenario, execute nodeData.code with inputData
+            output = {
+              result: `Executed code successfully`,
+              inputReceived: !!inputData,
+              logs: ["Log line 1"],
+            };
+            break;
           case "xml-parser":
-              console.log(`Simulating XML PARSE: ${nodeData.xmlString?.substring(0,50)}...`);
-              output = { parsedObject: { root: { item: ["value1", "value2"] } }, error: null }; // Simulate success
-              break;
+            console.log(
+              `Simulating XML PARSE: ${nodeData.xmlString?.substring(0, 50)}...`
+            );
+            output = {
+              parsedObject: { root: { item: ["value1", "value2"] } },
+              error: null,
+            }; // Simulate success
+            break;
           case "xml-render":
-              console.log(`Simulating XML RENDER object`);
-              output = { xmlString: '<root><item>value1</item></root>', error: null }; // Simulate success
-              break;
+            console.log(`Simulating XML RENDER object`);
+            output = {
+              xmlString: "<root><item>value1</item></root>",
+              error: null,
+            }; // Simulate success
+            break;
           case "end":
-            output = { finalStatus: "completed", endTime: new Date().toISOString(), result: inputData };
+            output = {
+              finalStatus: "completed",
+              endTime: new Date().toISOString(),
+              result: inputData,
+            };
             break;
           default:
-             console.warn(`Execution logic not implemented for node type: ${node.type}`);
-             output = { ...inputData, [`${node.type}_processed`]: true }; // Generic output
+            console.warn(
+              `Execution logic not implemented for node type: ${node.type}`
+            );
+            output = { ...inputData, [`${node.type}_processed`]: true }; // Generic output
         }
         // --- End Simulation ---
 
-        updateNode(nodeId, { status: "success", output: output, error: undefined });
+        updateNode(nodeId, {
+          status: "success",
+          output: output,
+          error: undefined,
+        });
         addLog({
           nodeId: node.id,
           nodeName: node.data?.label || node.type,
@@ -428,31 +717,38 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         });
 
         // Execute next connected nodes
-        const outgoingConnections = connections.filter((conn) => conn.sourceId === nodeId);
+        const outgoingConnections = connections.filter(
+          (conn) => conn.sourceId === nodeId
+        );
         let lastOutput = output; // Start with current node's output
         for (const connection of outgoingConnections) {
-            // TODO: Handle data mapping based on source/target handles if necessary
-            // For now, just pass the entire output
-            lastOutput = await executeNode(connection.targetId, output); // Pass current node's output as input
+          // TODO: Handle data mapping based on source/target handles if necessary
+          // For now, just pass the entire output
+          lastOutput = await executeNode(connection.targetId, output); // Pass current node's output as input
         }
         return lastOutput; // Return the output of the last node executed in this branch
-
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        updateNode(nodeId, { status: "error", error: errorMessage, output: undefined });
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        updateNode(nodeId, {
+          status: "error",
+          error: errorMessage,
+          output: undefined,
+        });
         addLog({
           nodeId: node.id,
           nodeName: node.data?.label || node.type,
           status: "error",
-          message: `Error executing ${node.data?.label || node.type}: ${errorMessage}`,
+          message: `Error executing ${
+            node.data?.label || node.type
+          }: ${errorMessage}`,
           details: { error: error }, // Log the actual error object if needed
         });
         throw error; // Re-throw to potentially stop the whole workflow run
       }
     },
-    [nodes, connections, getNodeById, updateNode, addLog], // Correct dependencies
+    [nodes, connections, getNodeById, updateNode, addLog] // Correct dependencies
   );
-
 
   const runWorkflow = useCallback(async () => {
     if (isRunning) {
@@ -460,39 +756,67 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setIsRunning(true);
-    addLog({ nodeId: 'system', nodeName: 'System', status: 'info', message: 'Workflow execution started.' });
+    addLog({
+      nodeId: "system",
+      nodeName: "System",
+      status: "info",
+      message: "Workflow execution started.",
+    });
 
     // Reset statuses before run
     setNodes((prev) =>
-      prev.map((node) => ({ ...node, status: "idle", output: undefined, error: undefined }))
+      prev.map((node) => ({
+        ...node,
+        status: "idle",
+        output: undefined,
+        error: undefined,
+      }))
     );
     clearLogs(); // Optionally clear logs for the new run
 
     // Find active start nodes
-    const startNodes = nodes.filter((node) => node.type === "start" && node.data?.active !== false);
+    const startNodes = nodes.filter(
+      (node) => node.type === "start" && node.data?.active !== false
+    );
 
     if (startNodes.length === 0) {
-       addLog({ nodeId: 'system', nodeName: 'System', status: 'error', message: 'No active start nodes found.' });
-       setIsRunning(false);
-       return;
+      addLog({
+        nodeId: "system",
+        nodeName: "System",
+        status: "error",
+        message: "No active start nodes found.",
+      });
+      setIsRunning(false);
+      return;
     }
 
     try {
       // Execute all active start nodes concurrently (or sequentially if needed)
       // Using Promise.all for concurrent start
-      await Promise.all(startNodes.map(startNode => executeNode(startNode.id)));
-      addLog({ nodeId: 'system', nodeName: 'System', status: 'info', message: 'Workflow execution finished.' });
-
+      await Promise.all(
+        startNodes.map((startNode) => executeNode(startNode.id))
+      );
+      addLog({
+        nodeId: "system",
+        nodeName: "System",
+        status: "info",
+        message: "Workflow execution finished.",
+      });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error("Workflow execution failed:", error);
-       addLog({ nodeId: 'system', nodeName: 'System', status: 'error', message: `Workflow execution failed: ${errorMessage}` });
+      addLog({
+        nodeId: "system",
+        nodeName: "System",
+        status: "error",
+        message: `Workflow execution failed: ${errorMessage}`,
+      });
       // Decide if partial results are okay or if the whole run failed
     } finally {
       setIsRunning(false);
     }
   }, [nodes, executeNode, isRunning, clearLogs, addLog]); // Added isRunning, clearLogs, addLog dependencies
-
 
   // --- Effect for Loading from localStorage ---
   useEffect(() => {
@@ -501,10 +825,14 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         // Add basic validation before loading
-        if (parsedData && Array.isArray(parsedData.nodes) && Array.isArray(parsedData.connections)) {
-             loadWorkflow(parsedData);
+        if (
+          parsedData &&
+          Array.isArray(parsedData.nodes) &&
+          Array.isArray(parsedData.connections)
+        ) {
+          loadWorkflow(parsedData);
         } else {
-            console.warn("Invalid workflow data found in localStorage.");
+          console.warn("Invalid workflow data found in localStorage.");
         }
       }
     } catch (error) {
@@ -512,7 +840,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("workflowData"); // Clear invalid data
     }
   }, [loadWorkflow]); // Load only on initial mount or when loadWorkflow function identity changes
-
 
   // --- Context Value ---
   const value: WorkflowContextType = {
@@ -536,23 +863,28 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     removeConnection,
     clearWorkflow,
     saveWorkflow,
+    saveWorkflowToBackend,
     loadWorkflow,
     runWorkflow,
     executeNode,
     addLog,
     clearLogs,
     getNodeById,
-  }
+    getCurrentWorkflowId,
+  };
 
-  return <WorkflowContext.Provider value={value}>{children}</WorkflowContext.Provider>
+  return (
+    <WorkflowContext.Provider value={value}>
+      {children}
+    </WorkflowContext.Provider>
+  );
 }
 
 // --- Custom Hook ---
 export function useWorkflow() {
-
-  const context = useContext(WorkflowContext)
+  const context = useContext(WorkflowContext);
   if (context === undefined) {
-    throw new Error("useWorkflow must be used within a WorkflowProvider")
+    throw new Error("useWorkflow must be used within a WorkflowProvider");
   }
-  return context
+  return context;
 }
