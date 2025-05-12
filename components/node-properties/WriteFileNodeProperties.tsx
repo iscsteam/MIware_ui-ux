@@ -179,7 +179,7 @@ export default function WriteFileNodeProperties({ formData, onChange }: Props) {
   return (
     <div className="space-y-4">
       {/* Node Label */}
-      <div className="space-y-2">
+      {/* <div className="space-y-2">
         <Label htmlFor="label">Node Label</Label>
         <Input
           id="label"
@@ -187,7 +187,7 @@ export default function WriteFileNodeProperties({ formData, onChange }: Props) {
           placeholder="Node label (e.g., Write Config File)"
           onChange={(e) => onChange("label", e.target.value)}
         />
-      </div>
+      </div> */}
 
       {/* File Name */}
       <div className="space-y-2">

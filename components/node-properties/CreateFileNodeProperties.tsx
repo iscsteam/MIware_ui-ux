@@ -162,17 +162,6 @@ export default function CreateFileNodeProperties({ formData, onChange }: Props) 
 
   return (
     <div className="space-y-4">
-      {/* File Name (previously Node Label) */}
-      <div className="space-y-2">
-        <Label htmlFor="displayName">File Name</Label>
-        <Input
-          id="displayName"
-          value={formData.displayName || ""}
-          placeholder="Create File"
-          onChange={(e) => onChange("displayName", e.target.value)}
-        />
-      </div>
-
       {/* File Path (previously File Name) */}
       <div className="space-y-2">
         <Label htmlFor="filename">File Path</Label>
