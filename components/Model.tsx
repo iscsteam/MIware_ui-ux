@@ -1,5 +1,5 @@
 // components/Modal.tsx
-import React, { useState } from "react";
+import React, { useState , useEffect } from "react";
 import { FC } from "react";
 import {
   Dialog,
@@ -10,28 +10,46 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { createDAG } from "@/services/dagService";
-import {DAG} from "@/services/interface"
+import { DAG } from "@/services/interface";
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialActive: boolean;
 }
 
-const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose }) => {
+const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose, initialActive }) => {
   const [name, setName] = useState("");
   const [cronSchedule, setCronSchedule] = useState("");
+  const [active, setActive] = useState(false);
+
+
+  useEffect(() => {
+    if (isOpen) {
+      setActive(initialActive); // sync only when modal opens
+    }
+  }, [isOpen, initialActive]);
 
   const handleSave = async () => {
     const now = new Date().toISOString();
 
     const trimmedCronSchedule = cronSchedule.trim();
-    const scheduleValueForPayload = trimmedCronSchedule === "" ? null : trimmedCronSchedule;
+    const scheduleValueForPayload =
+      trimmedCronSchedule === "" ? null : trimmedCronSchedule;
 
     // --- Add this log ---
     console.log("WorkflowModal: Raw cronSchedule state:", `"${cronSchedule}"`);
-    console.log("WorkflowModal: Trimmed cronSchedule:", `"${trimmedCronSchedule}"`);
-    console.log("WorkflowModal: scheduleValueForPayload:", scheduleValueForPayload);
+    console.log(
+      "WorkflowModal: Trimmed cronSchedule:",
+      `"${trimmedCronSchedule}"`
+    );
+    console.log(
+      "WorkflowModal: scheduleValueForPayload:",
+      scheduleValueForPayload
+    );
     // --- End log ---
 
     const newDAGPayload = {
@@ -39,24 +57,27 @@ const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose }) => {
       created_at: now,
       updated_at: now,
       schedule: scheduleValueForPayload, // Use the processed value
-      active: true,
+      active,
       dag_sequence: [], // Replace with your actual sequence data if needed
     };
 
     // --- Add this log ---
-    console.log("WorkflowModal: Payload being sent to createDAG service:", newDAGPayload);
+    console.log(
+      "WorkflowModal: Payload being sent to createDAG service:",
+      newDAGPayload
+    );
     // --- End log ---
 
     // The createDAG function expects a DAG type.
     // The `newDAGPayload` object is structurally compatible with the properties
     // it needs for creation (name, active, dag_sequence, and optional schedule, created_at, updated_at).
     // Casting with `as DAG` tells TypeScript to trust that this object is suitable.
-    const res = await createDAG(newDAGPayload as DAG); 
-    
+    const res = await createDAG(newDAGPayload as DAG);
+
     if (res) {
       console.log("Created DAG (response from service):", res);
-      setName(""); 
-      setCronSchedule(""); 
+      setName("");
+      setCronSchedule("");
       onClose();
     } else {
       alert("Failed to save workflow.");
@@ -66,14 +87,15 @@ const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        onClose();
-      }
-    }}>
-      <DialogTrigger asChild>
-        {/* Trigger */}
-      </DialogTrigger>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <DialogTrigger asChild>{/* Trigger */}</DialogTrigger>
       <DialogContent>
         <DialogTitle>Create New Workflow</DialogTitle>
         <DialogDescription>
@@ -82,7 +104,9 @@ const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose }) => {
 
         <div className="space-y-4 py-2">
           <div>
-            <label htmlFor="workflowName" className="text-sm font-medium">Workflow Name</label>
+            <label htmlFor="workflowName" className="text-sm font-medium">
+              Workflow Name
+            </label>
             <input
               id="workflowName"
               type="text"
@@ -93,7 +117,9 @@ const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose }) => {
             />
           </div>
           <div>
-            <label htmlFor="cronSchedule" className="text-sm font-medium">Schedule (Cron Time)</label>
+            <label htmlFor="cronSchedule" className="text-sm font-medium">
+              Schedule (Cron Time)
+            </label>
             <input
               id="cronSchedule"
               type="text"
@@ -106,6 +132,24 @@ const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose }) => {
               Uses cron format. Example: '0 5 * * *' for 5 AM daily.
             </p>
           </div>
+
+          <div className=" grid-cols-4 items-center ">
+            <Label htmlFor="active" className="text-right">
+              Active
+            </Label>
+            <div className="col-span-3 flex items-center">
+              <Switch
+                id="active"
+                checked={active}
+                onCheckedChange={setActive}
+              />
+              <span className="ml-2 text-sm text-muted-foreground">
+                {active
+                  ? "Workflow will run on schedule"
+                  : "Workflow will be disabled"}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-2">
@@ -114,7 +158,9 @@ const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose }) => {
               Cancel
             </Button> */}
           </DialogClose>
-          <Button onClick={handleSave} disabled={!name.trim()}>create</Button>
+          <Button onClick={handleSave} disabled={!name.trim()}>
+            create
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

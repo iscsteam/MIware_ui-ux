@@ -25,6 +25,8 @@ export function Sidebar({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectName, setProjectName] = useState("Project Name");
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"Scheduled" | "Manual">("Scheduled");
+
 
   // Function to handle opening the modal
   const openModal = () => {
@@ -390,7 +392,7 @@ export function Sidebar({
       </div>
 
       {/* Workflow Modal */}
-      <WorkflowModal isOpen={isModalOpen} onClose={closeModal} />
+      <WorkflowModal isOpen={isModalOpen} onClose={closeModal}  initialActive={activeTab === "Scheduled"}/>
       
       {/* Project Name Modal */}
       {isProjectModalOpen && (
