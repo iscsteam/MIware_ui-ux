@@ -12,7 +12,6 @@ import WorkflowModal from "@/components/Model"; // Import the modal
 export function Sidebar({
   activeView,
   setActiveView,
-  fetchWorkflows: fetchWorkflowsProp,
 }: {
   activeView: string;
   setActiveView: (view: string) => void;
@@ -67,37 +66,6 @@ export function Sidebar({
   const handleCollapse = () => {
     setIsCollapsed(!isCollapsed)
   }
-
-  const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT
-
-  const fetchWorkflows = async () => {
-    if (!isWorkflowsOpen) return
-
-    setIsLoadingWorkflows(true)
-    setWorkflowError(null)
-
-    try {
-      const response = await fetch(`${baseurl}/dags/`)
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch workflows: ${response.status}`)
-      }
-
-      const data = await response.json()
-      setWorkflows(data)
-    } catch (error) {
-      console.error("Error fetching workflows:", error)
-      setWorkflowError(error instanceof Error ? error.message : "Failed to load workflows")
-    } finally {
-      setIsLoadingWorkflows(false)
-    }
-  }
-
-  useEffect(() => {
-    if (isWorkflowsOpen) {
-      fetchWorkflows()
-    }
-  }, [isWorkflowsOpen])
 
   return (
     <div className="relative h-full">
@@ -463,3 +431,4 @@ export function Sidebar({
     </div>
   );
 }
+
