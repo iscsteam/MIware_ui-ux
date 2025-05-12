@@ -1,8 +1,10 @@
-//sidemodal.tsx
+//sidemodal.tsx 
 "use client"  
 import { useState, useEffect } from "react"
-import {Play, FileText, FileInput, FileOutput, Copy, CheckCircle, X, Search, ChevronDown, ChevronRight, FolderPlus, File, FileEdit, FilePlus2, FolderOpen, Trash2, Files, Clock, Server, Send, Globe, FileCode, FileJson, ArrowLeft, Database} from "lucide-react"
-import type { NodeType } from "./workflow-context"
+import {Play, FileText, FileInput, FileOutput, Copy, CheckCircle, X, Search, ChevronDown, ChevronRight, FolderPlus, File, FileEdit, FilePlus2, FolderOpen, Trash2, Files, Clock, Server, Send, Globe, FileCode, FileJson, ArrowLeft, Database,FilePenLine} from "lucide-react"
+
+import  { NodeType } from "@/services/interface";
+
 import { Button } from "@/components/ui/button"
 
 interface NodeTypeDefinition {
@@ -54,6 +56,14 @@ const nodeTypes: NodeTypeDefinition[] = [
     label: "Copy File",
     icon: <Copy className="h-5 w-5 text-amber-600" />,
     description: "Copies a file or directory",
+    category: "file"
+  },
+
+  {
+    type: "rename-file", // New node type
+    label: "Rename File",
+    icon: <FilePenLine className="h-5 w-5 text-orange-500" />, // Using FilePenLine icon
+    description: "Renames a file or directory",
     category: "file"
   },
   {

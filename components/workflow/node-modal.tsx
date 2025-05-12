@@ -24,6 +24,7 @@ import FileNodeProperties,{fileNodeSchema} from "../node-properties/FileNodeProp
 import HTTPSendResponseNodeProperties,{httpSendResponseSchema} from "../node-properties/HTTPsendresponseNodeProperties";
 import ParsedDataNodeProperties,{parseDataSchema} from "../node-properties/ParsedataNodeProperties";
 import RenderDataNodeProperties,{renderDataSchema} from "../node-properties/RenderdataNodeProperties";
+import RenameFileNodeProperties,{renameFileSchema} from "../node-properties/RenameFileNodeProperties";
 
 import {
   Tooltip,
@@ -36,6 +37,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "create-file": CreateFileNodeProperties,
   "read-file": ReadFileNodeProperties,
   "copy-file": CopyFileNodeProperties,
+  "rename-file": RenameFileNodeProperties,
   "delete-file": DeleteFileNodeProperties,
   "list-files": ListFilesNodeProperties,
   "file-poller": PollerFileNodeProperties,
@@ -62,6 +64,7 @@ const componentSchemas: Record<string, any> = {
   "delete-file": deleteFileSchema,
   "create-file":createFileSchema,
   "copy-file": copyFileSchema,
+  "rename-file": renameFileSchema,
   "list-files": listFilesSchema,
   "file-poller": filePollerSchema,
   "xml-parser":parseXMLSchema,

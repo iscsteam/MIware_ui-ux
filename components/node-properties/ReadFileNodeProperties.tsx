@@ -180,17 +180,6 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Node Label */}
-      <div className="space-y-2">
-        <Label htmlFor="label">Node Label</Label>
-        <Input
-          id="label"
-          value={formData.label || ""}
-          placeholder="Node label (e.g., Read Sample File)"
-          onChange={(e) => onChange("label", e.target.value)}
-        />
-      </div>
-
       {/* File Name */}
       <div className="space-y-2">
         <Label htmlFor="filename">File Path</Label>
