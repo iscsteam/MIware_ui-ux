@@ -168,17 +168,6 @@ export default function DeleteFileNodeProperties({ formData, onChange }: Props) 
 
   return (
     <div className="space-y-4">
-      {/* Node Label */}
-      <div className="space-y-2">
-        <Label htmlFor="label">Node Label</Label>
-        <Input
-          id="label"
-          value={formData.label || ""}
-          placeholder="Node label (e.g., Delete Log File)"
-          onChange={(e) => onChange("label", e.target.value)}
-        />
-      </div>
-
       {/* File Path */}
       <div className="space-y-2">
         <Label htmlFor="filepath">File Path</Label>
