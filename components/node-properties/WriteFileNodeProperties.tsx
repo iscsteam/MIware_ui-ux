@@ -1,10 +1,8 @@
-// WriteFileNodeProperties.tsx
+//WriteFileNodeProperties.tsx
 "use client"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
 import { useState } from "react"
 import { useWorkflow } from "../workflow/workflow-context"
 
@@ -25,35 +23,35 @@ export interface NodeSchema {
 export const writeFileSchema: NodeSchema = {
   inputSchema: [
     {
-      name: "fileName",
+      name: "provider",
       datatype: "string",
-      description: "The path and name of the file. Wildcards are not permitted in this field.",
+      description: "Data source provider (e.g., local, s3).",
       required: true,
     },
     {
-      name: "textContent",
+      name: "format",
       datatype: "string",
-      description:
-        "The contents of the file (text files). This field is present when Write as is set to Text. When Write as is set to Binary, this field is replaced by the field binaryContent.",
+      description: "File format (e.g., xml, json, csv).",
+      required: true,
     },
     {
-      name: "addLineSeparator",
-      datatype: "boolean",
-      description:
-        "This specifies whether to add a carriage return after each input line. This field is present when the value of the Write as field on the General tab is set to Text.",
+      name: "path",
+      datatype: "string",
+      description: "File path to save the file.",
+      required: true,
     },
     {
-      name: "encoding",
+      name: "mode",
       datatype: "string",
-      description:
-        "The character encoding for text files. This element is available only when Text is specified in the Write as field on the General tab.",
+      description: "Write mode (overwrite, append).",
+      required: true,
     },
   ],
   outputSchema: [
     {
       name: "fileInfo",
       datatype: "complex",
-      description: "This element contains the fileName, location, type, readProtected, writeProtected, and size data.",
+      description: "This element contains file metadata like name, size, and type.",
     },
     {
       name: "fullName",
@@ -69,21 +67,6 @@ export const writeFileSchema: NodeSchema = {
       name: "location",
       datatype: "string",
       description: "The path to the file.",
-    },
-    {
-      name: "configuredFileName",
-      datatype: "string",
-      description: "An optional element. This element is not populated by this activity.",
-    },
-    {
-      name: "type",
-      datatype: "string",
-      description: "The file type.",
-    },
-    {
-      name: "wasProtected",
-      datatype: "boolean",
-      description: "Signifies whether the file or directory is protected from reading",
     },
     {
       name: "size",
@@ -116,17 +99,17 @@ export default function WriteFileNodeProperties({ formData, onChange }: Props) {
     setSuccessMessage(null)
     
     try {
-      const response = await fetch("http://localhost:5000/api/file-operations/write", {
+      const response = await fetch("http://localhost:30010/api/file-operations/write", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          fileName: formData.fileName,
-          textContent: formData.textContent || "",
-          addLineSeparator: formData.addLineSeparator || false,
-          encoding: formData.encoding || "utf-8",
-          label: formData.label
+          provider: formData.provider,
+          format: formData.format,
+          path: formData.path,
+          mode: formData.mode,
+          options: {},  // Send empty options
         }),
       })
 
@@ -144,10 +127,10 @@ export default function WriteFileNodeProperties({ formData, onChange }: Props) {
           status: "success",
           output: {
             ...data,
-            fullName: data.fileName || formData.fileName,
-            fileName: data.fileName?.split("/").pop() || formData.fileName.split("/").pop(),
+            fullName: data.fileName || formData.path,
+            fileName: data.fileName?.split("/").pop() || formData.path.split("/").pop(),
             location: data.fileName?.substring(0, data.fileName.lastIndexOf("/")) || 
-                      formData.fileName.substring(0, formData.fileName.lastIndexOf("/")),
+                      formData.path.substring(0, formData.path.lastIndexOf("/")),
             size: data.size,
             lastModified: data.lastModified,
             success: true
@@ -166,7 +149,7 @@ export default function WriteFileNodeProperties({ formData, onChange }: Props) {
           error: errorMessage,
           output: { 
             error: errorMessage,
-            fileName: formData.fileName,
+            path: formData.path,
             success: false
           }
         })
@@ -178,81 +161,67 @@ export default function WriteFileNodeProperties({ formData, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Node Label */}
-      {/* <div className="space-y-2">
-        <Label htmlFor="label">Node Label</Label>
-        <Input
-          id="label"
-          value={formData.label || ""}
-          placeholder="Node label (e.g., Write Config File)"
-          onChange={(e) => onChange("label", e.target.value)}
-        />
-      </div> */}
-
-      {/* File Name */}
+      {/* Provider */}
       <div className="space-y-2">
-        <Label htmlFor="fileName">File Name</Label>
+        <Label htmlFor="provider">Provider</Label>
         <Input
-          id="fileName"
-          value={formData.fileName || ""}
-          placeholder="path/to/file.txt"
-          onChange={(e) => onChange("fileName", e.target.value)}
+          id="provider"
+          value={formData.provider || ""}
+          placeholder="e.g., local"
+          onChange={(e) => onChange("provider", e.target.value)}
         />
         <p className="text-xs text-gray-500">
           {writeFileSchema.inputSchema[0].description}
-          {writeFileSchema.inputSchema[0].required && " (Required)"}
         </p>
       </div>
 
-      {/* Text Content */}
+      {/* Format */}
       <div className="space-y-2">
-        <Label htmlFor="textContent">Content</Label>
-        <Textarea
-          id="textContent"
-          value={formData.textContent || ""}
-          placeholder="File content..."
-          className="min-h-[150px]"
-          onChange={(e) => onChange("textContent", e.target.value)}
+        <Label htmlFor="format">Format</Label>
+        <Input
+          id="format"
+          value={formData.format || ""}
+          placeholder="e.g., xml, json, csv"
+          onChange={(e) => onChange("format", e.target.value)}
         />
         <p className="text-xs text-gray-500">
           {writeFileSchema.inputSchema[1].description}
         </p>
       </div>
 
-      {/* Encoding */}
+      {/* Path */}
       <div className="space-y-2">
-        <Label htmlFor="encoding">Encoding</Label>
+        <Label htmlFor="path">File Path</Label>
         <Input
-          id="encoding"
-          value={formData.encoding || ""}
-          placeholder="UTF-8"
-          onChange={(e) => onChange("encoding", e.target.value)}
+          id="path"
+          value={formData.path || ""}
+          placeholder="path/to/output/file"
+          onChange={(e) => onChange("path", e.target.value)}
+        />
+        <p className="text-xs text-gray-500">
+          {writeFileSchema.inputSchema[2].description}
+        </p>
+      </div>
+
+      {/* Mode */}
+      <div className="space-y-2">
+        <Label htmlFor="mode">Mode</Label>
+        <Input
+          id="mode"
+          value={formData.mode || ""}
+          placeholder="overwrite or append"
+          onChange={(e) => onChange("mode", e.target.value)}
         />
         <p className="text-xs text-gray-500">
           {writeFileSchema.inputSchema[3].description}
         </p>
       </div>
 
-      {/* Add Line Separator */}
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="addLineSeparator"
-          checked={formData.addLineSeparator || false}
-          onCheckedChange={(checked) => onChange("addLineSeparator", checked)}
-        />
-        <Label htmlFor="addLineSeparator" className="text-sm font-normal">
-          Add line separator
-        </Label>
-      </div>
-      <p className="text-xs text-gray-500 -mt-2">
-        {writeFileSchema.inputSchema[2].description}
-      </p>
-
       {/* Write File Button */}
       <div>
         <Button 
           onClick={handleWriteFile} 
-          disabled={loading || !formData.fileName}
+          disabled={loading || !formData.provider || !formData.format || !formData.path || !formData.mode}
           className="bg-blue-500 hover:bg-blue-600 text-white"
         >
           {loading ? "Writing..." : "Write File"}
