@@ -405,7 +405,7 @@ export async function saveAndRunWorkflow(
   _currentWorkflowId: string | null,
   clientId = 1, // Default client ID
 ): Promise<boolean> {
-    const currentWorkflowId = "dag_test_bdaa1681";
+    const currentWorkflowId = "dag_ee_b8f2b21e";
   if (!currentWorkflowId) {
     toast({
       title: "Error",

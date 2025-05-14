@@ -368,7 +368,7 @@ export async function updateDag(
     console.log("Updating DAG:", JSON.stringify(data, null, 2))
 
     // Check if the URL needs to be adjusted with an /api prefix
-    const response = await fetch(`${baseUrl}/dags/dag_test_bdaa1681`, {
+    const response = await fetch(`${baseUrl}/dags/dag_ee_b8f2b21e`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -400,7 +400,7 @@ export async function triggerDagRun(dagId: string): Promise<any> {
     console.log("Triggering DAG run for:", dagId)
 
     // Try with the /api prefix
-    const response = await fetch(`${baseUrl}/dag_runs/dag_test_bdaa1681/trigger_run`, {
+    const response = await fetch(`${baseUrl}/dag_runs/dag_ee_b8f2b21e/trigger_run`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
