@@ -1,7 +1,7 @@
-// // Services/file-conversion-service.ts
+// services/file-conversion-service.ts
 import { toast } from "@/components/ui/use-toast"
 
-const baseUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT
+const baseUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT || "http://localhost:30010"
 
 export interface FileConversionConfig {
   input: {
@@ -39,10 +39,10 @@ export async function createFileConversionConfig(
   config: FileConversionConfig,
 ): Promise<FileConversionConfigResponse | null> {
   try {
-    console.log("Creating file conversion config:", JSON.stringify(config, null, 2))
+    console.log(`Creating file conversion config for client ID: ${clientId}`)
+    console.log("Config details:", JSON.stringify(config, null, 2))
 
-    // Check if the URL needs to be adjusted with an /api prefix
-    const response = await fetch(`${baseUrl}/clients/1/file_conversion_configs`, {
+    const response = await fetch(`${baseUrl}/clients/${clientId}/file_conversion_configs`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -84,10 +84,10 @@ export async function updateDag(
   },
 ): Promise<any> {
   try {
-    console.log("Updating DAG:", JSON.stringify(data, null, 2))
+    console.log(`Updating DAG with ID: ${dagId}`)
+    console.log("Update data:", JSON.stringify(data, null, 2))
 
-    // Check if the URL needs to be adjusted with an /api prefix
-    const response = await fetch(`${baseUrl}/dags/dag_ee_b8f2b21e`, {
+    const response = await fetch(`${baseUrl}/dags/${dagId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -104,7 +104,7 @@ export async function updateDag(
     console.log("DAG updated successfully:", result)
     return result
   } catch (error) {
-    console.error("Error updating DAG:", error)
+    console.error(`Error updating DAG ${dagId}:`, error)
     toast({
       title: "Error",
       description: error instanceof Error ? error.message : "Failed to update DAG",
@@ -116,18 +116,14 @@ export async function updateDag(
 
 export async function triggerDagRun(dagId: string): Promise<any> {
   try {
-    console.log("Triggering DAG run for:", dagId)
+    console.log(`Triggering DAG run for ID: ${dagId}`)
 
-    // Try with the /api prefix
-    const response = await fetch(`${baseUrl}/dag_runs/dag_ee_b8f2b21e/trigger_run`, {
+    const response = await fetch(`${baseUrl}/dag_runs/${dagId}/trigger_run`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        // Send an empty object or required configuration
-         // Optional: Add this if necessary
-      }),
+      body: JSON.stringify({}),
     })
 
     if (!response.ok) {
@@ -139,7 +135,7 @@ export async function triggerDagRun(dagId: string): Promise<any> {
     console.log("DAG run triggered successfully:", result)
     return result
   } catch (error) {
-    console.error("Error triggering DAG run:", error)
+    console.error(`Error triggering DAG run for ${dagId}:`, error)
     toast({
       title: "Error",
       description: error instanceof Error ? error.message : "Failed to trigger DAG run",

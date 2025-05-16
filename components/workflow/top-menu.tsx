@@ -36,36 +36,42 @@ export function TopMenu({
 
   const [isSaving, setIsSaving] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
+// In top-menu.tsx, update handleCreateClient:
+const handleCreateClient = async () => {
+  if (!clientName) return;
 
-  const handleCreateClient = async () => {
-    if (!clientName) return
+  setIsSubmitting(true);
+  setErrorMessage("");
 
-    setIsSubmitting(true)
-    setErrorMessage("")
+  try {
+    const created = await createClient({ name: clientName });
 
-    try {
-      const created = await createClient({ name: clientName })
-
-      if (!created) {
-        throw new Error("Client creation returned null")
-      }
-
-      setCreatedClient(created)
-      setClientName("")
-    } catch (error: unknown) {
-      console.error("Failed to create client:", error)
-      if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
-        setErrorMessage("Cannot connect to the API server. Please ensure the backend service is accessible.")
-      } else if (error instanceof Error) {
-        setErrorMessage(`Error: ${error.message}`)
-      } else {
-        setErrorMessage("An unknown error occurred.")
-      }
-    } finally {
-      setIsSubmitting(false)
+    if (!created) {
+      throw new Error("Client creation returned null");
     }
-  }
 
+    // Store client in localStorage
+    localStorage.setItem("currentClient", JSON.stringify({
+      id: created.id,
+      name: created.name,
+      createdAt: new Date().toISOString()
+    }));
+
+    setCreatedClient(created);
+    setClientName("");
+  } catch (error: unknown) {
+    console.error("Failed to create client:", error);
+    if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+      setErrorMessage("Cannot connect to the API server. Please ensure the backend service is accessible.");
+    } else if (error instanceof Error) {
+      setErrorMessage(`Error: ${error.message}`);
+    } else {
+      setErrorMessage("An unknown error occurred.");
+    }
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   const handleSave = async () => {
     setIsSaving(true)
     try {

@@ -16,9 +16,10 @@ import {DAG} from "@/services/interface"
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onWorkflowCreated: (id: string, name: string) => void; // Add this
 }
 
-const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose }) => {
+const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose, onWorkflowCreated }) => {
   const [name, setName] = useState("");
   const [cronSchedule, setCronSchedule] = useState("");
 
@@ -43,14 +44,8 @@ const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose }) => {
       dag_sequence: [], // Replace with your actual sequence data if needed
     };
 
-    // --- Add this log ---
     console.log("WorkflowModal: Payload being sent to createDAG service:", newDAGPayload);
-    // --- End log ---
 
-    // The createDAG function expects a DAG type.
-    // The `newDAGPayload` object is structurally compatible with the properties
-    // it needs for creation (name, active, dag_sequence, and optional schedule, created_at, updated_at).
-    // Casting with `as DAG` tells TypeScript to trust that this object is suitable.
     const res = await createDAG(newDAGPayload as DAG); 
     
     if (res) {
@@ -58,9 +53,12 @@ const WorkflowModal: FC<ModalProps> = ({ isOpen, onClose }) => {
       setName(""); 
       setCronSchedule(""); 
       onClose();
+      // Call the callback with the workflow ID and name
+      if (res.dag_id) {
+        onWorkflowCreated(res.dag_id, name);
+      }
     } else {
       alert("Failed to save workflow.");
-      // Optionally log the payload again on failure for debugging
       console.error("Failed to save workflow. Payload was:", newDAGPayload);
     }
   };
