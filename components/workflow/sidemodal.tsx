@@ -1,7 +1,7 @@
 //sidemodal.tsx 
 "use client"  
 import { useState, useEffect } from "react"
-import {Play, FileText, FileInput, FileOutput, Copy, CheckCircle, X, Search, ChevronDown, ChevronRight, FolderPlus, File, FileEdit, FilePlus2, FolderOpen, Trash2, Files, Clock, Server, Send, Globe, FileCode, FileJson, ArrowLeft, Database,FilePenLine} from "lucide-react"
+import {Play, Filter,FileText, FileInput, FileOutput, Copy, CheckCircle, X, Search, ChevronDown, ChevronRight, FolderPlus, File, FileEdit, FilePlus2, FolderOpen, Trash2, Files, Clock, Server, Send, Globe, FileCode, FileJson, ArrowLeft, Database,FilePenLine} from "lucide-react"
 
 import  { NodeType } from "@/services/interface";
 
@@ -170,6 +170,13 @@ const nodeTypes: NodeTypeDefinition[] = [
     icon: <CheckCircle className="h-5 w-5 text-red-600" />,
     description: "End point of the workflow",
     category: "general"
+  },
+  {
+  type: "filter",
+  label: "Filter",
+  icon: <Filter className="h-5 w-5 text-orange-500" />,
+  description: "Filters data based on specified conditions",
+  category: "data"
   },
 ]
 

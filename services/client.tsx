@@ -3,9 +3,6 @@ import { URLS } from "./url";
 import {Client} from "@/services/interface";
 import { ClientCreateResponse } from "@/services/interface";
 
-
-
-
 export async function fetchClients(): Promise<Client[] | null> {
     try {
       const res = await fetch(buildUrl(URLS.listCreateClients));
@@ -42,9 +39,6 @@ export async function fetchClients(): Promise<Client[] | null> {
       return null;
     }
   }
-  
-  
-
 
   export async function deleteClient(clientId: string | number): Promise<boolean> {
     try {

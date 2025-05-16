@@ -1,4 +1,4 @@
-// // //node-modal.tsx
+//node-modal.tsx
 "use client";
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
@@ -25,6 +25,8 @@ import HTTPSendResponseNodeProperties,{httpSendResponseSchema} from "../node-pro
 import ParsedDataNodeProperties,{parseDataSchema} from "../node-properties/ParsedataNodeProperties";
 import RenderDataNodeProperties,{renderDataSchema} from "../node-properties/RenderdataNodeProperties";
 import RenameFileNodeProperties,{renameFileSchema} from "../node-properties/RenameFileNodeProperties";
+
+import FilterNodeProperties, { filterSchema } from "../node-properties/FilterNodeProperties"
 
 import {
   Tooltip,
@@ -54,11 +56,12 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "file":FileNodeProperties,
   "parse-data": ParsedDataNodeProperties,
   "render-data": RenderDataNodeProperties,
+  "filter":FilterNodeProperties,
 };
 
 // Component-specific schemas - use these instead of getNodeSchema for these node types
 const componentSchemas: Record<string, any> = {
-
+  "filter":filterSchema,
   "read-file": readFileSchema,
   "write-file": writeFileSchema,
   "delete-file": deleteFileSchema,
@@ -79,7 +82,6 @@ const componentSchemas: Record<string, any> = {
   "send-http-response": httpSendResponseSchema,
   "parse-data": parseDataSchema,
   "render-data": renderDataSchema,
-
   // Add other component-specific schemas here as they're implemented
 };
 
@@ -286,21 +288,6 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
                     <code>{createSchemaJson(nodeSchema.inputSchema)}</code>
                   </pre>
                   <div className="mt-3 space-y-2">
-                    {/* {nodeSchema.inputSchema.map((param, index) => (
-                      <TooltipProvider key={index}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center text-sm cursor-help">
-                              <span className="text-blue-600 font-mono">{param.name}</span>
-                              {param.required && <span className="text-red-500 ml-1">*</span>}
-                              <span className="text-gray-500 ml-2">({param.datatype})</span>
-                            </div>
-                          </TooltipTrigger>
-                          {renderParameterTooltip(param)}
-                        </Tooltip>
-                      </TooltipProvider>
-                    ))} */}
-
                     {nodeSchema.inputSchema.map((param, index) => {
                       const value = formData[param.name];
 

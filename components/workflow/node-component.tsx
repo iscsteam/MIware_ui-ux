@@ -1,62 +1,673 @@
+// //node-component.tsx
+// "use client";
+// import type React from "react";
+// import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+// import { useState, useEffect, useRef, useCallback } from "react";
+// import {
+//   Play,
+//   Power,
+//   Trash2,
+//   MoreHorizontal,
+//   AlignJustify,
+// } from "lucide-react";
+// import { type WorkflowNode, useWorkflow } from "./workflow-context";
+// import { getNodeIcon } from "./node-utils";
+// import { Button } from "@/components/ui/button";
+// import { Input } from "@/components/ui/input";
+// import {
+//   Tooltip,
+//   TooltipContent,
+//   TooltipProvider,
+//   TooltipTrigger,
+// } from "@/components/ui/tooltip";
+// import {
+//   Dialog,
+//   DialogContent,
+//   DialogHeader,
+//   DialogTitle,
+//   DialogFooter,
+// } from "@/components/ui/dialog";
+// import { NodeType } from "@/services/interface";
+// import SchemaModal from "./SchemaModal"; // Adjust path
+
+// // --- Interfaces ---
+// interface NodeComponentProps {
+
+//   node: WorkflowNode;
+//   selected: boolean;
+//   isConnecting: boolean;
+
+//   onSelect: () => void;
+
+//   onExecuteNode: (nodeId: string) => void;
+//   // onOpenProperties: (nodeId: string) => void
+//   onDragStart: (nodeId: string, e: React.MouseEvent) => void; // Renamed for clarity
+
+//   onOpenProperties: (nodeId: string) => void;
+//   // --- NEW Callback Prop ---
+//   // onOpenSchemaModal: (nodeType: NodeType) => void;
+//   // onShowModal: () => void; // Remove if replaced by onOpenSchemaModal
+//   onOpenSchemaModal: (nodeId: string) => void;
+
+// }
+
+// interface LineCoords {
+//   id: string;
+//   x1: number;
+//   y1: number;
+//   x2: number;
+//   y2: number;
+// }
+
+// // --- Component ---
+// export function NodeComponent({
+//   node,
+//   selected,
+//   onSelect,
+//   onDragStart,
+//   onExecuteNode,
+//   onOpenProperties,
+//   onOpenSchemaModal,
+//   isConnecting,
+// }: NodeComponentProps) {
+//   // ... (existing hooks and state: useWorkflow, useState, nodeRef) ...
+//   const {
+//     removeNode,
+//     pendingConnection,
+//     setPendingConnection,
+//     addConnection,
+//     updateNode,
+//     nodes,
+//     connections,
+//   } = useWorkflow();
+
+//   const [isExpanded, setIsExpanded] = useState(false);
+//   const [isTreeModalOpen, setIsTreeModalOpen] = useState(false);
+//   const nodeRef = useRef<HTMLDivElement>(null);
+
+//   // --- Refs for Modal Elements ---
+//   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+//   const svgContainerRef = useRef<HTMLDivElement>(null);
+//   const svgRef = useRef<SVGSVGElement>(null);
+//   // Refs for the scrollable column containers themselves
+//   const inputColumnRef = useRef<HTMLDivElement>(null);
+//   const outputColumnRef = useRef<HTMLDivElement>(null);
+//   // Ref to track pending animation frame for scroll updates
+//   const scrollRafRef = useRef<number | null>(null);
+//   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+//   const [selectedNodeType, setSelectedNodeType] = useState<NodeType | null>(
+//     null
+//   );
+//   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+
+//   // --- State for Line Coordinates ---
+//   const [lines, setLines] = useState<LineCoords[]>([]);
+
+//   const [isFilenameDialogOpen, setIsFilenameDialogOpen] = useState(false);
+//   const [tempFilename, setTempFilename] = useState(node.data?.displayName || "");
+
+//   // --- Callback ref function to populate fieldRefs ---
+//   const registerFieldRef = useCallback(
+//     (key: string, element: HTMLDivElement | null) => {
+//       fieldRefs.current[key] = element;
+//     },
+//     []
+//   );
+
+//   // --- Function to Calculate Line Coordinates ---
+//   const calculateLines = useCallback(() => {
+//     // Added check for column refs as well, though svgRef implies they should exist if modal is open
+//     if (
+//       !isTreeModalOpen ||
+//       !svgRef.current ||
+//       !inputColumnRef.current ||
+//       !outputColumnRef.current
+//     ) {
+//       setLines([]);
+//       return;
+//     }
+
+//     const inputSchema = node.data?.inputSchema;
+//     const outputSchema = node.data?.outputSchema;
+//     const newLines: LineCoords[] = [];
+
+//     if (
+//       !inputSchema ||
+//       !outputSchema ||
+//       typeof inputSchema !== "object" ||
+//       typeof outputSchema !== "object"
+//     ) {
+//       setLines([]);
+//       return;
+//     }
+
+//     const svgRect = svgRef.current.getBoundingClientRect();
+//     if (svgRect.width === 0 || svgRect.height === 0) {
+//       // console.warn("SVG Rect has zero dimensions, skipping calculation.");
+//       return; // Avoid errors if SVG isn't rendered yet
+//     }
+
+//     // --- Mapping Logic (Back to: 1:1 by matching name) ---
+//     Object.keys(inputSchema).forEach((inputFieldName) => {
+//       // Check if the output schema has a property with the exact same name
+//       if (Object.prototype.hasOwnProperty.call(outputSchema, inputFieldName)) {
+//         const outputFieldName = inputFieldName; // Names match
+
+//         const inputFieldKey = `input-${inputFieldName}`;
+//         const outputFieldKey = `output-${outputFieldName}`;
+
+//         const inputEl = fieldRefs.current[inputFieldKey];
+//         const outputEl = fieldRefs.current[outputFieldKey];
+
+//         if (inputEl && outputEl) {
+//           const inputRect = inputEl.getBoundingClientRect();
+//           const outputRect = outputEl.getBoundingClientRect();
+
+//           // Crucially, getBoundingClientRect() *already* gives position relative to viewport,
+//           // accounting for parent scroll. We just need to make it relative to the SVG's origin.
+//           const x1 = inputRect.right - svgRect.left;
+//           const y1 = inputRect.top + inputRect.height / 2 - svgRect.top;
+//           const x2 = outputRect.left - svgRect.left;
+//           const y2 = outputRect.top + outputRect.height / 2 - svgRect.top;
+
+//           // Optimization: Only add lines if they are potentially visible within the SVG bounds
+//           const svgHeight = svgRect.height;
+//           if (
+//             (y1 >= 0 && y1 <= svgHeight) || // start point visible
+//             (y2 >= 0 && y2 <= svgHeight) || // End point visible
+//             (y1 < 0 && y2 > svgHeight) || // Line crosses from top to bottom
+//             (y2 < 0 && y1 > svgHeight) // Line crosses from bottom to top
+//           ) {
+//             // Use the original line ID format based on the matching field name
+//             newLines.push({ id: `line-${inputFieldName}`, x1, y1, x2, y2 });
+//           }
+//         }
+//       }
+//     }); // End loop through input fields
+
+//     setLines(newLines);
+//     // console.log("Lines recalculated (matching names only)"); // Debugging
+//   }, [isTreeModalOpen, node.data?.inputSchema, node.data?.outputSchema]); // Dependencies include schemas
+
+//   // --- Effect for Initial Calculation, Resize, and SCROLL ---
+//   useEffect(() => {
+//     if (isTreeModalOpen) {
+//       // --- Initial calculation ---
+//       // Use RAF to wait for layout after modal opens
+//       const initialRafId = requestAnimationFrame(() => {
+//         calculateLines();
+//       });
+
+//       // --- Scroll Handler ---
+//       // Use RAF to throttle calculations during scroll
+//       const handleScroll = () => {
+//         if (scrollRafRef.current === null) {
+//           // Only request if no frame is pending
+//           scrollRafRef.current = requestAnimationFrame(() => {
+//             calculateLines();
+//             scrollRafRef.current = null; // Allow next request
+//           });
+//         }
+//       };
+
+//       // --- Resize Handler ---
+//       // Use RAF for resize as well
+//       let resizeRafId: number | null = null;
+//       const handleResize = () => {
+//         if (resizeRafId) cancelAnimationFrame(resizeRafId);
+//         resizeRafId = requestAnimationFrame(() => {
+//           calculateLines();
+//         });
+//       };
+
+//       // Get stable references to column elements for listener cleanup
+//       const inputColEl = inputColumnRef.current;
+//       const outputColEl = outputColumnRef.current;
+
+//       // Attach listeners
+//       window.addEventListener("resize", handleResize);
+//       inputColEl?.addEventListener("scroll", handleScroll, { passive: true }); // Use passive for better scroll perf
+//       outputColEl?.addEventListener("scroll", handleScroll, { passive: true });
+
+//       // --- Cleanup ---
+//       return () => {
+//         // console.log("Cleaning up modal listeners"); // Debugging
+//         window.removeEventListener("resize", handleResize);
+//         inputColEl?.removeEventListener("scroll", handleScroll);
+//         outputColEl?.removeEventListener("scroll", handleScroll);
+
+//         // Cancel any pending animation frames
+//         cancelAnimationFrame(initialRafId);
+//         if (scrollRafRef.current !== null) {
+//           cancelAnimationFrame(scrollRafRef.current);
+//           scrollRafRef.current = null;
+//         }
+//         if (resizeRafId) {
+//           cancelAnimationFrame(resizeRafId);
+//         }
+
+//         // Clear refs and lines
+//         fieldRefs.current = {};
+//         setLines([]);
+//       };
+//     }
+//     // No 'else' needed, cleanup handles everything when isTreeModalOpen becomes false
+//   }, [isTreeModalOpen, calculateLines]); // Effect depends on modal state and the stable calculateLines function
+
+//   // --- Keep Existing Handlers (handleOutputPortClick, handleInputPortClick, etc.) ---
+//   const handleOutputPortClick = (e: React.MouseEvent) => {
+//     e.stopPropagation();
+//     setPendingConnection({ sourceId: node.id });
+//   };
+
+//   const handleInputPortClick = (e: React.MouseEvent) => {
+//     e.stopPropagation();
+//     if (pendingConnection && pendingConnection.sourceId !== node.id) {
+//       addConnection(pendingConnection.sourceId, node.id);
+//       setPendingConnection(null);
+//     } else {
+//       setPendingConnection(null);
+//     }
+//   };
+
+//   const handleDeactivateNode = (e: React.MouseEvent) => {
+//     e.stopPropagation();
+//     const isCurrentlyActive = node.data?.active !== false;
+//     updateNode(node.id, { data: { ...node.data, active: !isCurrentlyActive } });
+//     // Add rerouting logic if needed
+//     if (isCurrentlyActive) {
+//       const incomingConnections = connections.filter(
+//         (conn) => conn.targetId === node.id
+//       );
+//       const outgoingConnections = connections.filter(
+//         (conn) => conn.sourceId === node.id
+//       );
+//       incomingConnections.forEach((incoming) => {
+//         outgoingConnections.forEach((outgoing) => {
+//           if (
+//             !connections.some(
+//               (c) =>
+//                 c.sourceId === incoming.sourceId &&
+//                 c.targetId === outgoing.targetId
+//             )
+//           ) {
+//             addConnection(incoming.sourceId, outgoing.targetId);
+//           }
+//         });
+//       });
+//       // Consider removing original connections depending on desired deactivation behavior
+//     }
+//   };
+
+//   const handleDeleteWithRerouting = (e: React.MouseEvent) => {
+//     e.stopPropagation();
+
+//     const incomingConnections = connections.filter(
+//       (conn) => conn.targetId === node.id
+//     );
+//     const outgoingConnections = connections.filter(
+//       (conn) => conn.sourceId === node.id
+//     );
+//     incomingConnections.forEach((incoming) => {
+//       outgoingConnections.forEach((outgoing) => {
+//         if (
+//           !connections.some(
+//             (c) =>
+//               c.sourceId === incoming.sourceId &&
+//               c.targetId === outgoing.targetId
+//           )
+//         ) {
+//           addConnection(incoming.sourceId, outgoing.targetId);
+//         }
+//       });
+//     });
+//     removeNode(node.id);
+//   };
+
+//   const getNodeLabel = () => {
+//     return (
+//       node.data?.label ||
+//       node.type
+//         .split("-")
+//         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+//         .join(" ")
+//     );
+//   };
+
+//   const getNodeBackgroundColor = () => {
+//     if (node.type === "start") return "bg-white";
+//     if (node.type === "end") return "bg-white";
+//     return "bg-white";
+//   };
+
+//   const handleOpenTreeModal = (e: React.MouseEvent) => {
+//     e.stopPropagation();
+//     fieldRefs.current = {}; // Clear previous refs
+//     setLines([]); // Clear previous lines
+//     setIsTreeModalOpen(true);
+//     // Calculation now happens in useEffect after render
+//   };
+
+//   const handleNodeClick = (nodeId: string, nodeType: NodeType) => {
+//     console.log(`Node clicked: ID=${nodeId}, Type=${nodeType}`);
+//     setSelectedNodeType(nodeType);
+//     setIsModalOpen(true);
+//   };
+
+//   // Handler function with type
+//   const handleCloseModal = (): void => {
+//     setIsModalOpen(false);
+//     setSelectedNodeType(null); // Reset selected type when closing
+//   };
+
+//   // Add handler for filename click
+//   const handleFilenameClick = (e: React.MouseEvent) => {
+//     if (node.type !== "start" && node.type !== "end") {
+//       e.stopPropagation();
+//       setTempFilename(node.data?.displayName || "");
+//       setIsFilenameDialogOpen(true);
+//     }
+//   };
+
+//   // Add handler for saving filename
+//   const handleSaveFilename = () => {
+//     updateNode(node.id, {
+//       data: {
+//         ...node.data,
+//         displayName: tempFilename,
+//       },
+//     });
+//     setIsFilenameDialogOpen(false);
+//   };
+
+//   // Handle icon double-click to open properties panel
+//   const handleIconClick = (e: React.MouseEvent) => {
+//     e.stopPropagation();
+//     onSelect(); // Still select the node on single click
+
+//     // We'll use the double-click event directly on the icon
+//   };
+
+//   // Handle double-click on the icon to open properties
+//   const handleIconDoubleClick = (e: React.MouseEvent) => {
+//     e.stopPropagation()
+//     onOpenProperties(node.id)
+//   }
+
+//   // Function to format filename path for display
+//   const formatFilename = (filename: string | undefined): string => {
+//     if (!filename) return "Filename";
+   
+
+//     // If filename is short enough, return it as is
+//     if (filename.length <= 20) return filename;
+    
+
+//     // For longer paths, show just the filename part
+//     const parts = filename.split(/[/\\]/);
+//     const filenameOnly = parts[parts.length - 1];
+   
+//     // If just the filename is too long, truncate it
+//     if (filenameOnly.length > 15) {
+//       return filenameOnly.substring(0, 12) + "...";
+      
+//     }
+
+//     // Otherwise show directory/.../filename format
+//     if (parts.length > 2) {
+//       return parts[0] + "/.../" + filenameOnly;
+//     }
+//     return filename;
+//   };
+
+//   return (
+//     <>
+//       {/* --- Node Visual Representation (Unchanged) --- */}
+//       <div
+//         className="absolute group"
+//         style={{ left: node.position.x, top: node.position.y }}
+//       >
+//         {/* Node action buttons (Unchanged) */}
+//         <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-auto flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+//           <div className="flex bg-gray-200 rounded-md shadow-sm gap-2 p-1">
+//             <TooltipProvider delayDuration={100}>
+//               <Tooltip>
+//                 <TooltipTrigger asChild>
+//                   <Button
+//                     variant="ghost"
+//                     size="icon"
+//                     className="node-action h-4 w-4 rounded-l-md bg-gray-200 hover:bg-gray-300"
+//                     onClick={(e) => {
+//                       e.stopPropagation();
+//                       onExecuteNode(node.id);
+//                     }}
+//                   >
+//                     <Play className="h-2 w-2" />
+//                   </Button>
+//                 </TooltipTrigger>
+//                 <TooltipContent>Execute node</TooltipContent>
+//               </Tooltip>
+
+//               <Tooltip>
+//                 <TooltipTrigger asChild>
+//                   <Button
+//                     variant="ghost"
+//                     size="icon"
+//                     className="node-action h-4 w-4  bg-gray-200 hover:bg-gray-300"
+//                     onClick={handleDeactivateNode}
+//                   >
+//                     <Power className="h-2 w-2" />
+//                   </Button>
+//                 </TooltipTrigger>
+//                 <TooltipContent>
+//                   {node.data?.active === false
+//                     ? "Activate node"
+//                     : "Deactivate node"}
+//                 </TooltipContent>
+//               </Tooltip>
+
+//               <Tooltip>
+//                 <TooltipTrigger asChild>
+//                   <Button
+//                     variant="ghost"
+//                     size="icon"
+//                     className="node-action h-4 w-4  bg-gray-200 hover:bg-gray-300"
+//                     onClick={handleDeleteWithRerouting}
+//                   >
+//                     <Trash2 className="h-2 w-2" />
+//                   </Button>
+//                 </TooltipTrigger>
+//                 <TooltipContent>Delete node</TooltipContent>
+//               </Tooltip>
+
+//               <Tooltip>
+//                 <TooltipTrigger asChild>
+//                   <Button
+//                     variant="ghost"
+//                     size="icon"
+//                     className="node-action h-4 w-4 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md"
+//                     onClick={(e) => {
+//                       e.stopPropagation();
+//                       console.log(
+//                         "[NodeComponent] Opening schema modal for node ID:",
+//                         node.id
+//                       ); // Keep or remove log
+//                       onOpenSchemaModal(node.id); // --- Pass node.id ---
+//                     }}
+//                     aria-label="Open Data Mapping"
+//                   >
+//                     <AlignJustify className="h-4 w-4" />
+//                   </Button>
+//                 </TooltipTrigger>
+//                 <TooltipContent>Data Mapping</TooltipContent>
+//               </Tooltip>
+
+            
+//             </TooltipProvider>
+//           </div>
+//         </div>
+
+//         {/* Node body with header and body sections */}
+//         <div
+//           ref={nodeRef}
+//           onClick={(e) => {
+//             e.stopPropagation();
+//             onSelect();
+//             e.stopPropagation();
+//             onSelect();
+//           }}
+//           // onClick={handleIconClick}
+//           onDoubleClick={handleIconDoubleClick}
+//           className={`relative flex flex-col rounded-lg border-2 ${getNodeBackgroundColor()} shadow-lg transition-all duration-150 ease-in-out w-[100px] min-h-[60px] cursor-grab ${
+//             selected ? "border-blue-500" : ""
+//           } ${isConnecting ? "border-sky-500 dark:border-sky-400" : ""} ${
+//             node.data?.active === false ? "opacity-60 brightness-90" : ""
+//           } hover:shadow-xl`}
+//           onMouseDown={(e) => {
+//             const target = e.target as HTMLElement;
+//             if (
+//               e.button === 0 &&
+//               !target.closest(".port") &&
+//               !target.closest(".node-action")
+//             ) {
+//               onDragStart(node.id, e);
+//             }
+//           }}
+//           title={`Type: ${node.type}\nID: ${node.id}`}
+//         >
+//           {/* Header section with node label */}
+//           <div className="text-center text-sm font-medium border-b p-1 bg-gray-100 rounded-t-md">
+//             {node.data?.label || getNodeLabel()}
+//           </div>
+
+//           {/* Body section with icon */}
+//           <div className="flex flex-1 items-center justify-center p-2">
+//             <div className="flex h-12 w-12 items-center justify-center text-zinc-600">
+//               {getNodeIcon(node.type)}
+//             </div>
+//             {node.status !== "idle" && (
+//               <div className="absolute top-2 right-1">
+//                 {node.status === "success" && (
+//                   <CheckCircle className="h-3 w-3 text-green-500" />
+//                 )}
+//                 {node.status === "error" && (
+//                   <XCircle className="h-4 w-4 text-red-500" />
+//                 )}
+//                 {node.status === "running" && (
+//                   <Loader2 className="h-4 w-4 text-yellow-500 animate-spin" />
+//                 )}
+//               </div>
+//             )}
+//           </div>
+
+//           {/* Output port */}
+//           {node.type !== "end" && (
+//             <div
+//               className={`port absolute right-0 top-1/2 h-5 w-5 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
+//                 pendingConnection && pendingConnection.sourceId === node.id
+//                   ? "ring-2 ring-blue-500 scale-125 bg-primary"
+//                   : ""
+//               }`}
+//               onClick={handleOutputPortClick}
+//               title="Click to start connection"
+//             />
+//           )}
+
+//           {/* Input port */}
+//           {node.type !== "start" && (
+//             <div
+//               className={`port absolute left-0 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
+
+//                 pendingConnection && pendingConnection.sourceId !== node.id
+//                   ? "ring-2 ring-blue-500 animate-pulse"
+//                   : ""
+//               }`}
+//               onClick={handleInputPortClick}
+//               title={
+//                 pendingConnection
+//                   ? "Click to complete connection"
+//                   : "Input port"
+//               }
+              
+//             />
+//           )}
+//         </div>
+//         {/* Filename display below the node */}
+//         {node.type !== "start" && node.type !== "end" && (
+//           <div
+//             className="text-center text-xs mt-1 cursor-pointer hover:text-blue-500 max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap"
+//             onClick={handleFilenameClick}
+//             title={node.data?.displayName || "Filename"}
+//           >
+//             {formatFilename(node.data?.displayName)}
+//           </div>
+//         )}
+//       </div>
+
+//       {/* Filename Dialog */}
+//       <Dialog
+//         open={isFilenameDialogOpen}
+//         onOpenChange={setIsFilenameDialogOpen}
+//       >
+//         <DialogContent>
+//           <DialogHeader>
+//             <DialogTitle>Edit Filename</DialogTitle>
+//           </DialogHeader>
+//           <Input
+//             value={tempFilename}
+//             onChange={(e) => setTempFilename(e.target.value)}
+//             placeholder="Enter filename"
+//           />
+//           <DialogFooter>
+//             <Button onClick={handleSaveFilename}>Save</Button>
+//           </DialogFooter>
+//         </DialogContent>
+//       </Dialog>
+//     </>
+//   );
+// }
+
+
 //node-component.tsx
-"use client";
-import type React from "react";
-import { CheckCircle, XCircle, Loader2 } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  Play,
-  Power,
-  Trash2,
-  MoreHorizontal,
-  AlignJustify,
-} from "lucide-react";
-import { type WorkflowNode, useWorkflow } from "./workflow-context";
-import { getNodeIcon } from "./node-utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { NodeType } from "@/services/interface";
-import SchemaModal from "./SchemaModal"; // Adjust path
+"use client"
+import type React from "react"
+import { CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { Play, Power, Trash2, AlignJustify } from "lucide-react"
+import { type WorkflowNode, useWorkflow } from "./workflow-context" // Ensure removeConnection is exported from here
+import { getNodeIcon } from "./node-utils"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import type { NodeType } from "@/services/interface"
 
 // --- Interfaces ---
 interface NodeComponentProps {
+  node: WorkflowNode
+  selected: boolean
+  isConnecting: boolean
 
-  node: WorkflowNode;
-  selected: boolean;
-  isConnecting: boolean;
+  onSelect: () => void
 
-  onSelect: () => void;
-
-  onExecuteNode: (nodeId: string) => void;
+  onExecuteNode: (nodeId: string) => void
   // onOpenProperties: (nodeId: string) => void
-  onDragStart: (nodeId: string, e: React.MouseEvent) => void; // Renamed for clarity
+  onDragStart: (nodeId: string, e: React.MouseEvent) => void // Renamed for clarity
 
-  onOpenProperties: (nodeId: string) => void;
+  onOpenProperties: (nodeId: string) => void
   // --- NEW Callback Prop ---
   // onOpenSchemaModal: (nodeType: NodeType) => void;
   // onShowModal: () => void; // Remove if replaced by onOpenSchemaModal
-  onOpenSchemaModal: (nodeId: string) => void;
-
+  onOpenSchemaModal: (nodeId: string) => void
 }
 
 interface LineCoords {
-  id: string;
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
+  id: string
+  x1: number
+  y1: number
+  x2: number
+  y2: number
 }
 
 // --- Component ---
@@ -70,7 +681,6 @@ export function NodeComponent({
   onOpenSchemaModal,
   isConnecting,
 }: NodeComponentProps) {
-  // ... (existing hooks and state: useWorkflow, useState, nodeRef) ...
   const {
     removeNode,
     pendingConnection,
@@ -79,251 +689,188 @@ export function NodeComponent({
     updateNode,
     nodes,
     connections,
-  } = useWorkflow();
+    removeConnection, // <<<---- ADDED removeConnection HERE
+  } = useWorkflow()
 
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isTreeModalOpen, setIsTreeModalOpen] = useState(false);
-  const nodeRef = useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isTreeModalOpen, setIsTreeModalOpen] = useState(false)
+  const nodeRef = useRef<HTMLDivElement>(null)
 
   // --- Refs for Modal Elements ---
-  const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const svgContainerRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
+  const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const svgContainerRef = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
   // Refs for the scrollable column containers themselves
-  const inputColumnRef = useRef<HTMLDivElement>(null);
-  const outputColumnRef = useRef<HTMLDivElement>(null);
+  const inputColumnRef = useRef<HTMLDivElement>(null)
+  const outputColumnRef = useRef<HTMLDivElement>(null)
   // Ref to track pending animation frame for scroll updates
-  const scrollRafRef = useRef<number | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const scrollRafRef = useRef<number | null>(null)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
 
-  const [selectedNodeType, setSelectedNodeType] = useState<NodeType | null>(
-    null
-  );
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [selectedNodeType, setSelectedNodeType] = useState<NodeType | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
 
   // --- State for Line Coordinates ---
-  const [lines, setLines] = useState<LineCoords[]>([]);
+  const [lines, setLines] = useState<LineCoords[]>([])
 
-  const [isFilenameDialogOpen, setIsFilenameDialogOpen] = useState(false);
-  const [tempFilename, setTempFilename] = useState(node.data?.displayName || "");
+  const [isFilenameDialogOpen, setIsFilenameDialogOpen] = useState(false)
+  const [tempFilename, setTempFilename] = useState(node.data?.displayName || "")
 
   // --- Callback ref function to populate fieldRefs ---
-  const registerFieldRef = useCallback(
-    (key: string, element: HTMLDivElement | null) => {
-      fieldRefs.current[key] = element;
-    },
-    []
-  );
+  const registerFieldRef = useCallback((key: string, element: HTMLDivElement | null) => {
+    fieldRefs.current[key] = element
+  }, [])
 
   // --- Function to Calculate Line Coordinates ---
   const calculateLines = useCallback(() => {
-    // Added check for column refs as well, though svgRef implies they should exist if modal is open
-    if (
-      !isTreeModalOpen ||
-      !svgRef.current ||
-      !inputColumnRef.current ||
-      !outputColumnRef.current
-    ) {
-      setLines([]);
-      return;
+    if (!isTreeModalOpen || !svgRef.current || !inputColumnRef.current || !outputColumnRef.current) {
+      setLines([])
+      return
     }
 
-    const inputSchema = node.data?.inputSchema;
-    const outputSchema = node.data?.outputSchema;
-    const newLines: LineCoords[] = [];
+    const inputSchema = node.data?.inputSchema
+    const outputSchema = node.data?.outputSchema
+    const newLines: LineCoords[] = []
 
-    if (
-      !inputSchema ||
-      !outputSchema ||
-      typeof inputSchema !== "object" ||
-      typeof outputSchema !== "object"
-    ) {
-      setLines([]);
-      return;
+    if (!inputSchema || !outputSchema || typeof inputSchema !== "object" || typeof outputSchema !== "object") {
+      setLines([])
+      return
     }
 
-    const svgRect = svgRef.current.getBoundingClientRect();
+    const svgRect = svgRef.current.getBoundingClientRect()
     if (svgRect.width === 0 || svgRect.height === 0) {
-      // console.warn("SVG Rect has zero dimensions, skipping calculation.");
-      return; // Avoid errors if SVG isn't rendered yet
+      return
     }
 
-    // --- Mapping Logic (Back to: 1:1 by matching name) ---
     Object.keys(inputSchema).forEach((inputFieldName) => {
-      // Check if the output schema has a property with the exact same name
       if (Object.prototype.hasOwnProperty.call(outputSchema, inputFieldName)) {
-        const outputFieldName = inputFieldName; // Names match
+        const outputFieldName = inputFieldName
 
-        const inputFieldKey = `input-${inputFieldName}`;
-        const outputFieldKey = `output-${outputFieldName}`;
+        const inputFieldKey = `input-${inputFieldName}`
+        const outputFieldKey = `output-${outputFieldName}`
 
-        const inputEl = fieldRefs.current[inputFieldKey];
-        const outputEl = fieldRefs.current[outputFieldKey];
+        const inputEl = fieldRefs.current[inputFieldKey]
+        const outputEl = fieldRefs.current[outputFieldKey]
 
         if (inputEl && outputEl) {
-          const inputRect = inputEl.getBoundingClientRect();
-          const outputRect = outputEl.getBoundingClientRect();
+          const inputRect = inputEl.getBoundingClientRect()
+          const outputRect = outputEl.getBoundingClientRect()
 
-          // Crucially, getBoundingClientRect() *already* gives position relative to viewport,
-          // accounting for parent scroll. We just need to make it relative to the SVG's origin.
-          const x1 = inputRect.right - svgRect.left;
-          const y1 = inputRect.top + inputRect.height / 2 - svgRect.top;
-          const x2 = outputRect.left - svgRect.left;
-          const y2 = outputRect.top + outputRect.height / 2 - svgRect.top;
+          const x1 = inputRect.right - svgRect.left
+          const y1 = inputRect.top + inputRect.height / 2 - svgRect.top
+          const x2 = outputRect.left - svgRect.left
+          const y2 = outputRect.top + outputRect.height / 2 - svgRect.top
 
-          // Optimization: Only add lines if they are potentially visible within the SVG bounds
-          const svgHeight = svgRect.height;
+          const svgHeight = svgRect.height
           if (
-            (y1 >= 0 && y1 <= svgHeight) || // start point visible
-            (y2 >= 0 && y2 <= svgHeight) || // End point visible
-            (y1 < 0 && y2 > svgHeight) || // Line crosses from top to bottom
-            (y2 < 0 && y1 > svgHeight) // Line crosses from bottom to top
+            (y1 >= 0 && y1 <= svgHeight) ||
+            (y2 >= 0 && y2 <= svgHeight) ||
+            (y1 < 0 && y2 > svgHeight) ||
+            (y2 < 0 && y1 > svgHeight)
           ) {
-            // Use the original line ID format based on the matching field name
-            newLines.push({ id: `line-${inputFieldName}`, x1, y1, x2, y2 });
+            newLines.push({ id: `line-${inputFieldName}`, x1, y1, x2, y2 })
           }
         }
       }
-    }); // End loop through input fields
+    })
 
-    setLines(newLines);
-    // console.log("Lines recalculated (matching names only)"); // Debugging
-  }, [isTreeModalOpen, node.data?.inputSchema, node.data?.outputSchema]); // Dependencies include schemas
+    setLines(newLines)
+  }, [isTreeModalOpen, node.data?.inputSchema, node.data?.outputSchema])
 
   // --- Effect for Initial Calculation, Resize, and SCROLL ---
   useEffect(() => {
     if (isTreeModalOpen) {
-      // --- Initial calculation ---
-      // Use RAF to wait for layout after modal opens
       const initialRafId = requestAnimationFrame(() => {
-        calculateLines();
-      });
+        calculateLines()
+      })
 
-      // --- Scroll Handler ---
-      // Use RAF to throttle calculations during scroll
       const handleScroll = () => {
         if (scrollRafRef.current === null) {
-          // Only request if no frame is pending
           scrollRafRef.current = requestAnimationFrame(() => {
-            calculateLines();
-            scrollRafRef.current = null; // Allow next request
-          });
+            calculateLines()
+            scrollRafRef.current = null
+          })
         }
-      };
+      }
 
-      // --- Resize Handler ---
-      // Use RAF for resize as well
-      let resizeRafId: number | null = null;
+      let resizeRafId: number | null = null
       const handleResize = () => {
-        if (resizeRafId) cancelAnimationFrame(resizeRafId);
+        if (resizeRafId) cancelAnimationFrame(resizeRafId)
         resizeRafId = requestAnimationFrame(() => {
-          calculateLines();
-        });
-      };
+          calculateLines()
+        })
+      }
 
-      // Get stable references to column elements for listener cleanup
-      const inputColEl = inputColumnRef.current;
-      const outputColEl = outputColumnRef.current;
+      const inputColEl = inputColumnRef.current
+      const outputColEl = outputColumnRef.current
 
-      // Attach listeners
-      window.addEventListener("resize", handleResize);
-      inputColEl?.addEventListener("scroll", handleScroll, { passive: true }); // Use passive for better scroll perf
-      outputColEl?.addEventListener("scroll", handleScroll, { passive: true });
+      window.addEventListener("resize", handleResize)
+      inputColEl?.addEventListener("scroll", handleScroll, { passive: true })
+      outputColEl?.addEventListener("scroll", handleScroll, { passive: true })
 
-      // --- Cleanup ---
       return () => {
-        // console.log("Cleaning up modal listeners"); // Debugging
-        window.removeEventListener("resize", handleResize);
-        inputColEl?.removeEventListener("scroll", handleScroll);
-        outputColEl?.removeEventListener("scroll", handleScroll);
-
-        // Cancel any pending animation frames
-        cancelAnimationFrame(initialRafId);
+        window.removeEventListener("resize", handleResize)
+        inputColEl?.removeEventListener("scroll", handleScroll)
+        outputColEl?.removeEventListener("scroll", handleScroll)
+        cancelAnimationFrame(initialRafId)
         if (scrollRafRef.current !== null) {
-          cancelAnimationFrame(scrollRafRef.current);
-          scrollRafRef.current = null;
+          cancelAnimationFrame(scrollRafRef.current)
+          scrollRafRef.current = null
         }
         if (resizeRafId) {
-          cancelAnimationFrame(resizeRafId);
+          cancelAnimationFrame(resizeRafId)
         }
-
-        // Clear refs and lines
-        fieldRefs.current = {};
-        setLines([]);
-      };
+        fieldRefs.current = {}
+        setLines([])
+      }
     }
-    // No 'else' needed, cleanup handles everything when isTreeModalOpen becomes false
-  }, [isTreeModalOpen, calculateLines]); // Effect depends on modal state and the stable calculateLines function
+  }, [isTreeModalOpen, calculateLines])
 
-  // --- Keep Existing Handlers (handleOutputPortClick, handleInputPortClick, etc.) ---
   const handleOutputPortClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setPendingConnection({ sourceId: node.id });
-  };
+    e.stopPropagation()
+    setPendingConnection({ sourceId: node.id })
+  }
 
   const handleInputPortClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+    e.stopPropagation()
     if (pendingConnection && pendingConnection.sourceId !== node.id) {
-      addConnection(pendingConnection.sourceId, node.id);
-      setPendingConnection(null);
+      addConnection(pendingConnection.sourceId, node.id)
+      setPendingConnection(null)
     } else {
-      setPendingConnection(null);
+      setPendingConnection(null)
     }
-  };
+  }
 
   const handleDeactivateNode = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const isCurrentlyActive = node.data?.active !== false;
-    updateNode(node.id, { data: { ...node.data, active: !isCurrentlyActive } });
-    // Add rerouting logic if needed
+    e.stopPropagation()
+    const isCurrentlyActive = node.data?.active !== false
+    updateNode(node.id, { data: { ...node.data, active: !isCurrentlyActive } })
     if (isCurrentlyActive) {
-      const incomingConnections = connections.filter(
-        (conn) => conn.targetId === node.id
-      );
-      const outgoingConnections = connections.filter(
-        (conn) => conn.sourceId === node.id
-      );
+      const incomingConnections = connections.filter((conn) => conn.targetId === node.id)
+      const outgoingConnections = connections.filter((conn) => conn.sourceId === node.id)
       incomingConnections.forEach((incoming) => {
         outgoingConnections.forEach((outgoing) => {
-          if (
-            !connections.some(
-              (c) =>
-                c.sourceId === incoming.sourceId &&
-                c.targetId === outgoing.targetId
-            )
-          ) {
-            addConnection(incoming.sourceId, outgoing.targetId);
+          if (!connections.some((c) => c.sourceId === incoming.sourceId && c.targetId === outgoing.targetId)) {
+            addConnection(incoming.sourceId, outgoing.targetId)
           }
-        });
-      });
-      // Consider removing original connections depending on desired deactivation behavior
+        })
+      })
     }
-  };
+  }
 
   const handleDeleteWithRerouting = (e: React.MouseEvent) => {
-    e.stopPropagation();
-
-    const incomingConnections = connections.filter(
-      (conn) => conn.targetId === node.id
-    );
-    const outgoingConnections = connections.filter(
-      (conn) => conn.sourceId === node.id
-    );
+    e.stopPropagation()
+    const incomingConnections = connections.filter((conn) => conn.targetId === node.id)
+    const outgoingConnections = connections.filter((conn) => conn.sourceId === node.id)
     incomingConnections.forEach((incoming) => {
       outgoingConnections.forEach((outgoing) => {
-        if (
-          !connections.some(
-            (c) =>
-              c.sourceId === incoming.sourceId &&
-              c.targetId === outgoing.targetId
-          )
-        ) {
-          addConnection(incoming.sourceId, outgoing.targetId);
+        if (!connections.some((c) => c.sourceId === incoming.sourceId && c.targetId === outgoing.targetId)) {
+          addConnection(incoming.sourceId, outgoing.targetId)
         }
-      });
-    });
-    removeNode(node.id);
-  };
+      })
+    })
+    removeNode(node.id)
+  }
 
   const getNodeLabel = () => {
     return (
@@ -332,103 +879,120 @@ export function NodeComponent({
         .split("-")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ")
-    );
-  };
+    )
+  }
 
   const getNodeBackgroundColor = () => {
-    if (node.type === "start") return "bg-white";
-    if (node.type === "end") return "bg-white";
-    return "bg-white";
-  };
+    if (node.type === "start") return "bg-white"
+    if (node.type === "end") return "bg-white"
+    return "bg-white"
+  }
 
   const handleOpenTreeModal = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    fieldRefs.current = {}; // Clear previous refs
-    setLines([]); // Clear previous lines
-    setIsTreeModalOpen(true);
-    // Calculation now happens in useEffect after render
-  };
+    e.stopPropagation()
+    fieldRefs.current = {}
+    setLines([])
+    setIsTreeModalOpen(true)
+  }
 
   const handleNodeClick = (nodeId: string, nodeType: NodeType) => {
-    console.log(`Node clicked: ID=${nodeId}, Type=${nodeType}`);
-    setSelectedNodeType(nodeType);
-    setIsModalOpen(true);
-  };
+    setSelectedNodeType(nodeType)
+    setIsModalOpen(true)
+  }
 
-  // Handler function with type
   const handleCloseModal = (): void => {
-    setIsModalOpen(false);
-    setSelectedNodeType(null); // Reset selected type when closing
-  };
+    setIsModalOpen(false)
+    setSelectedNodeType(null)
+  }
 
-  // Add handler for filename click
   const handleFilenameClick = (e: React.MouseEvent) => {
     if (node.type !== "start" && node.type !== "end") {
-      e.stopPropagation();
-      setTempFilename(node.data?.displayName || "");
-      setIsFilenameDialogOpen(true);
+      e.stopPropagation()
+      setTempFilename(node.data?.displayName || "")
+      setIsFilenameDialogOpen(true)
     }
-  };
+  }
 
-  // Add handler for saving filename
   const handleSaveFilename = () => {
-    updateNode(node.id, {
+    const nodeId = tempFilename.replace(/[^a-zA-Z0-9_]/g, "_")
+    const safeId = /^[a-zA-Z_]/.test(nodeId) ? nodeId : `node_${nodeId}`
+    const oldId = node.id
+
+    const updatedNode = {
+      ...node,
+      id: safeId,
       data: {
         ...node.data,
         displayName: tempFilename,
       },
-    });
-    setIsFilenameDialogOpen(false);
-  };
+    }
 
-  // Handle icon double-click to open properties panel
+    updateNode(oldId, updatedNode)
+
+    // Important: Make sure your connections have unique IDs (conn.id)
+    // And that removeConnection expects this ID.
+    // If removeConnection expects sourceId and targetId, you'll need to adjust.
+    connections.forEach((conn) => {
+      let connectionModified = false
+      let newSourceId = conn.sourceId
+      let newTargetId = conn.targetId
+
+      if (conn.sourceId === oldId) {
+        newSourceId = safeId
+        connectionModified = true
+      }
+      if (conn.targetId === oldId) {
+        newTargetId = safeId
+        connectionModified = true
+      }
+
+      if (connectionModified) {
+        // Assuming removeConnection takes the connection's unique ID.
+        // If your connections don't have a unique 'id' property, or
+        // if removeConnection takes (sourceId, targetId), you'll need to adapt this part.
+        if (conn.id) { // Check if conn.id exists
+          removeConnection(conn.id)
+          addConnection(newSourceId, newTargetId) // Consider if addConnection should assign a new ID
+        } else {
+          console.warn("Connection object missing 'id' property. Cannot reliably update connection.", conn)
+          // Fallback or alternative logic if conn.id is not present.
+          // For example, if removeConnection takes source and target:
+          // removeConnection(conn.sourceId, conn.targetId); // Using old IDs for removal
+          // addConnection(newSourceId, newTargetId);
+        }
+      }
+    })
+
+    setIsFilenameDialogOpen(false)
+  }
+
   const handleIconClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelect(); // Still select the node on single click
+    e.stopPropagation()
+    onSelect()
+  }
 
-    // We'll use the double-click event directly on the icon
-  };
-
-  // Handle double-click on the icon to open properties
   const handleIconDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     onOpenProperties(node.id)
   }
 
-  // Function to format filename path for display
   const formatFilename = (filename: string | undefined): string => {
-    if (!filename) return "Filename";
-   
-
-    // If filename is short enough, return it as is
-    if (filename.length <= 20) return filename;
-    
-
-    // For longer paths, show just the filename part
-    const parts = filename.split(/[/\\]/);
-    const filenameOnly = parts[parts.length - 1];
-   
-    // If just the filename is too long, truncate it
+    if (!filename) return "Filename"
+    if (filename.length <= 20) return filename
+    const parts = filename.split(/[/\\]/)
+    const filenameOnly = parts[parts.length - 1]
     if (filenameOnly.length > 15) {
-      return filenameOnly.substring(0, 12) + "...";
-      
+      return filenameOnly.substring(0, 12) + "..."
     }
-
-    // Otherwise show directory/.../filename format
     if (parts.length > 2) {
-      return parts[0] + "/.../" + filenameOnly;
+      return parts[0] + "/.../" + filenameOnly
     }
-    return filename;
-  };
+    return filename
+  }
 
   return (
     <>
-      {/* --- Node Visual Representation (Unchanged) --- */}
-      <div
-        className="absolute group"
-        style={{ left: node.position.x, top: node.position.y }}
-      >
-        {/* Node action buttons (Unchanged) */}
+      <div className="absolute group" style={{ left: node.position.x, top: node.position.y }}>
         <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-auto flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <div className="flex bg-gray-200 rounded-md shadow-sm gap-2 p-1">
             <TooltipProvider delayDuration={100}>
@@ -439,8 +1003,8 @@ export function NodeComponent({
                     size="icon"
                     className="node-action h-4 w-4 rounded-l-md bg-gray-200 hover:bg-gray-300"
                     onClick={(e) => {
-                      e.stopPropagation();
-                      onExecuteNode(node.id);
+                      e.stopPropagation()
+                      onExecuteNode(node.id)
                     }}
                   >
                     <Play className="h-2 w-2" />
@@ -460,11 +1024,7 @@ export function NodeComponent({
                     <Power className="h-2 w-2" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
-                  {node.data?.active === false
-                    ? "Activate node"
-                    : "Deactivate node"}
-                </TooltipContent>
+                <TooltipContent>{node.data?.active === false ? "Activate node" : "Deactivate node"}</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -488,12 +1048,8 @@ export function NodeComponent({
                     size="icon"
                     className="node-action h-4 w-4 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-r-md"
                     onClick={(e) => {
-                      e.stopPropagation();
-                      console.log(
-                        "[NodeComponent] Opening schema modal for node ID:",
-                        node.id
-                      ); // Keep or remove log
-                      onOpenSchemaModal(node.id); // --- Pass node.id ---
+                      e.stopPropagation()
+                      onOpenSchemaModal(node.id)
                     }}
                     aria-label="Open Data Mapping"
                   >
@@ -502,22 +1058,16 @@ export function NodeComponent({
                 </TooltipTrigger>
                 <TooltipContent>Data Mapping</TooltipContent>
               </Tooltip>
-
-            
             </TooltipProvider>
           </div>
         </div>
 
-        {/* Node body with header and body sections */}
         <div
           ref={nodeRef}
           onClick={(e) => {
-            e.stopPropagation();
-            onSelect();
-            e.stopPropagation();
-            onSelect();
+            e.stopPropagation()
+            onSelect()
           }}
-          // onClick={handleIconClick}
           onDoubleClick={handleIconDoubleClick}
           className={`relative flex flex-col rounded-lg border-2 ${getNodeBackgroundColor()} shadow-lg transition-all duration-150 ease-in-out w-[100px] min-h-[60px] cursor-grab ${
             selected ? "border-blue-500" : ""
@@ -525,43 +1075,34 @@ export function NodeComponent({
             node.data?.active === false ? "opacity-60 brightness-90" : ""
           } hover:shadow-xl`}
           onMouseDown={(e) => {
-            const target = e.target as HTMLElement;
-            if (
-              e.button === 0 &&
-              !target.closest(".port") &&
-              !target.closest(".node-action")
-            ) {
-              onDragStart(node.id, e);
+            const target = e.target as HTMLElement
+            if (e.button === 0 && !target.closest(".port") && !target.closest(".node-action")) {
+              onDragStart(node.id, e)
             }
           }}
           title={`Type: ${node.type}\nID: ${node.id}`}
         >
-          {/* Header section with node label */}
           <div className="text-center text-sm font-medium border-b p-1 bg-gray-100 rounded-t-md">
             {node.data?.label || getNodeLabel()}
           </div>
 
-          {/* Body section with icon */}
           <div className="flex flex-1 items-center justify-center p-2">
-            <div className="flex h-12 w-12 items-center justify-center text-zinc-600">
+            <div
+              className="flex h-12 w-12 items-center justify-center text-zinc-600"
+              // onClick={handleIconClick} // Single click handled by parent for selection
+              // onDoubleClick={handleIconDoubleClick} // Double click now on parent for properties
+            >
               {getNodeIcon(node.type)}
             </div>
             {node.status !== "idle" && (
               <div className="absolute top-2 right-1">
-                {node.status === "success" && (
-                  <CheckCircle className="h-3 w-3 text-green-500" />
-                )}
-                {node.status === "error" && (
-                  <XCircle className="h-4 w-4 text-red-500" />
-                )}
-                {node.status === "running" && (
-                  <Loader2 className="h-4 w-4 text-yellow-500 animate-spin" />
-                )}
+                {node.status === "success" && <CheckCircle className="h-3 w-3 text-green-500" />}
+                {node.status === "error" && <XCircle className="h-4 w-4 text-red-500" />}
+                {node.status === "running" && <Loader2 className="h-4 w-4 text-yellow-500 animate-spin" />}
               </div>
             )}
           </div>
 
-          {/* Output port */}
           {node.type !== "end" && (
             <div
               className={`port absolute right-0 top-1/2 h-5 w-5 -translate-y-1/2 translate-x-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
@@ -574,26 +1115,16 @@ export function NodeComponent({
             />
           )}
 
-          {/* Input port */}
           {node.type !== "start" && (
             <div
               className={`port absolute left-0 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-background bg-gray-400 hover:bg-primary hover:scale-110 transition-transform ${
-
-                pendingConnection && pendingConnection.sourceId !== node.id
-                  ? "ring-2 ring-blue-500 animate-pulse"
-                  : ""
+                pendingConnection && pendingConnection.sourceId !== node.id ? "ring-2 ring-blue-500 animate-pulse" : ""
               }`}
               onClick={handleInputPortClick}
-              title={
-                pendingConnection
-                  ? "Click to complete connection"
-                  : "Input port"
-              }
-              
+              title={pendingConnection ? "Click to complete connection" : "Input port"}
             />
           )}
         </div>
-        {/* Filename display below the node */}
         {node.type !== "start" && node.type !== "end" && (
           <div
             className="text-center text-xs mt-1 cursor-pointer hover:text-blue-500 max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap"
@@ -605,25 +1136,17 @@ export function NodeComponent({
         )}
       </div>
 
-      {/* Filename Dialog */}
-      <Dialog
-        open={isFilenameDialogOpen}
-        onOpenChange={setIsFilenameDialogOpen}
-      >
+      <Dialog open={isFilenameDialogOpen} onOpenChange={setIsFilenameDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Filename</DialogTitle>
           </DialogHeader>
-          <Input
-            value={tempFilename}
-            onChange={(e) => setTempFilename(e.target.value)}
-            placeholder="Enter filename"
-          />
+          <Input value={tempFilename} onChange={(e) => setTempFilename(e.target.value)} placeholder="Enter filename" />
           <DialogFooter>
             <Button onClick={handleSaveFilename}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
-  );
+  )
 }

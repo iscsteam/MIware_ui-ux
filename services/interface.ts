@@ -3,6 +3,7 @@
 // Define the possible node types
 
 export type NodeType =
+  | "filter"
   | "start"
   | "end"
   | "file"
