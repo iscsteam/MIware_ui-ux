@@ -77,3 +77,17 @@ export async function deleteDAG(dagId: string): Promise<boolean> {
     return false;
   }
 }
+export async function getDAGById(dagId: string): Promise<DAG | null> {
+  try {
+    const res = await fetch(buildUrl(URLS.manageDAG(dagId)))
+    if (!res.ok) {
+      const errorText = await res.text()
+      console.error(`Failed to fetch DAG with ID ${dagId}. Status: ${res.status}. Response: ${errorText}`)
+      throw new Error(`Failed to fetch DAG with ID ${dagId}. Status: ${res.status}`)
+    }
+    return await res.json()
+  } catch (error) {
+    console.error("Error in getDAGById:", error)
+    throw error // Re-throw to allow handling by the caller
+  }
+}
