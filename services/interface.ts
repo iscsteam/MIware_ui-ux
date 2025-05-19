@@ -66,6 +66,7 @@ export interface DAG {
   active: boolean;
   dag_sequence: object[];
   active_dag_run?: number | null;
+  client_id?:number;
 }
 
 
@@ -118,6 +119,9 @@ export interface Connection {
 export interface Client {
   id?: number;
   name: string;
+  dag_id?: string;
+  trigger_id?: string;
+  
 }
 export interface ClientCreateResponse {
   id: number;
@@ -128,6 +132,17 @@ export interface ClientCreateResponse {
   file_conversion_configs: any[];
   read_salesforce_configs: any[];
   write_salesforce_configs: any[];
+}
+
+
+
+
+export interface ClientWithStatus {
+  id: number;
+  name: string;
+  dag_id: string;
+  trigger_id: string;
+  dag_status: string;
 }
 
 
@@ -226,4 +241,61 @@ interface NodeComponentProps {
   onExecuteNode: (nodeId: string) => void
   onOpenProperties: (nodeId: string) => void
   onOpenSchemaModal: (nodeId: string) => void
+}
+
+
+
+export interface FileConversionConfig {
+  input: {
+    provider: string;
+    format: string;
+    path: string;
+    options?: Record<string, any>;
+  };
+  output: {
+    provider: string;
+    format: string;
+    path: string;
+    mode: string; // Make sure 'mode' is part of your WorkflowNodeData if used from there
+    options?: Record<string, any>;
+  };
+  spark_config?: {
+    executor_instances: number;
+    executor_cores: number;
+    executor_memory: string;
+    driver_memory: string;
+    driver_cores: number;
+  };
+  dag_id?: string; // This is good to have for association
+}
+
+
+// DagRun type (from previous example, adjust if necessary)
+export interface DagRun {
+  id: number; // This is the trigger_id or dag_run_id
+  dag_id: string;
+  status: "running" | "completed" | "failed" | "success" | string;
+  start_time: string;
+  end_time: string | null;
+  trigger_type: "manual" | "scheduled" | string;
+  error_message: string | null;
+  dag_run_map: Record<string, DagRunMapEntry>; // Assuming DagRunMapEntry is defined
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DagRunMapEntry {
+  status: string;
+  events: any[]; // Define more specifically if possible
+  stage_details: any; // Define more specifically if possible
+}
+
+
+export interface DAGStatusResponse {
+  dag_id: string;
+  trigger_id: string;
+  status: string; // e.g., "success", "running", "failed"
+  started_at?: string;
+  ended_at?: string;
+  logs?: string;
 }
