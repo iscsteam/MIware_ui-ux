@@ -1,3 +1,4 @@
+//schema-mapper.ts
 // Schema mapper service to map node properties to file conversion payload
 import type { WorkflowNode } from "@/components/workflow/workflow-context"
 
