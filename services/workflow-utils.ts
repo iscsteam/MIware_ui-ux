@@ -1,7 +1,7 @@
-
 // // Utility functions for workflow operations
 // import type { WorkflowNode, NodeConnection } from "../components/workflow/workflow-context"
 // import { createFileConversionConfig, updateDag, triggerDagRun } from "@/services/file-conversion-service"
+// import { createFileConversionConfigFromNodes } from "@/services/schema-mapper"
 // import { toast } from "@/components/ui/use-toast"
 
 // // Helper function to ensure Python-compatible IDs
@@ -17,30 +17,27 @@
 //   return safeId
 // }
 
-// // Default spark config
-// const DEFAULT_SPARK_CONFIG = {
-//   executor_instances: 1,
-//   executor_cores: 1,
-//   executor_memory: "512m",
-//   driver_memory: "512m",
-//   driver_cores: 1,
-// }
-
 // export async function saveAndRunWorkflow(
 //   nodes: WorkflowNode[],
 //   connections: NodeConnection[],
 //   _currentWorkflowId: string | null,
 //   clientId = 1, // Default client ID
 // ): Promise<boolean> {
-//   const currentWorkflowId = "dag_sample_47220ca3"
+//   // Get the current workflow ID from localStorage
+//   let currentWorkflowId
+//   try {
+//     const workflowData = localStorage.getItem("currentWorkflow")
+//     if (workflowData) {
+//       const parsed = JSON.parse(workflowData)
+//       currentWorkflowId = parsed.dag_id
+//     }
+//   } catch (error) {
+//     console.error("Error getting current workflow ID:", error)
+//   }
 
+//   // If no workflow ID is found, use the default one
 //   if (!currentWorkflowId) {
-//     toast({
-//       title: "Error",
-//       description: "No active workflow to save. Please create a workflow first.",
-//       variant: "destructive",
-//     })
-//     return false
+//     currentWorkflowId = "dag_sample_47220ca3"
 //   }
 
 //   if (nodes.length === 0) {
@@ -53,9 +50,10 @@
 //   }
 
 //   try {
-//     // 1. Find read and write file nodes
+//     // 1. Find read, write, and filter file nodes
 //     const readFileNodes = nodes.filter((node) => node.type === "read-file")
 //     const writeFileNodes = nodes.filter((node) => node.type === "write-file")
+//     const filterNodes = nodes.filter((node) => node.type === "filter")
 
 //     if (readFileNodes.length === 0 || writeFileNodes.length === 0) {
 //       toast({
@@ -69,37 +67,15 @@
 //     // Log the nodes for debugging
 //     console.log("Read file nodes:", readFileNodes)
 //     console.log("Write file nodes:", writeFileNodes)
+//     console.log("Filter nodes:", filterNodes)
 
-//     // 2. Create file conversion configs for each read-write pair
-//     const configPromises = []
-//     const nodeConfigMap = new Map()
-
-//     // For simplicity, let's just connect the first read node to the first write node
-//     // This can be enhanced later to follow actual connections
+//     // 2. Create file conversion configs using our schema mapper
 //     const readNode = readFileNodes[0]
 //     const writeNode = writeFileNodes[0]
+//     const filterNode = filterNodes.length > 0 ? filterNodes[0] : null
 
-//     // Create a single config for the read-write pair
-//     const config = {
-//       input: {
-//         provider: readNode.data?.provider || "local",
-//         format: readNode.data?.format || "csv",
-//         path: readNode.data?.path || "", // Use path instead of filename
-//         options: {
-//           rowTag: "Record",
-//           rootTag: "Records",
-//         },
-//       },
-//       output: {
-//         provider: writeNode.data?.provider || "local",
-//         format: writeNode.data?.format || "json",
-//         path: writeNode.data?.path || "", // Use path instead of filename
-//         mode: writeNode.data?.mode || "overwrite",
-//         options: {},
-//       },
-//       spark_config: DEFAULT_SPARK_CONFIG,
-//       dag_id: currentWorkflowId,
-//     }
+//     // Create a config with dynamic values from the nodes
+//     const config = createFileConversionConfigFromNodes(readNode, writeNode, filterNode, currentWorkflowId)
 
 //     // Add validation before creating the config
 //     if (!config.input.path) {
@@ -119,6 +95,8 @@
 //       })
 //       return false
 //     }
+
+//     console.log("Creating file conversion config with:", config)
 
 //     // Create file conversion config
 //     const configResponse = await createFileConversionConfig(clientId, config)
@@ -235,7 +213,7 @@
 
 //   // Follow connections
 //   for (const conn of connections) {
-//     if (conn.sourceId === startNodeId) {
+//     if (conn.sourceId === startNodeId){
 //       const nodesInPath = findWriteNodesInPath(conn.targetId, nodes, connections, visited)
 //       writeNodes.push(...nodesInPath)
 //     }
@@ -245,11 +223,13 @@
 // }
 
 
-//new Changes
+
+
 // Utility functions for workflow operations
 import type { WorkflowNode, NodeConnection } from "../components/workflow/workflow-context"
 import { createFileConversionConfig, updateDag, triggerDagRun } from "@/services/file-conversion-service"
 import { createFileConversionConfigFromNodes } from "@/services/schema-mapper"
+import { createCliOperatorConfig, mapCopyFileToCliOperator } from "@/services/cli-operator-service"
 import { toast } from "@/components/ui/use-toast"
 
 // Helper function to ensure Python-compatible IDs
@@ -298,63 +278,6 @@ export async function saveAndRunWorkflow(
   }
 
   try {
-    // 1. Find read, write, and filter file nodes
-    const readFileNodes = nodes.filter((node) => node.type === "read-file")
-    const writeFileNodes = nodes.filter((node) => node.type === "write-file")
-    const filterNodes = nodes.filter((node) => node.type === "filter")
-
-    if (readFileNodes.length === 0 || writeFileNodes.length === 0) {
-      toast({
-        title: "Error",
-        description: "Workflow must contain at least one read file and one write file node.",
-        variant: "destructive",
-      })
-      return false
-    }
-
-    // Log the nodes for debugging
-    console.log("Read file nodes:", readFileNodes)
-    console.log("Write file nodes:", writeFileNodes)
-    console.log("Filter nodes:", filterNodes)
-
-    // 2. Create file conversion configs using our schema mapper
-    const readNode = readFileNodes[0]
-    const writeNode = writeFileNodes[0]
-    const filterNode = filterNodes.length > 0 ? filterNodes[0] : null
-
-    // Create a config with dynamic values from the nodes
-    const config = createFileConversionConfigFromNodes(readNode, writeNode, filterNode, currentWorkflowId)
-
-    // Add validation before creating the config
-    if (!config.input.path) {
-      toast({
-        title: "Error",
-        description: `Read file node is missing a path. Please configure the node properly.`,
-        variant: "destructive",
-      })
-      return false
-    }
-
-    if (!config.output.path) {
-      toast({
-        title: "Error",
-        description: `Write file node is missing a path. Please configure the node properly.`,
-        variant: "destructive",
-      })
-      return false
-    }
-
-    console.log("Creating file conversion config with:", config)
-
-    // Create file conversion config
-    const configResponse = await createFileConversionConfig(clientId, config)
-    if (!configResponse) {
-      throw new Error("Failed to create file conversion config")
-    }
-
-    const configId = configResponse.id
-
-    // 3. Create DAG sequence
     // Find start and end nodes
     const startNodes = nodes.filter((node) => node.type === "start")
     const endNodes = nodes.filter((node) => node.type === "end")
@@ -368,33 +291,142 @@ export async function saveAndRunWorkflow(
       return false
     }
 
-    const startNodeId = makePythonSafeId(startNodes[0].id)
-    const fileNodeId = `file_node_${configId}`
-    const endNodeId = makePythonSafeId(endNodes[0].id)
+    // Check for the type of workflow
+    const readFileNodes = nodes.filter((node) => node.type === "read-file")
+    const writeFileNodes = nodes.filter((node) => node.type === "write-file")
+    const copyFileNodes = nodes.filter((node) => node.type === "copy-file")
+    const filterNodes = nodes.filter((node) => node.type === "filter")
 
-    // Create a simple linear sequence: start -> file_conversion -> end
-    const dagSequence = [
-      {
-        id: makePythonSafeId(startNodes[0].id),
-        type: "start",
-        config_id: 1, // Default config ID for start nodes
-        next: [`file_node_${configId}`],
-      },
-      {
-        id: `file_node_${configId}`,
-        type: "file_conversion", // This should match what your backend expects
-        config_id: configId,
-        next: [makePythonSafeId(endNodes[0].id)],
-      },
-      {
-        id: makePythonSafeId(endNodes[0].id),
-        type: "end",
-        config_id: 1, // Default config ID for end nodes
-        next: [],
-      },
-    ]
+    let dagSequence = []
+    let configId: number
 
-    // 4. Update DAG with sequence
+    // Handle file conversion workflow
+    if (readFileNodes.length > 0 && writeFileNodes.length > 0) {
+      // Create file conversion config
+      const readNode = readFileNodes[0]
+      const writeNode = writeFileNodes[0]
+      const filterNode = filterNodes.length > 0 ? filterNodes[0] : null
+
+      // Create a config with dynamic values from the nodes
+      const config = createFileConversionConfigFromNodes(readNode, writeNode, filterNode, currentWorkflowId)
+
+      // Add validation before creating the config
+      if (!config.input.path) {
+        toast({
+          title: "Error",
+          description: `Read file node is missing a path. Please configure the node properly.`,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      if (!config.output.path) {
+        toast({
+          title: "Error",
+          description: `Write file node is missing a path. Please configure the node properly.`,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      console.log("Creating file conversion config with:", config)
+
+      // Create file conversion config
+      const configResponse = await createFileConversionConfig(clientId, config)
+      if (!configResponse) {
+        throw new Error("Failed to create file conversion config")
+      }
+
+      configId = configResponse.id
+
+      // Create a simple linear sequence: start -> file_conversion -> end
+      dagSequence = [
+        {
+          id: makePythonSafeId(startNodes[0].id),
+          type: "start",
+          config_id: 1, // Default config ID for start nodes
+          next: [`file_node_${configId}`],
+        },
+        {
+          id: `file_node_${configId}`,
+          type: "file_conversion", // This should match what your backend expects
+          config_id: configId,
+          next: [makePythonSafeId(endNodes[0].id)],
+        },
+        {
+          id: makePythonSafeId(endNodes[0].id),
+          type: "end",
+          config_id: 1, // Default config ID for end nodes
+          next: [],
+        },
+      ]
+    }
+    // Handle CLI operator workflow (copy file)
+    else if (copyFileNodes.length > 0) {
+      const copyNode = copyFileNodes[0]
+
+      // Validate copy node data
+      if (!copyNode.data.source_path) {
+        toast({
+          title: "Error",
+          description: `Copy file node is missing a source path. Please configure the node properly.`,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      if (!copyNode.data.destination_path) {
+        toast({
+          title: "Error",
+          description: `Copy file node is missing a destination path. Please configure the node properly.`,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      // Map copy file node to CLI operator config
+      const cliConfig = mapCopyFileToCliOperator(copyNode)
+      console.log("Creating CLI operator config with:", cliConfig)
+
+      // Create CLI operator config
+      const configResponse = await createCliOperatorConfig(2, cliConfig) // Using client ID 2 as specified
+      if (!configResponse) {
+        throw new Error("Failed to create CLI operator config")
+      }
+
+      configId = configResponse.id
+
+      // Create a simple linear sequence: start -> cli_operator -> end
+      dagSequence = [
+        {
+          id: makePythonSafeId(startNodes[0].id),
+          type: "start",
+          config_id: 1, // Default config ID for start nodes
+          next: [`file_node_${configId}`],
+        },
+        {
+          id: `file_node_${configId}`,
+          type: "cli_operator", // CLI operator type
+          config_id: configId,
+          next: [makePythonSafeId(endNodes[0].id)],
+        },
+        {
+          id: makePythonSafeId(endNodes[0].id),
+          type: "end",
+          config_id: 1, // Default config ID for end nodes
+          next: [],
+        },
+      ]
+    } else {
+      toast({
+        title: "Error",
+        description: "Workflow must contain either read/write file nodes or a copy file node.",
+        variant: "destructive",
+      })
+      return false
+    }
+
+    // Update DAG with sequence
     const dagUpdateData = {
       dag_sequence: dagSequence,
       active: true,
@@ -405,7 +437,7 @@ export async function saveAndRunWorkflow(
       throw new Error("Failed to update DAG")
     }
 
-    // 5. Trigger DAG run
+    // Trigger DAG run
     try {
       const triggerResult = await triggerDagRun(currentWorkflowId)
       if (!triggerResult) {
@@ -461,7 +493,7 @@ function findWriteNodesInPath(
 
   // Follow connections
   for (const conn of connections) {
-    if (conn.sourceId === startNodeId){
+    if (conn.sourceId === startNodeId) {
       const nodesInPath = findWriteNodesInPath(conn.targetId, nodes, connections, visited)
       writeNodes.push(...nodesInPath)
     }

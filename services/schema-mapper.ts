@@ -1,3 +1,4 @@
+//schema-mapper.ts
 // Schema mapper service to map node properties to file conversion payload
 import type { WorkflowNode } from "@/components/workflow/workflow-context"
 
@@ -5,8 +6,8 @@ import type { WorkflowNode } from "@/components/workflow/workflow-context"
 export const DEFAULT_SPARK_CONFIG = {
   executor_instances: 1,
   executor_cores: 1,
-  executor_memory: "512m",
-  driver_memory: "512m",
+  executor_memory: "2g",
+  driver_memory: "2g",
   driver_cores: 1,
 }
 
@@ -22,10 +23,7 @@ export function mapReadFileToInput(readNode: WorkflowNode) {
     provider: readNode.data.provider || "local",
     format: readNode.data.format || "csv",
     path: readNode.data.path || "",
-    options: {
-      rowTag: "Record",
-      rootTag: "Records",
-    },
+    options: readNode.data.options || {},
   }
 
   // Add schema if available
@@ -52,7 +50,7 @@ export function mapWriteFileToOutput(writeNode: WorkflowNode) {
     format: writeNode.data.format || "csv",
     path: writeNode.data.path || "",
     mode: writeNode.data.mode || "overwrite",
-    options: {},
+    options: writeNode.data.options || {},
   }
 }
 

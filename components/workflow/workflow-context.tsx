@@ -1,6 +1,6 @@
-
-// // //workflow-context.tsx
+// //workflow-context.tsx
 // "use client"
+
 // import type React from "react"
 // import { createContext, useContext, useState, useCallback, useEffect } from "react"
 // import { v4 as uuidv4 } from "uuid"
@@ -8,8 +8,8 @@
 // import { useToast } from "@/components/ui/use-toast"
 // import { saveAndRunWorkflow as saveAndRunWorkflowUtil } from "@/services/workflow-utils"
 
-// //const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT
-// const baseurl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:30010"
+// const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT
+
 // export type NodeStatus = "idle" | "running" | "success" | "error"
 
 // export interface NodePosition {
@@ -156,7 +156,6 @@
 //   getNodeById: (id: string) => WorkflowNode | undefined
 //   getCurrentWorkflowId: () => string | null
 //   saveAndRunWorkflow: () => Promise<void>
-//   loadWorkflowById: (workflowId: string) => Promise<void>
 // }
 
 // const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined)
@@ -769,88 +768,7 @@
 //         localStorage.removeItem("workflowData") // Clear invalid data
 //       }
 //     }
-//   }, [loadWorkflow, nodes.length]) // Added nodes.length as dependency
-
-//   const convertDagSequenceToWorkflowData = useCallback((dagSequence: any[]) => {
-//     const nodes: WorkflowNode[] = []
-//     const connections: NodeConnection[] = []
-
-//     const nodeMap: Record<string, string> = {} // Map from dag_sequence id to WorkflowNode id
-
-//     // Create nodes
-//     dagSequence.forEach((dagNode) => {
-//       const nodeId = uuidv4() // Generate a unique ID for the node
-//       nodeMap[dagNode.id] = nodeId // Store the mapping
-
-//       const newNode: WorkflowNode = {
-//         id: nodeId,
-//         type: dagNode.type,
-//         position: { x: 100, y: 100 }, // Default position
-//         data: {
-//           label: dagNode.type,
-//           displayName: dagNode.id, // Use dag_sequence id as display name
-//           active: true,
-//           // Add other relevant data from dagNode here
-//         },
-//         status: "idle",
-//       }
-//       nodes.push(newNode)
-//     })
-
-//     // Create connections
-//     dagSequence.forEach((dagNode) => {
-//       const sourceId = nodeMap[dagNode.id]
-//       if (dagNode.next && Array.isArray(dagNode.next)) {
-//         dagNode.next.forEach((nextId: string) => {
-//           const targetId = nodeMap[nextId]
-//           if (sourceId && targetId) {
-//             const newConnection: NodeConnection = {
-//               id: uuidv4(),
-//               sourceId: sourceId,
-//               targetId: targetId,
-//             }
-//             connections.push(newConnection)
-//           }
-//         })
-//       }
-//     })
-
-//     return { nodes, connections }
-//   }, [])
-
-//   // Listen for workflow selection events
-//   useEffect(() => {
-//     const handleWorkflowSelected = (event: CustomEvent<any>) => {
-//       console.log("Workflow selected event received:", event.detail)
-
-//       // Clear current workflow data
-//       clearWorkflow()
-
-//       if (event.detail && event.detail.dag_sequence) {
-//         // Convert the dag_sequence to nodes and connections
-//         const { nodes: newNodes, connections: newConnections } = convertDagSequenceToWorkflowData(
-//           event.detail.dag_sequence,
-//         )
-
-//         // Load the new workflow
-//         setNodes(newNodes)
-//         setConnections(newConnections)
-
-//         // Save the new workflow data to localStorage
-//         localStorage.setItem("workflowData", JSON.stringify({ nodes: newNodes, connections: newConnections }))
-
-//         console.log("Workflow loaded from selection event")
-//       }
-//     }
-
-//     // Add event listener
-//     window.addEventListener("workflowSelected", handleWorkflowSelected as EventListener)
-
-//     // Clean up
-//     return () => {
-//       window.removeEventListener("workflowSelected", handleWorkflowSelected as EventListener)
-//     }
-//   }, [clearWorkflow, convertDagSequenceToWorkflowData])
+//   }, [loadWorkflow]) // Load only on initial mount or when loadWorkflow function identity changes
 
 //   // Update the saveAndRunWorkflow function to use the utility function
 //   const saveAndRunWorkflow = useCallback(async () => {
@@ -938,7 +856,8 @@
 //   }
 //   return context
 // }
-// //workflow-context.tsx
+
+//workflow-context.tsx
 "use client"
 import type React from "react"
 import { createContext, useContext, useState, useCallback, useEffect } from "react"
@@ -1010,6 +929,21 @@ export interface WorkflowNodeData {
   schema?: any
   order_by?: any
   aggregation?: any
+  // Add CLI operator specific fields
+  source_path?: string
+  destination_path?: string
+  cliOperatorPayload?: {
+    operation: string
+    source_path: string
+    destination_path: string
+    options: {
+      overwrite: boolean
+      includeSubDirectories?: boolean
+      createNonExistingDirs?: boolean
+      [key: string]: any
+    }
+    executed_by: string
+  }
 }
 
 export interface WorkflowNode {
@@ -1531,11 +1465,13 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             break
           case "copy-file":
             console.log(
-              `Simulating COPY file: ${nodeData.sourceFilename} to ${nodeData.targetFilename || nodeData.toFilename}`,
-            ) // Use consistent naming
+              `Simulating COPY file: ${nodeData.source_path || nodeData.sourceFilename} to ${
+                nodeData.destination_path || nodeData.targetFilename || nodeData.toFilename
+              }`,
+            )
             output = {
-              source: nodeData.sourceFilename,
-              target: nodeData.targetFilename || nodeData.toFilename,
+              source: nodeData.source_path || nodeData.sourceFilename,
+              target: nodeData.destination_path || nodeData.targetFilename || nodeData.toFilename,
               copied: true,
             }
             break
