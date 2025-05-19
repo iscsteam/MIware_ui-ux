@@ -1,4 +1,3 @@
-
 // //top-menu.tsx(navbar.tsx)
 // "use client"
 // import { useState, useEffect } from "react"
@@ -14,6 +13,7 @@
 // import { Label } from "@/components/ui/label"
 // import { createClient } from "@/services/client"
 // import type { ClientCreateResponse } from "@/services/interface"
+// import { toast } from "@/components/ui/use-toast"
 
 // const topTabs = ["File", "Edit", "Project", "Run"]
 
@@ -85,6 +85,13 @@
 
 //       setCreatedClient(created)
 //       setClientName("")
+
+//       // Store client info in localStorage (this is now handled in the createClient function)
+//       // But we can add a toast notification to inform the user
+//       toast({
+//         title: "Client Created",
+//         description: `Client "${created.name}" is now active`,
+//       })
 //     } catch (error: unknown) {
 //       console.error("Failed to create client:", error)
 //       if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
@@ -360,13 +367,6 @@ export function TopMenu({
 
       setCreatedClient(created)
       setClientName("")
-
-      // Store client info in localStorage (this is now handled in the createClient function)
-      // But we can add a toast notification to inform the user
-      toast({
-        title: "Client Created",
-        description: `Client "${created.name}" is now active`,
-      })
     } catch (error: unknown) {
       console.error("Failed to create client:", error)
       if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
@@ -396,9 +396,22 @@ export function TopMenu({
     setIsRunning(true)
     try {
       // Use the saveAndRunWorkflow function from the workflow context
-      await saveAndRunWorkflow()
+      const result = await saveAndRunWorkflow()
+
+      if (result) {
+        toast({
+          title: "Success",
+          description: "Workflow is now running",
+        })
+      }
+      // If result is false, the saveAndRunWorkflow function already showed an error toast
     } catch (error) {
       console.error("Failed to run workflow:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to run workflow",
+        variant: "destructive",
+      })
     } finally {
       setIsRunning(false)
     }

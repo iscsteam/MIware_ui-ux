@@ -1,3 +1,4 @@
+//dagService.tsx
 import { buildUrl } from "./api";
 import { URLS } from "./url";
 
@@ -64,19 +65,21 @@ export async function updateDAG(
     return null;
   }
 }
+// export async function getDAGById(dagId: string): Promise<DAG | null> {
+//   try {
+//     const res = await fetch(buildUrl(URLS.manageDAG(dagId)))
+//     if (!res.ok) {
+//       const errorText = await res.text()
+//       console.error(`Failed to fetch DAG with ID ${dagId}. Status: ${res.status}. Response: ${errorText}`)
+//       throw new Error(`Failed to fetch DAG with ID ${dagId}. Status: ${res.status}`)
+//     }
+//     return await res.json()
+//   } catch (error) {
+//     console.error("Error in getDAGById:", error)
+//     throw error // Re-throw to allow handling by the caller
+//   }
+// }
 
-export async function deleteDAG(dagId: string): Promise<boolean> {
-  try {
-    const res = await fetch(buildUrl(URLS.manageDAG(dagId)), {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Failed to delete DAG");
-    return true;
-  } catch (error) {
-    console.error(error);
-    return false;
-  }
-}
 export async function getDAGById(dagId: string): Promise<DAG | null> {
   try {
     const res = await fetch(buildUrl(URLS.manageDAG(dagId)))
