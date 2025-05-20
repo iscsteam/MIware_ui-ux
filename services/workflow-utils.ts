@@ -8,7 +8,7 @@ import {
 } from "@/services/schema-mapper"
 import { createCliOperatorConfig } from "@/services/cli-operator-service"
 import { toast } from "@/components/ui/use-toast"
-
+//hi
 // Helper function to ensure Python-compatible IDs
 function makePythonSafeId(id: string): string {
   // Remove any non-alphanumeric characters and replace with underscores
