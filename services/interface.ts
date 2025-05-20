@@ -27,6 +27,7 @@ export type NodeType =
   | "json-render"
   | "transform-json"
   | "file"
+  |"filter"
   | "code";
 
 // Interface for a single item within an input or output schema

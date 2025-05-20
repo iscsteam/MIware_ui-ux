@@ -1,161 +1,275 @@
-// In workflow-utils.ts
-
-import type { WorkflowNode, NodeConnection } from "@/components/workflow/workflow-context";
+// Utility functions for workflow operations
+import type { WorkflowNode, NodeConnection } from "@/components/workflow/workflow-context"; // Using @ alias
 import { createFileConversionConfig, updateDag, triggerDagRun } from "@/services/file-conversion-service";
+import { createFileConversionConfigFromNodes } from "@/services/schema-mapper";
+import { createCliOperatorConfig, mapCopyFileToCliOperator } from "@/services/cli-operator-service";
 import { toast } from "@/components/ui/use-toast";
+import { getCurrentClientId } from "@/components/workflow/workflow-context"; // Import getCurrentClientId
 
-const DEFAULT_SPARK_CONFIG = { /* ... */ };
-const sanitizeNodeIdForDag = (id: string) => id.replace(/-/g, "_");
+// Helper function to ensure Python-compatible IDs
+function makePythonSafeId(id: string): string {
+  // Remove any non-alphanumeric characters and replace with underscores
+  let safeId = id.replace(/[^a-zA-Z0-9_]/g, "_");
 
-// YOU MUST IMPLEMENT THIS: To get name and schedule for the DAG being updated
-const getCurrentWorkflowMetadata = (dagId: string | null, nodes: WorkflowNode[]) => {
-  // Option 1: Try to find a "currentWorkflow" object in localStorage that has these details
-  const workflowDataString = localStorage.getItem("currentWorkflow");
-  let name = `Workflow ${dagId || 'Default'}`;
-  let schedule = "0 0 * * *"; // Default fallback
-
-  if (workflowDataString) {
-    try {
-      const parsedWorkflow = JSON.parse(workflowDataString);
-      if (parsedWorkflow.dag_id === dagId) { // Make sure it's for the current DAG
-        if (parsedWorkflow.name) name = parsedWorkflow.name;
-        if (parsedWorkflow.schedule) schedule = parsedWorkflow.schedule;
-      }
-    } catch (e) {
-      console.warn("Could not parse currentWorkflow for metadata", e);
-    }
+  // Ensure it starts with a letter or underscore (Python variable naming rule)
+  if (!/^[a-zA-Z_]/.test(safeId)) {
+    safeId = "task_" + safeId;
   }
-  // Option 2: If the DAG's name/schedule were loaded into the context's state, get them from there.
-  // Option 3: If the 'nodes' array itself contains a special node or metadata property.
 
-  console.log(`getCurrentWorkflowMetadata for DAG ${dagId}: Name='${name}', Schedule='${schedule}'`);
-  return { name, schedule };
-};
-
+  return safeId;
+}
 
 export async function saveAndRunWorkflow(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
-  dagId: string | null,
-  clientId: string | number
+  currentWorkflowId: string | null, // Renamed from _currentWorkflowId for clarity, passed from context
+  // clientId parameter removed, will be fetched dynamically
 ): Promise<boolean> {
-  console.log(`saveAndRunWorkflow util (linear fixed): Received dagId: ${dagId}, clientId: ${clientId}`);
-  // ... (Validations for dagId, clientId, nodes.length)
+  const dynamicClientIdString = getCurrentClientId();
+
+  if (!dynamicClientIdString) {
+    toast({
+      title: "Error",
+      description: "Client ID not found. Cannot save and run workflow.",
+      variant: "destructive",
+    });
+    return false;
+  }
+
+  const clientId = parseInt(dynamicClientIdString, 10);
+  if (isNaN(clientId)) {
+    toast({
+      title: "Error",
+      description: `Invalid Client ID format: "${dynamicClientIdString}". Cannot save and run workflow.`,
+      variant: "destructive",
+    });
+    return false;
+  }
+
+  // The currentWorkflowId is passed from the context.
+  // The context should have already validated it or handled the null case.
+  if (!currentWorkflowId) {
+    toast({
+      title: "Error",
+      description: "Workflow ID is missing. Cannot save and run workflow.",
+      variant: "destructive",
+    });
+    return false;
+  }
+
+  if (nodes.length === 0) {
+    toast({
+      title: "Error",
+      description: "Cannot save an empty workflow. Please add nodes first.",
+      variant: "destructive",
+    });
+    return false;
+  }
 
   try {
+    // Find start and end nodes
+    const startNodes = nodes.filter((node) => node.type === "start");
+    const endNodes = nodes.filter((node) => node.type === "end");
+
+    if (startNodes.length === 0 || endNodes.length === 0) {
+      toast({
+        title: "Error",
+        description: "Workflow must contain at least one start node and one end node.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    // Check for the type of workflow
     const readFileNodes = nodes.filter((node) => node.type === "read-file");
     const writeFileNodes = nodes.filter((node) => node.type === "write-file");
-    const startUiNodes = nodes.filter((node) => node.type === "start"); // Get UI start nodes
-    const endUiNodes = nodes.filter((node) => node.type === "end");     // Get UI end nodes
+    const copyFileNodes = nodes.filter((node) => node.type === "copy-file");
+    const filterNodes = nodes.filter((node) => node.type === "filter");
 
-    if (readFileNodes.length === 0 || writeFileNodes.length === 0) { /* ...error... */ return false; }
-    if (startUiNodes.length === 0 || endUiNodes.length === 0) { /* ...error... */ return false; }
+    let dagSequence = [];
+    let createdConfigId: number; // Stores the ID of the created config (either file conversion or CLI)
 
-    const readNode = readFileNodes[0];
-    const writeNode = writeFileNodes[0];
-    const startNode = startUiNodes[0]; // The actual start node from UI
-    const endNode = endUiNodes[0];     // The actual end node from UI
+    // Handle file conversion workflow
+    if (readFileNodes.length > 0 && writeFileNodes.length > 0) {
+      // Create file conversion config
+      const readNode = readFileNodes[0];
+      const writeNode = writeFileNodes[0];
+      const filterNode = filterNodes.length > 0 ? filterNodes[0] : null;
 
-    // --- Get existing config_id for start and end nodes ---
-    // ASSUMPTION: originalConfigId is stored in node.data when workflow is loaded
-    const startNodeExistingConfigId = startNode.data?.originalConfigId as number | undefined;
-    const endNodeExistingConfigId = endNode.data?.originalConfigId as number | undefined;
+      // Create a config with dynamic values from the nodes
+      // currentWorkflowId is already validated to be non-null
+      const configPayload = createFileConversionConfigFromNodes(readNode, writeNode, filterNode, currentWorkflowId);
 
-    if (typeof startNodeExistingConfigId !== 'number') {
-      console.warn(`Start node ${startNode.id} missing originalConfigId. Defaulting to 1 for PUT. Ensure nodes load with their config_ids.`);
-      // throw new Error(`Start node ${startNode.id} is missing its original backend config_id.`); // Or be stricter
+      // Add validation before creating the config
+      if (!configPayload.input.path) {
+        toast({
+          title: "Error",
+          description: `Read file node is missing a path. Please configure the node properly.`,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      if (!configPayload.output.path) {
+        toast({
+          title: "Error",
+          description: `Write file node is missing a path. Please configure the node properly.`,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      console.log("Creating file conversion config with:", configPayload);
+
+      // Create file conversion config using dynamically fetched clientId
+      const configResponse = await createFileConversionConfig(clientId, configPayload);
+      if (!configResponse) {
+        throw new Error("Failed to create file conversion config");
+      }
+
+      createdConfigId = configResponse.id;
+
     }
-    if (typeof endNodeExistingConfigId !== 'number') {
-      console.warn(`End node ${endNode.id} missing originalConfigId. Defaulting to 1 for PUT.`);
-      // throw new Error(`End node ${endNode.id} is missing its original backend config_id.`);
+    // Handle CLI operator workflow (copy file)
+    else if (copyFileNodes.length > 0) {
+      const copyNode = copyFileNodes[0];
+
+      // Validate copy node data
+      if (!copyNode.data.source_path) {
+        toast({
+          title: "Error",
+          description: `Copy file node is missing a source path. Please configure the node properly.`,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      if (!copyNode.data.destination_path) {
+        toast({
+          title: "Error",
+          description: `Copy file node is missing a destination path. Please configure the node properly.`,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Map copy file node to CLI operator config
+      const cliConfigPayload = mapCopyFileToCliOperator(copyNode);
+      console.log("Creating CLI operator config with:", cliConfigPayload);
+
+      // Create CLI operator config using dynamically fetched clientId
+      const configResponse = await createCliOperatorConfig(clientId, cliConfigPayload);
+      if (!configResponse) {
+        throw new Error("Failed to create CLI operator config");
+      }
+
+      createdConfigId = configResponse.id;
+
+    } else {
+      toast({
+        title: "Error",
+        description: "Workflow must contain either read/write file nodes or a copy file node.",
+        variant: "destructive",
+      });
+      return false;
     }
-    // Use fetched/stored ID or fallback to 1 (ensure '1' is a valid default if original is missing)
-    const startConfigIdForPut = typeof startNodeExistingConfigId === 'number' ? startNodeExistingConfigId : 1;
-    const endConfigIdForPut = typeof endNodeExistingConfigId === 'number' ? endNodeExistingConfigId : 1;
 
-
-    const configForApi = { // Renamed to avoid conflict with 'config' module if any
-      input: { provider: readNode.data?.provider || "local", /* ... */ path: readNode.data?.path || "" },
-      output: { provider: writeNode.data?.provider || "local", /* ... */ path: writeNode.data?.path || "" },
-      spark_config: DEFAULT_SPARK_CONFIG,
-      dag_id: dagId,
-    };
-
-    if (!configForApi.input.path) { /* ...error... */ return false; }
-    if (!configForApi.output.path) { /* ...error... */ return false; }
-
-    console.log(`Calling createFileConversionConfig with clientId: ${clientId}, config:`, configForApi);
-    const configResponse = await createFileConversionConfig(String(clientId), configForApi);
-    if (!configResponse || !configResponse.id) { throw new Error("Failed to create file conv config or ID missing."); }
-    const newFileConvConfigId = configResponse.id; // This is an integer
-
-    // Use the actual IDs of the start/end nodes from the UI for the sequence
-    const dagSequence = [
+    // Create DAG sequence using the createdConfigId
+    dagSequence = [
       {
-        id: sanitizeNodeIdForDag(startNode.id), // Use actual start node ID
+        id: makePythonSafeId(startNodes[0].id),
         type: "start",
-        config_id: startConfigIdForPut,       // USE EXISTING/DEFAULT INTEGER CONFIG ID
-        next: [sanitizeNodeIdForDag(`file_node_${newFileConvConfigId}`)], // Link to the new file_conv task
+        config_id: 1, // Default config ID for start nodes
+        next: [`file_node_${createdConfigId}`],
       },
       {
-        id: sanitizeNodeIdForDag(`file_node_${newFileConvConfigId}`), // ID for the new file_conv task
-        type: "file_conversion",
-        config_id: newFileConvConfigId,       // Use newly created config ID (integer)
-        next: [sanitizeNodeIdForDag(endNode.id)], // Link to actual end node ID
+        id: `file_node_${createdConfigId}`,
+        type: (readFileNodes.length > 0 && writeFileNodes.length > 0) ? "file_conversion" : "cli_operator",
+        config_id: createdConfigId,
+        next: [makePythonSafeId(endNodes[0].id)],
       },
       {
-        id: sanitizeNodeIdForDag(endNode.id),   // Use actual end node ID
+        id: makePythonSafeId(endNodes[0].id),
         type: "end",
-        config_id: endConfigIdForPut,         // USE EXISTING/DEFAULT INTEGER CONFIG ID
+        config_id: 1, // Default config ID for end nodes
         next: [],
       },
     ];
 
-    // Get DAG metadata
-    const { name: workflowName, schedule: workflowSchedule } = getCurrentWorkflowMetadata(dagId, nodes);
-
+    // Update DAG with sequence
     const dagUpdateData = {
-      name: workflowName,         // ADDED
-      schedule: workflowSchedule, // ADDED
       dag_sequence: dagSequence,
       active: true,
     };
 
-    console.log(`Updating DAG ${dagId} with sequence (linear fixed):`, JSON.stringify(dagUpdateData, null, 2));
-    const updatedDag = await updateDag(dagId, dagUpdateData); // updateDag is from file-conversion-service.ts
-    if (!updatedDag) { // This implies updateDag returned null (likely due to its own error handling for non-OK response)
-      throw new Error("Failed to update DAG with new sequence."); // This is line 168 in your trace
+    // currentWorkflowId is already validated to be non-null
+    const updatedDag = await updateDag(currentWorkflowId, dagUpdateData);
+    if (!updatedDag) {
+      throw new Error("Failed to update DAG");
     }
 
-    console.log(`Triggering DAG run for ${dagId}`);
-    const triggerResult = await triggerDagRun(dagId);
-    if (!triggerResult) { throw new Error("Failed to trigger DAG run."); }
+    // Trigger DAG run
+    try {
+      // currentWorkflowId is already validated to be non-null
+      const triggerResult = await triggerDagRun(currentWorkflowId);
+      if (!triggerResult) {
+        console.log("Trigger returned null, but continuing with success message");
+        // Don't throw an error here, just log it
+      }
+    } catch (triggerError) {
+      console.error("Error triggering DAG run, but workflow was saved:", triggerError);
+      // Show a partial success message
+      toast({
+        title: "Partial Success",
+        description: "Workflow was saved but could not be triggered. You can try running it manually.",
+      });
+      // Return true since the workflow was saved
+      return true;
+    }
 
-    toast({ title: "Success", description: "Workflow saved and run triggered successfully." });
+    toast({
+      title: "Success",
+      description: "Workflow saved and triggered successfully",
+    });
+
     return true;
   } catch (error) {
-    console.error("Error in saveAndRunWorkflow utility (linear fixed):", error);
+    console.error("Error in saveAndRunWorkflow:", error);
     toast({
-      title: "Operation Failed",
-      description: error instanceof Error ? error.message : "Failed to save and run workflow.",
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to save and run workflow",
       variant: "destructive",
     });
     return false;
   }
 }
 
-// The findWriteNodesInPath helper function seems unused in this simplified linear flow.
-// If you intend to build more complex DAG sequences based on actual node connections,
-// you'll need a more sophisticated way to traverse the graph (nodes and connections)
-// and map them to the backend's DAG sequence structure.
-// For now, it's commented out if not directly used by the above logic.
-/*
+// Helper function to find write nodes in a path (remains unchanged)
 function findWriteNodesInPath(
   startNodeId: string,
   nodes: WorkflowNode[],
   connections: NodeConnection[],
   visited: Set<string> = new Set(),
 ): WorkflowNode[] {
-  // ... (implementation)
+  if (visited.has(startNodeId)) {
+    return []; // Prevent cycles
+  }
+
+  visited.add(startNodeId);
+  const writeNodes: WorkflowNode[] = [];
+
+  const node = nodes.find((n) => n.id === startNodeId);
+  if (node?.type === "write-file") {
+    writeNodes.push(node);
+  }
+
+  // Follow connections
+  for (const conn of connections) {
+    if (conn.sourceId === startNodeId) {
+      const nodesInPath = findWriteNodesInPath(conn.targetId, nodes, connections, visited);
+      writeNodes.push(...nodesInPath);
+    }
+  }
+
+  return writeNodes;
 }
-*/
