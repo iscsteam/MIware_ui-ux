@@ -1,4 +1,4 @@
-//schema-mapper.ts
+//services//schema-mapper.ts
 // Schema mapper service to map node properties to file conversion payload
 import type { WorkflowNode } from "@/components/workflow/workflow-context"
 
@@ -144,6 +144,26 @@ export function mapRenameFileToCliOperator(renameNode: any) {
     destination_path: renameNode.data.destination_path || "",
     options: {
       overwrite: false, // Default value for rename operation
+    },
+    executed_by: "cli_user",
+  }
+}
+
+/**
+ * Maps delete file node properties to CLI operator configuration
+ */
+
+export function mapDeleteFileToCliOperator(deleteNode: any) {
+  if (!deleteNode || !deleteNode.data) {
+    throw new Error("Invalid delete file node")
+  }
+
+  return {
+    operation: "delete",
+    source_path: deleteNode.data.source_path || "",
+    destination_path: "", // Delete operation doesn't need destination path
+    options: {
+      overwrite: false, // Not applicable for delete operation
     },
     executed_by: "cli_user",
   }
