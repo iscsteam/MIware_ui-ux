@@ -1,8 +1,9 @@
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import React, { useState } from "react";
+"use client"
 
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
+import React, { useState } from "react"
 
 export interface SchemaItem {
   name: string
@@ -16,80 +17,65 @@ export interface NodeSchema {
   outputSchema: SchemaItem[]
 }
 
+// Copy file node schema definition
 export const copyFileSchema: NodeSchema = {
   inputSchema: [
     {
-      name: "fromFileName",
+      name: "source_path",
       datatype: "string",
-      description: "The path and name of the file or directory to copy. Supports wildcards for files.",
+      description: "The absolute path to the source file or directory.",
       required: true,
     },
     {
-      name: "toFileName",
+      name: "destination_path",
       datatype: "string",
-      description: "The destination path for the copy operation. Must be an absolute path without wildcards.",
+      description: "The absolute path where the file or directory should be copied to.",
       required: true,
     },
     {
       name: "overwrite",
       datatype: "boolean",
-      description: "Overwrite existing file/directory if it already exists.",
-    },
-    {
-      name: "createNonExistingDirectories",
-      datatype: "boolean",
-      description: "Create all directories in the destination path if they do not exist.",
+      description: "Whether to overwrite the destination if it already exists.",
     },
     {
       name: "includeSubDirectories",
       datatype: "boolean",
-      description: "Include all sub-directories when the source is a directory.",
+      description: "Whether to include subdirectories in the copy operation.",
     },
     {
-      name: "description",
-      datatype: "string",
-      description: "Optional description of the copy operation.",
+      name: "createNonExistingDirs",
+      datatype: "boolean",
+      description: "Whether to create non-existing directories in the destination path.",
     },
   ],
   outputSchema: [
+    {
+      name: "message",
+      datatype: "string",
+      description: "Status message returned after the copy operation.",
+    },
     {
       name: "success",
       datatype: "boolean",
       description: "Indicates whether the copy operation was successful.",
     },
-    {
-      name: "message",
-      datatype: "string",
-      description: "A message providing details about the result of the operation.",
-    },
-    {
-      name: "fromFileName",
-      datatype: "string",
-      description: "Source file or directory that was copied.",
-    },
-    {
-      name: "toFileName",
-      datatype: "string",
-      description: "Destination file or directory where the content was copied.",
-    },
   ],
 }
 
-
 interface Props {
-  formData: Record<string, any>;
-  onChange: (name: string, value: any) => void;
+  formData: Record<string, any>
+  onChange: (name: string, value: any) => void
 }
 
 export default function CopyFileNodeProperties({ formData, onChange }: Props) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   const handleSubmit = async () => {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
 
     try {
       const response = await fetch("http://localhost:5000/api/file-operations/copy", {
@@ -98,49 +84,53 @@ export default function CopyFileNodeProperties({ formData, onChange }: Props) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          sourceFilename: formData.sourceFilename,
-          targetFilename: formData.targetFilename,
-          overwrite: formData.overwrite,
-          includeSubDirectories: formData.includeSubDirectories,
-          createNonExistingDirs: formData.createNonExistingDirs,
+          operation: "copy",
+          source_path: formData.source_path,
+          destination_path: formData.destination_path,
+          executed_by: "cli_user",
+          options: {
+            overwrite: formData.overwrite || false,
+            includeSubDirectories: formData.includeSubDirectories || false,
+            createNonExistingDirs: formData.createNonExistingDirs || false,
+          },
         }),
-      });
+      })
 
-      const data = await response.json();
+      const data = await response.json()
 
       if (response.ok) {
-        setSuccess(data.message);
+        setSuccess(data.message)
       } else {
-        setError(data.message);
+        setError(data.message)
       }
     } catch (err) {
-      setError("Error connecting to the server.");
+      setError("Error connecting to the server.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="space-y-4">
-      {/* Source */}
+      {/* Source Path */}
       <div className="space-y-2">
-        <Label htmlFor="sourceFilename">Source Path</Label>
+        <Label htmlFor="source_path">Source Path</Label>
         <Input
-          id="sourceFilename"
-          value={formData.sourceFilename || ""}
-          placeholder="path/to/source.txt"
-          onChange={(e) => onChange("sourceFilename", e.target.value)}
+          id="source_path"
+          value={formData.source_path || ""}
+          placeholder="/data/input.csv"
+          onChange={(e) => onChange("source_path", e.target.value)}
         />
       </div>
 
-      {/* Destination */}
+      {/* Destination Path */}
       <div className="space-y-2">
-        <Label htmlFor="targetFilename">Destination Path</Label>
+        <Label htmlFor="destination_path">Destination Path</Label>
         <Input
-          id="targetFilename"
-          value={formData.targetFilename || ""}
-          placeholder="path/to/destination.txt"
-          onChange={(e) => onChange("targetFilename", e.target.value)}
+          id="destination_path"
+          value={formData.destination_path || ""}
+          placeholder="/data/backup/input_backup.csv"
+          onChange={(e) => onChange("destination_path", e.target.value)}
         />
       </div>
 
@@ -152,17 +142,17 @@ export default function CopyFileNodeProperties({ formData, onChange }: Props) {
             checked={!!formData[field]}
             onCheckedChange={(v) => onChange(field, v)}
           />
-          <Label htmlFor={field} className="cursor-pointer">
-            {{
+          <Label htmlFor={field} className="cursor-pointer capitalize">
+            {({
               overwrite: "Overwrite if exists",
               includeSubDirectories: "Include subdirectories",
               createNonExistingDirs: "Create non-existing directories",
-            }[field]}
+            } as Record<string, string>)[field]}
           </Label>
         </div>
       ))}
 
-      {/* Submit Button */}
+      {/* Submit */}
       <div>
         <button
           className="btn btn-primary"
@@ -173,9 +163,9 @@ export default function CopyFileNodeProperties({ formData, onChange }: Props) {
         </button>
       </div>
 
-      {/* Success/Error Messages */}
+      {/* Feedback */}
       {success && <p className="text-green-500">{success}</p>}
       {error && <p className="text-red-500">{error}</p>}
     </div>
-  );
+  )
 }

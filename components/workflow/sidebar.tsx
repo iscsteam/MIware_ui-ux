@@ -877,3 +877,4 @@ export function Sidebar({
     </div>
   );
 }
+

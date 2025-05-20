@@ -1,12 +1,18 @@
-// // //readfilenodeproperties.tsx
+//ReadFileNodeProperties.tsx
+
 "use client"
+
+import type React from "react"
+
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useState } from "react" 
+import { useState, useEffect } from "react"
 import { useWorkflow } from "../workflow/workflow-context"
+import { Textarea } from "@/components/ui/textarea"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-// Define the read file node schema directly in this component
 export interface SchemaItem {
   name: string
   datatype: string
@@ -19,87 +25,54 @@ export interface NodeSchema {
   outputSchema: SchemaItem[]
 }
 
-// Read File node schema
 export const readFileSchema: NodeSchema = {
   inputSchema: [
     {
-      name: "filename",
+      name: "provider",
       datatype: "string",
-      description: "The path and name of the file to read.",
+      description: "Data source provider (e.g., local, s3).",
       required: true,
     },
     {
-      name: "encoding",
+      name: "format",
       datatype: "string",
-      description: "The character encoding of the file (e.g., UTF-8, ASCII).",
-    }
+      description: "File format (e.g., csv, json, xml).",
+      required: true,
+    },
+    {
+      name: "path",
+      datatype: "string",
+      description: "File path to read from.",
+      required: true,
+    },
+    {
+      name: "rowTag",
+      datatype: "string",
+      description: "Row tag for XML files (if applicable).",
+    },
+    {
+      name: "rootTag",
+      datatype: "string",
+      description: "Root tag for XML files (if applicable).",
+    },
   ],
   outputSchema: [
     {
-      name: "fileContents",
+      name: "content",
       datatype: "string",
-      description: "The contents of the file that was read.",
+      description: "The content of the file.",
     },
     {
-      name: "fileInfo",
-      datatype: "complex",
-      description: "This element contains fullName, fileName, location, type, readProtected, writeProtected, size, and lastModified data.",
-    },
-    {
-      name: "fullName",
-      datatype: "string",
-      description: "The name of the file with the path information.",
-    },
-    {
-      name: "fileName",
-      datatype: "string",
-      description: "The name of the file without the path information.",
-    },
-    {
-      name: "location",
-      datatype: "string",
-      description: "The path to the file.",
-    },
-    {
-      name: "configuredFileName",
-      datatype: "string",
-      description: "An optional element. It is not populated by this activity.",
-    },
-    {
-      name: "type",
-      datatype: "string",
-      description: "The file type.",
-    },
-    {
-      name: "readProtected",
-      datatype: "boolean",
-      description: "Signifies whether the file or directory is protected from reading.",
-    },
-    {
-      name: "writeProtected",
-      datatype: "boolean",
-      description: "Signifies whether the file or directory is protected from writing.",
-    },
-    {
-      name: "size",
-      datatype: "integer",
-      description: "The size of the file in bytes.",
-    },
-    {
-      name: "lastModified",
-      datatype: "string",
-      description: "The timestamp indicating when the file was last modified.",
+      name: "fileMeta",
+      datatype: "object",
+      description: "Metadata about the file (size, modified time, etc).",
     },
     {
       name: "success",
       datatype: "boolean",
-      description: "Indicates whether the file read operation was successful.",
+      description: "Whether the read operation was successful.",
     },
-    {
-      name: "error",
-      datatype: "string",
-      description: "Error message if the operation failed.",
-    }
+    { name: "error", datatype: "string", description: "Error message if any." },
   ],
 }
 
@@ -108,69 +81,126 @@ interface Props {
   onChange: (name: string, value: any) => void
 }
 
+// Function to parse schema from text input
+const parseSchemaFromText = (schemaText: string) => {
+  try {
+    return JSON.parse(schemaText)
+  } catch (error) {
+    console.error("Failed to parse schema:", error)
+    return null
+  }
+}
+
+// Format-specific options
+const formatOptions = {
+  csv: { header: true, inferSchema: true },
+  json: { multiline: true },
+  xml: { rowTag: "Record", rootTag: "Records" },
+}
+
 export default function ReadFileNodeProperties({ formData, onChange }: Props) {
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [subfolder, setSubfolder] = useState<string>("uploads")
+  const [schemaText, setSchemaText] = useState<string>("")
   const { updateNode, selectedNodeId } = useWorkflow()
 
-  // Read file operation function
+  // Initialize schema text from formData if available
+  useEffect(() => {
+    if (formData.schema) {
+      try {
+        setSchemaText(JSON.stringify(formData.schema, null, 2))
+      } catch (error) {
+        console.error("Error stringifying schema:", error)
+      }
+    }
+  }, [formData.schema])
+
+  // Handle format change to update options
+  useEffect(() => {
+    const newOptions = formatOptions[formData.format as keyof typeof formatOptions] || {}
+    const currentOptions = formData.options || {}
+
+    if (JSON.stringify(newOptions) !== JSON.stringify(currentOptions)) {
+      onChange("options", newOptions)
+    }
+  }, [formData.format, formData.options, onChange])
+
+  // Handle schema text changes
+  const handleSchemaTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newSchemaText = e.target.value
+    setSchemaText(newSchemaText)
+
+    // Try to parse the schema and update formData if valid
+    const parsedSchema = parseSchemaFromText(newSchemaText)
+    if (parsedSchema) {
+      onChange("schema", parsedSchema)
+    }
+  }
+
+  // Handle format selection
+  const handleFormatChange = (value: string) => {
+    onChange("format", value)
+
+    // Set format-specific options
+    if (formatOptions[value as keyof typeof formatOptions]) {
+      onChange("options", formatOptions[value as keyof typeof formatOptions])
+    } else {
+      // Clear options if format is not recognized
+      onChange("options", {})
+    }
+  }
+
   async function handleReadFile() {
     setLoading(true)
     setError(null)
     setSuccessMessage(null)
-    
+
     try {
-      const response = await fetch("http://localhost:5000/api/file-operations/read", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // Prepare the request body with format-specific options
+      const requestBody = {
+        provider: formData.provider,
+        format: formData.format,
+        path: formData.path,
+        options: formData.options || {},
+      }
+
+      // Log the request body to verify options
+      console.log("Read file request:", requestBody)
+
+      // The API call has been removed as requested
+      // Simulate a successful response
+      const data = {
+        content: "File content would be here",
+        fileMeta: {
+          format: formData.format,
+          path: formData.path,
+          options: formData.options || {},
         },
-        body: JSON.stringify({
-          filename: formData.filename,
-          label: formData.label,
-          encoding: formData.encoding || "utf-8"
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to read file")
       }
 
       setSuccessMessage("File read successfully!")
-      console.log("FileMeta:", data.fileMeta)
-      
-      // Update the node output with the API response data
+
       if (selectedNodeId) {
-        updateNode(selectedNodeId, { 
+        updateNode(selectedNodeId, {
           status: "success",
           output: {
-            ...data,
-            fileContents: data.content || data.fileContents,
-            path: data.filename || formData.filename,
-            size: data.size || (data.fileMeta && data.fileMeta.size),
-            modifiedDate: data.modifiedDate || (data.fileMeta && data.fileMeta.modifiedTime),
-            success: true
-          }
+            content: data.content || "",
+            fileMeta: data.fileMeta || {},
+            path: formData.path,
+            success: true,
+          },
         })
       }
     } catch (err: any) {
-      console.error(err)
-      const errorMessage = err.message || "Unknown error occurred"
+      const errorMessage = err.message || "Unknown error"
       setError(errorMessage)
-      
-      // Update the node with error status
       if (selectedNodeId) {
-        updateNode(selectedNodeId, { 
+        updateNode(selectedNodeId, {
           status: "error",
-          error: errorMessage,
-          output: { 
-            error: errorMessage,
-            filename: formData.filename,
-            success: false
-          }
+          output: { error: errorMessage, path: formData.path, success: false },
         })
       }
     } finally {
@@ -178,51 +208,152 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
     }
   }
 
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    setError(null)
+    setSuccessMessage(null)
+
+    try {
+      const formDataObj = new FormData()
+      formDataObj.append("file", file)
+      formDataObj.append("subfolder", subfolder)
+
+      const res = await fetch("http://localhost:30010/uploads/", {
+        method: "POST",
+        body: formDataObj,
+      })
+
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.detail || "Upload failed")
+
+      onChange("path", result.path || file.name)
+      setSuccessMessage(`Uploaded ${file.name} to "${subfolder}" successfully`)
+    } catch (err: any) {
+      setError(`Upload failed: ${err.message}`)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  // Display current options based on selected format
+  const renderCurrentOptions = () => {
+    if (!formData.options) return null
+
+    return (
+      <div className="mt-2 p-2 bg-gray-50 rounded-md text-sm">
+        <p className="font-medium text-gray-700">Current Options:</p>
+        <pre className="text-xs overflow-x-auto">{JSON.stringify(formData.options, null, 2)}</pre>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
-      {/* File Name */}
-      <div className="space-y-2">
-        <Label htmlFor="filename">File Path</Label>
+      {/* Provider */}
+      <div className="space-y-1">
+        <Label htmlFor="provider">Provider</Label>
         <Input
-          id="filename"
-          value={formData.filename || ""}
-          placeholder="path/to/file.txt"
-          onChange={(e) => onChange("filename", e.target.value)}
+          id="provider"
+          value={formData.provider || ""}
+          placeholder="e.g., local"
+          onChange={(e) => onChange("provider", e.target.value)}
         />
-        <p className="text-xs text-gray-500">
-          {readFileSchema.inputSchema[0].description}
-          {readFileSchema.inputSchema[0].required && " (Required)"}
-        </p>
       </div>
 
-      {/* Encoding */}
-      <div className="space-y-2">
-        <Label htmlFor="encoding">Encoding</Label>
-        <Input
-          id="encoding"
-          value={formData.encoding || ""}
-          placeholder="UTF-8"
-          onChange={(e) => onChange("encoding", e.target.value)}
-        />
-        <p className="text-xs text-gray-500">
-          {readFileSchema.inputSchema[1].description}
-        </p>
+      {/* Format */}
+      <div className="space-y-1">
+        <Label htmlFor="format">Format</Label>
+        <Select value={formData.format || ""} onValueChange={handleFormatChange}>
+          <SelectTrigger id="format">
+            <SelectValue placeholder="Select file format" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="csv">CSV</SelectItem>
+            <SelectItem value="json">JSON</SelectItem>
+            <SelectItem value="xml">XML</SelectItem>
+            <SelectItem value="parquet">Parquet</SelectItem>
+            <SelectItem value="avro">Avro</SelectItem>
+            <SelectItem value="orc">ORC</SelectItem>
+          </SelectContent>
+        </Select>
+        {renderCurrentOptions()}
       </div>
+
+      {/* Subfolder */}
+      <div className="space-y-1">
+        <Label htmlFor="subfolder">Subfolder (for upload)</Label>
+        <Input id="subfolder" value={subfolder} placeholder="uploads" onChange={(e) => setSubfolder(e.target.value)} />
+      </div>
+
+      {/* File Upload */}
+      <div className="space-y-1">
+        <Label htmlFor="upload">Upload File</Label>
+        <Input id="upload" type="file" onChange={handleFileUpload} disabled={uploading} />
+      </div>
+
+      {/* File Path */}
+      <div className="space-y-1">
+        <Label htmlFor="path">File Path</Label>
+        <Input
+          id="path"
+          value={formData.path || ""}
+          placeholder="/app/data/input/file.csv"
+          onChange={(e) => onChange("path", e.target.value)}
+        />
+      </div>
+
+      {/* Schema Configuration */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="schema">
+          <AccordionTrigger>Schema Configuration</AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-2">
+              <Label htmlFor="schema">Schema (JSON format)</Label>
+              <Textarea
+                id="schema"
+                value={schemaText}
+                onChange={handleSchemaTextChange}
+                placeholder={`{
+  "fields": [
+    {
+      "name": "Id",
+      "type": "string",
+      "nullable": false
+    },
+    {
+      "name": "Name",
+      "type": "string",
+      "nullable": false
+    }
+  ]
+}`}
+                className="min-h-[200px] font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500">
+                Enter the schema in JSON format. This will be used to define the structure of the input data.
+              </p>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       {/* Read File Button */}
       <div>
-        <Button 
-          onClick={handleReadFile} 
-          disabled={loading || !formData.filename}
-          className="bg-blue-500 hover:bg-blue-600 text-white"
+        <Button
+          onClick={handleReadFile}
+          disabled={loading || uploading || !formData.path}
+          className="bg-blue-600 text-white hover:bg-blue-700"
         >
           {loading ? "Reading..." : "Read File"}
         </Button>
       </div>
 
-      {/* Success or Error messages */}
-      {successMessage && <p className="text-green-500 mt-2">{successMessage}</p>}
-      {error && <p className="text-red-500 mt-2">{error}</p>}
+      {/* Feedback */}
+      {successMessage && <p className="text-green-600">{successMessage}</p>}
+      {error && <p className="text-red-600">{error}</p>}
     </div>
   )
 }

@@ -1,12 +1,12 @@
-// WriteFileNodeProperties.tsx
+//WriteFileNodeProperties.tsx
 "use client"
+
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useWorkflow } from "../workflow/workflow-context"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Define the schema directly in this component
 export interface SchemaItem {
@@ -21,39 +21,46 @@ export interface NodeSchema {
   outputSchema: SchemaItem[]
 }
 
+// Format-specific options
+const formatOptions = {
+  csv: { header: true, inferSchema: true },
+  json: { multiline: true },
+  xml: { rowTag: "Record", rootTag: "Records" },
+}
+
 // Write File node schema
 export const writeFileSchema: NodeSchema = {
   inputSchema: [
     {
-      name: "fileName",
+      name: "provider",
       datatype: "string",
-      description: "The path and name of the file. Wildcards are not permitted in this field.",
+      description: "Data source provider (e.g., local, s3).",
       required: true,
     },
     {
-      name: "textContent",
+      name: "format",
       datatype: "string",
-      description:
-        "The contents of the file (text files). This field is present when Write as is set to Text. When Write as is set to Binary, this field is replaced by the field binaryContent.",
+      description: "File format (e.g., xml, json, csv).",
+      required: true,
     },
     {
-      name: "addLineSeparator",
-      datatype: "boolean",
-      description:
-        "This specifies whether to add a carriage return after each input line. This field is present when the value of the Write as field on the General tab is set to Text.",
+      name: "path",
+      datatype: "string",
+      description: "File path to save the file.",
+      required: true,
     },
     {
-      name: "encoding",
+      name: "mode",
       datatype: "string",
-      description:
-        "The character encoding for text files. This element is available only when Text is specified in the Write as field on the General tab.",
+      description: "Write mode (overwrite, append).",
+      required: true,
     },
   ],
   outputSchema: [
     {
       name: "fileInfo",
       datatype: "complex",
-      description: "This element contains the fileName, location, type, readProtected, writeProtected, and size data.",
+      description: "This element contains file metadata like name, size, and type.",
     },
     {
       name: "fullName",
@@ -69,21 +76,6 @@ export const writeFileSchema: NodeSchema = {
       name: "location",
       datatype: "string",
       description: "The path to the file.",
-    },
-    {
-      name: "configuredFileName",
-      datatype: "string",
-      description: "An optional element. This element is not populated by this activity.",
-    },
-    {
-      name: "type",
-      datatype: "string",
-      description: "The file type.",
-    },
-    {
-      name: "wasProtected",
-      datatype: "boolean",
-      description: "Signifies whether the file or directory is protected from reading",
     },
     {
       name: "size",
@@ -109,66 +101,95 @@ export default function WriteFileNodeProperties({ formData, onChange }: Props) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const { updateNode, selectedNodeId } = useWorkflow()
 
+  // Handle format change to update options
+  // useEffect(() => {
+  //   if (formData.format && formatOptions[formData.format as keyof typeof formatOptions]) {
+  //     // Update options based on selected format
+  //     onChange("options", formatOptions[formData.format as keyof typeof formatOptions])
+  //   }
+  // }, [formData.format, onChange])
+  useEffect(() => {
+  const newOptions = formatOptions[formData.format as keyof typeof formatOptions] || {}
+  const currentOptions = formData.options || {}
+
+  if (JSON.stringify(newOptions) !== JSON.stringify(currentOptions)) {
+    onChange("options", newOptions)
+  }
+}, [formData.format, formData.options, onChange])
+
+
+  // Handle format selection
+  const handleFormatChange = (value: string) => {
+    onChange("format", value)
+
+    // Set format-specific options
+    if (formatOptions[value as keyof typeof formatOptions]) {
+      onChange("options", formatOptions[value as keyof typeof formatOptions])
+    } else {
+      // Clear options if format is not recognized
+      onChange("options", {})
+    }
+  }
+
+  // Display current options based on selected format
+  const renderCurrentOptions = () => {
+    if (!formData.options) return null
+
+    return (
+      <div className="mt-2 p-2 bg-gray-50 rounded-md text-sm">
+        <p className="font-medium text-gray-700">Current Options:</p>
+        <pre className="text-xs overflow-x-auto">{JSON.stringify(formData.options, null, 2)}</pre>
+      </div>
+    )
+  }
+
   // Write file operation function
   async function handleWriteFile() {
     setLoading(true)
     setError(null)
     setSuccessMessage(null)
-    
+
     try {
-      const response = await fetch("http://localhost:5000/api/file-operations/write", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fileName: formData.fileName,
-          textContent: formData.textContent || "",
-          addLineSeparator: formData.addLineSeparator || false,
-          encoding: formData.encoding || "utf-8",
-          label: formData.label
-        }),
-      })
+      // Since you're not using the fetch API, we'll just update the node status
+      // and output directly based on the form data
+      if (selectedNodeId) {
+        const fileName = formData.path.split("/").pop() || ""
+        const location = formData.path.substring(0, formData.path.lastIndexOf("/"))
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to write file")
+        updateNode(selectedNodeId, {
+          status: "success",
+          output: {
+            fileInfo: {
+              format: formData.format,
+              mode: formData.mode,
+              options: formData.options || {},
+            },
+            fullName: formData.path,
+            fileName: fileName,
+            location: location,
+            size: 0, // Placeholder
+            lastModified: new Date().toISOString(),
+            success: true,
+          },
+        })
       }
 
       setSuccessMessage("File written successfully!")
-      
-      // Update the node output with the API response data
-      if (selectedNodeId) {
-        updateNode(selectedNodeId, { 
-          status: "success",
-          output: {
-            ...data,
-            fullName: data.fileName || formData.fileName,
-            fileName: data.fileName?.split("/").pop() || formData.fileName.split("/").pop(),
-            location: data.fileName?.substring(0, data.fileName.lastIndexOf("/")) || 
-                      formData.fileName.substring(0, formData.fileName.lastIndexOf("/")),
-            size: data.size,
-            lastModified: data.lastModified,
-            success: true
-          }
-        })
-      }
     } catch (err: any) {
       console.error(err)
       const errorMessage = err.message || "Unknown error occurred"
       setError(errorMessage)
-      
+
       // Update the node with error status
       if (selectedNodeId) {
-        updateNode(selectedNodeId, { 
+        updateNode(selectedNodeId, {
           status: "error",
           error: errorMessage,
-          output: { 
+          output: {
             error: errorMessage,
-            fileName: formData.fileName,
-            success: false
-          }
+            path: formData.path,
+            success: false,
+          },
         })
       }
     } finally {
@@ -178,81 +199,70 @@ export default function WriteFileNodeProperties({ formData, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Node Label */}
-      {/* <div className="space-y-2">
-        <Label htmlFor="label">Node Label</Label>
-        <Input
-          id="label"
-          value={formData.label || ""}
-          placeholder="Node label (e.g., Write Config File)"
-          onChange={(e) => onChange("label", e.target.value)}
-        />
-      </div> */}
-
-      {/* File Name */}
+      {/* Provider */}
       <div className="space-y-2">
-        <Label htmlFor="fileName">File Name</Label>
+        <Label htmlFor="provider">Provider</Label>
         <Input
-          id="fileName"
-          value={formData.fileName || ""}
-          placeholder="path/to/file.txt"
-          onChange={(e) => onChange("fileName", e.target.value)}
+          id="provider"
+          value={formData.provider || ""}
+          placeholder="e.g., local"
+          onChange={(e) => onChange("provider", e.target.value)}
         />
-        <p className="text-xs text-gray-500">
-          {writeFileSchema.inputSchema[0].description}
-          {writeFileSchema.inputSchema[0].required && " (Required)"}
-        </p>
+        <p className="text-xs text-gray-500">{writeFileSchema.inputSchema[0].description}</p>
       </div>
 
-      {/* Text Content */}
+      {/* Format */}
       <div className="space-y-2">
-        <Label htmlFor="textContent">Content</Label>
-        <Textarea
-          id="textContent"
-          value={formData.textContent || ""}
-          placeholder="File content..."
-          className="min-h-[150px]"
-          onChange={(e) => onChange("textContent", e.target.value)}
-        />
-        <p className="text-xs text-gray-500">
-          {writeFileSchema.inputSchema[1].description}
-        </p>
+        <Label htmlFor="format">Format</Label>
+        <Select value={formData.format || ""} onValueChange={handleFormatChange}>
+          <SelectTrigger id="format">
+            <SelectValue placeholder="Select file format" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="csv">CSV</SelectItem>
+            <SelectItem value="json">JSON</SelectItem>
+            <SelectItem value="xml">XML</SelectItem>
+            <SelectItem value="parquet">Parquet</SelectItem>
+            <SelectItem value="avro">Avro</SelectItem>
+            <SelectItem value="orc">ORC</SelectItem>
+          </SelectContent>
+        </Select>
+        {renderCurrentOptions()}
+        <p className="text-xs text-gray-500">{writeFileSchema.inputSchema[1].description}</p>
       </div>
 
-      {/* Encoding */}
+      {/* Path */}
       <div className="space-y-2">
-        <Label htmlFor="encoding">Encoding</Label>
+        <Label htmlFor="path">File Path</Label>
         <Input
-          id="encoding"
-          value={formData.encoding || ""}
-          placeholder="UTF-8"
-          onChange={(e) => onChange("encoding", e.target.value)}
+          id="path"
+          value={formData.path || ""}
+          placeholder="path/to/output/file"
+          onChange={(e) => onChange("path", e.target.value)}
         />
-        <p className="text-xs text-gray-500">
-          {writeFileSchema.inputSchema[3].description}
-        </p>
+        <p className="text-xs text-gray-500">{writeFileSchema.inputSchema[2].description}</p>
       </div>
 
-      {/* Add Line Separator */}
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="addLineSeparator"
-          checked={formData.addLineSeparator || false}
-          onCheckedChange={(checked) => onChange("addLineSeparator", checked)}
-        />
-        <Label htmlFor="addLineSeparator" className="text-sm font-normal">
-          Add line separator
-        </Label>
+      {/* Mode */}
+      <div className="space-y-2">
+        <Label htmlFor="mode">Mode</Label>
+        <Select value={formData.mode || ""} onValueChange={(value) => onChange("mode", value)}>
+          <SelectTrigger id="mode">
+            <SelectValue placeholder="Select write mode" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="overwrite">Overwrite</SelectItem>
+            <SelectItem value="append">Append</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-gray-500">{writeFileSchema.inputSchema[3].description}</p>
       </div>
-      <p className="text-xs text-gray-500 -mt-2">
-        {writeFileSchema.inputSchema[2].description}
-      </p>
 
       {/* Write File Button */}
       <div>
-        <Button 
-          onClick={handleWriteFile} 
-          disabled={loading || !formData.fileName}
+        <Button
+          onClick={handleWriteFile}
+          disabled={loading || !formData.provider || !formData.format || !formData.path || !formData.mode}
           className="bg-blue-500 hover:bg-blue-600 text-white"
         >
           {loading ? "Writing..." : "Write File"}

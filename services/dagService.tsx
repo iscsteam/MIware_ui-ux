@@ -1,5 +1,6 @@
 import { buildUrl } from "./api";
 import { URLS } from "./url";
+import { DAGStatusResponse } from "./interface";
 
 // Define the DAG type if not already defined
 export interface DAG {
@@ -75,5 +76,27 @@ export async function deleteDAG(dagId: string): Promise<boolean> {
   } catch (error) {
     console.error(error);
     return false;
+  }
+}
+
+
+
+// import { buildUrl } from "./api";
+// import { URLS } from "./url";
+
+
+export async function getDAGStatus(dagId: string, triggerId: string): Promise<DAGStatusResponse | null> {
+  try {
+    const res = await fetch(buildUrl(URLS.getDAGStatus(dagId, triggerId)));
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Get DAG status failed: ${res.status} ${errorText}`);
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error(`Error getting DAG status for dagId=${dagId}, triggerId=${triggerId}:`, error);
+    return null;
   }
 }

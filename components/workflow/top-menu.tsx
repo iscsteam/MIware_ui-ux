@@ -1,20 +1,18 @@
-
-// // // // // top-menu.tsx(navbar.tsx)
+//top-menu.tsx(navbar.tsx)
 "use client"
 import { useState } from "react"
-import { Share2, UserPlus } from "lucide-react"
+import { Share2, UserPlus, Save, Play, Loader2 } from "lucide-react"
 
 import { useWorkflow } from "./workflow-context"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
-import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogFooter,} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {createClient} from "@/services/client"
-import {ClientCreateResponse} from "@/services/interface"
-
+import { createClient } from "@/services/client"
+import type { ClientCreateResponse } from "@/services/interface"
 
 const topTabs = ["File", "Edit", "Project", "Run"]
 
@@ -25,7 +23,7 @@ export function TopMenu({
   activeView: string
   setActiveView: (view: string) => void
 }) {
-  const { runWorkflow, saveWorkflowToBackend } = useWorkflow()
+  const { runWorkflow, saveWorkflowToBackend, saveAndRunWorkflow } = useWorkflow()
   const [activeTab, setActiveTab] = useState("ORGANIZATION")
 
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false)
@@ -34,29 +32,98 @@ export function TopMenu({
   const [createdClient, setCreatedClient] = useState<ClientCreateResponse | null>(null)
   const [error, SetError] = useState<string | null>(null)
 
-  // API base URL for the backend service
-  // Update this URL to match your actual Kubernetes service URL
-  // This could be a cluster IP, NodePort, LoadBalancer IP, or Ingress URL
-  // const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:30010"
-  // const API_BASE_URL = "http://localhost:8000" // Example for local development          ;
-  
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("")
+
+  const [isSaving, setIsSaving] = useState(false)
+  const [isRunning, setIsRunning] = useState(false)
+
+  // const handleCreateClient = async () => {
+  //   if (!clientName) return
+
+  //   setIsSubmitting(true)
+  //   setErrorMessage("")
+
+  //   try {
+  //     const created = await createClient({ name: clientName })
+
+  //     if (!created) {
+  //       throw new Error("Client creation returned null")
+  //     }
+
+  //     setCreatedClient(created)
+  //     setClientName("")
+  //   } catch (error: unknown) {
+  //     console.error("Failed to create client:", error)
+  //     if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+  //       setErrorMessage("Cannot connect to the API server. Please ensure the backend service is accessible.")
+  //     } else if (error instanceof Error) {
+  //       setErrorMessage(`Error: ${error.message}`)
+  //     } else {
+  //       setErrorMessage("An unknown error occurred.")
+  //     }
+  //   } finally {
+  //     setIsSubmitting(false)
+  //   }
+  // }
 
   const handleCreateClient = async () => {
-    if (!clientName) return;
-  
+    if (!clientName.trim()) { // Also good to trim whitespace
+      setErrorMessage("Client name cannot be empty.");
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMessage("");
-  
+
     try {
-      const created = await createClient({ name: clientName });
-  
-      if (!created) {
-        throw new Error("Client creation returned null");
+      // Your `createClient` service function might need more than just `name`
+      // depending on your `Client` interface and backend requirements.
+      // For now, assuming it just needs a name.
+      const clientPayload = { name: clientName.trim() }; // Ensure your createClient service expects this shape
+
+      const created: ClientCreateResponse | null = await createClient(clientPayload); // Pass the payload
+
+      if (!created || !created.id) { // Check for created object AND its id
+        console.error("Client creation returned null or missing ID", created);
+        throw new Error("Client creation failed or didn't return an ID.");
       }
-  
-      setCreatedClient(created);
-      setClientName("");
+
+      setCreatedClient(created); // For displaying in the dialog
+      setClientName(""); // Clear input
+
+      // --- BEGIN SOLUTION ---
+      try {
+        const clientDataToStore = {
+          id: String(created.id), // Ensure ID is a string
+          name: created.name,
+          // Add any other client properties you might want to store/display later
+        };
+        localStorage.setItem("currentClient", JSON.stringify(clientDataToStore));
+        console.log("TopMenu: 'currentClient' set in localStorage:", clientDataToStore);
+
+        // Optional: If you want to also update "currentWorkflow" with this new client_id
+        // This depends on your application logic - does creating a client automatically
+        // make it the client for the "currentWorkflow"?
+        const workflowDataString = localStorage.getItem("currentWorkflow");
+        if (workflowDataString) {
+          try {
+            const parsedWorkflow = JSON.parse(workflowDataString);
+            parsedWorkflow.client_id = String(created.id); // Add/update client_id
+            localStorage.setItem("currentWorkflow", JSON.stringify(parsedWorkflow));
+            console.log("TopMenu: Updated 'currentWorkflow' with new client_id:", parsedWorkflow);
+          } catch (e) {
+            console.error("TopMenu: Failed to parse/update 'currentWorkflow' for new client_id", e);
+          }
+        }
+        // toast({ title: "Client Active", description: `Client "${created.name}" is now the active client.` });
+
+      } catch (storageError) {
+        console.error("TopMenu: Failed to save client to localStorage:", storageError);
+        // Potentially show a non-blocking error to the user about local storage failure
+        setErrorMessage("Client created, but failed to set as active locally. Please try selecting the client manually.");
+      }
+      // --- END SOLUTION ---
+
     } catch (error: unknown) {
       console.error("Failed to create client:", error);
       if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
@@ -65,16 +132,40 @@ export function TopMenu({
         setErrorMessage(`Error: ${error.message}`);
       } else {
         setErrorMessage("An unknown error occurred.");
-      
-    }
-    
-   
+      }
+      // If the error was setting to localStorage, createdClient would still be set.
+      // If the error was API call, createdClient would be null.
+      // We might want to clear createdClient if API call itself failed.
+      // if (!(error instanceof StorageError)) { // A custom error type for localStorage issues
+      //    setCreatedClient(null);
+      // }
     } finally {
       setIsSubmitting(false);
     }
   };
-  
 
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      await saveWorkflowToBackend()
+    } catch (error) {
+      console.error("Failed to save workflow:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleRun = async () => {
+    setIsRunning(true)
+    try {
+      // Use the saveAndRunWorkflow function from the workflow context
+      await saveAndRunWorkflow()
+    } catch (error) {
+      console.error("Failed to run workflow:", error)
+    } finally {
+      setIsRunning(false)
+    }
+  }
 
   return (
     <div className="w-full">
@@ -110,9 +201,36 @@ export function TopMenu({
           </Tabs>
         </div>
 
-
         {/* Right: Share + Saved + Create Client */}
         <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-1" />
+                Save
+              </>
+            )}
+          </Button>
+
+          <Button variant="outline" size="sm" onClick={handleRun} disabled={isRunning}>
+            {isRunning ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4 mr-1" />
+                Run
+              </>
+            )}
+          </Button>
+
           <Button variant="outline" size="sm" onClick={() => setCreateClientDialogOpen(true)}>
             <UserPlus className="h-4 w-4 mr-1" />
             Create Client
@@ -125,7 +243,6 @@ export function TopMenu({
         </div>
       </div>
 
-
       {/* Create Client Dialog */}
       <Dialog open={createClientDialogOpen} onOpenChange={setCreateClientDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -133,8 +250,8 @@ export function TopMenu({
             <DialogTitle>Create New Client</DialogTitle>
           </DialogHeader>
 
-          <hr/>
-          
+          <hr />
+
           {!createdClient ? (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
@@ -149,7 +266,7 @@ export function TopMenu({
                   placeholder="Enter client name"
                 />
               </div>
-              
+
               {errorMessage && (
                 <div className="col-span-4 bg-red-50 border border-red-200 text-red-800 rounded-md p-3 text-sm">
                   {errorMessage}
@@ -160,7 +277,7 @@ export function TopMenu({
             <div className="grid gap-4 py-4">
               <div className="bg-muted p-4 rounded-md">
                 <h3 className="font-medium mb-2">Client Created Successfully</h3>
-              <hr/>
+                <hr />
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <span className="text-muted-foreground">ID:</span>
                   <span>{createdClient.id}</span>
@@ -172,33 +289,31 @@ export function TopMenu({
               </div>
             </div>
           )}
-          
-          <hr/>
+
+          <hr />
           <DialogFooter>
             {!createdClient ? (
               <>
                 <Button variant="outline" onClick={() => setCreateClientDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button 
-                  onClick={handleCreateClient} 
-                  disabled={!clientName || isSubmitting}
-                >
+                <Button onClick={handleCreateClient} disabled={!clientName || isSubmitting}>
                   {isSubmitting ? "Creating..." : "Create"}
                 </Button>
               </>
             ) : (
-              <Button onClick={() => {
-                setCreateClientDialogOpen(false);
-                setCreatedClient(null);
-              }}>
+              <Button
+                onClick={() => {
+                  setCreateClientDialogOpen(false)
+                  setCreatedClient(null)
+                }}
+              >
                 Done
               </Button>
             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   )
 }
