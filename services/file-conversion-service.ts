@@ -172,6 +172,5 @@ export function makePythonSafeId(id: string): string {
   if (!/^[a-zA-Z_]/.test(safeId)) {
     safeId = "task_" + safeId
   }
-
   return safeId
 }

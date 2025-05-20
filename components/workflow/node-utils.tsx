@@ -19,7 +19,7 @@ export function getNodeIcon(type: NodeType) {
     "delete-file": "/icons/delete.png", 
     "list-files": "/icons/copy.png",
     "file-poller": "/icons/pollar.png",
-    "rename-file": "/icons/rename.png", // Added rename-file icon
+    "rename-file": "/icons/write.png", // Added rename-file icon
     "end": "/icons/stop.png",
     // add more PNG types if needed
   }
