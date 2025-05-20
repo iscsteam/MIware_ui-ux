@@ -107,3 +107,44 @@ export function createFileConversionConfigFromNodes(
     dag_id: dagId,
   }
 }
+
+
+/**
+ * Maps copy file node properties to CLI operator configuration
+ */
+export function mapCopyFileToCliOperator(copyNode: any) {
+  if (!copyNode || !copyNode.data) {
+    throw new Error("Invalid copy file node")
+  }
+
+  return {
+    operation: "copy",
+    source_path: copyNode.data.source_path || "",
+    destination_path: copyNode.data.destination_path || "",
+    options: {
+      overwrite: copyNode.data.overwrite || false,
+      includeSubDirectories: copyNode.data.includeSubDirectories || false,
+      createNonExistingDirs: copyNode.data.createNonExistingDirs || false,
+    },
+    executed_by: "cli_user",
+  }
+}
+
+/**
+ * Maps rename file node properties to CLI operator configuration
+ */
+export function mapRenameFileToCliOperator(renameNode: any) {
+  if (!renameNode || !renameNode.data) {
+    throw new Error("Invalid rename file node")
+  }
+
+  return {
+    operation: "rename",
+    source_path: renameNode.data.source_path || "",
+    destination_path: renameNode.data.destination_path || "",
+    options: {
+      overwrite: false, // Default value for rename operation
+    },
+    executed_by: "cli_user",
+  }
+}
