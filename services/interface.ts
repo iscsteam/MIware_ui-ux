@@ -10,7 +10,7 @@ export type NodeType =
   | "read-file"
   | "write-file"
   | "copy-file"
-  |"rename-file"
+  | "rename-file"
   | "delete-file"
   | "list-files"
   | "file-poller"
@@ -27,7 +27,8 @@ export type NodeType =
   | "json-render"
   | "transform-json"
   | "file"
-  |"filter"
+  | "filter"
+  | "move-file"
   | "code";
 
 // Interface for a single item within an input or output schema
@@ -46,16 +47,14 @@ export interface NodeSchema {
   outputSchema: SchemaItem[];
 }
 
-
 // Interface for the data representing a node instance on the canvas
 export interface WorkflowNodeData {
-    id: string;
-    type: NodeType;
-    position: { x: number; y: number };
-    // You might add other node-specific instance data here later
-    // e.g., configuredInputValues: Record<string, any>;
+  id: string;
+  type: NodeType;
+  position: { x: number; y: number };
+  // You might add other node-specific instance data here later
+  // e.g., configuredInputValues: Record<string, any>;
 }
-
 
 export interface DAG {
   id?: number;
@@ -67,9 +66,8 @@ export interface DAG {
   active: boolean;
   dag_sequence: object[];
   active_dag_run?: number | null;
-  client_id?:number;
+  client_id?: number;
 }
-
 
 export type MappingSourceInfo = {
   name: string; // Name of the source property
@@ -84,12 +82,11 @@ export type ExtendedSchemaItem = SchemaItem & {
   sourceNodeType?: string;
   sourceNodeLabel?: string;
 
-  datatype: 'string' | 'integer' | 'boolean' | 'complex' | string; // Allow string for extensibility
+  datatype: "string" | "integer" | "boolean" | "complex" | string; // Allow string for extensibility
 
   // For items in localInputSchema (target items / current node's inputs)
   mappings?: MappingSourceInfo[]; // Array of sources mapped to this input
 };
-
 
 export interface SchemaModalProps {
   nodeType: NodeType | null;
@@ -103,7 +100,6 @@ export interface SchemaModalProps {
   onSaveMappings?: (updatedInputs: ExtendedSchemaItem[]) => void;
 }
 
-
 export interface GroupedSource {
   nodeId: string;
   nodeLabel: string;
@@ -116,13 +112,11 @@ export interface Connection {
   targetItemId: string; // Ref ID: target-<nodeId>-<propName>
 }
 
-
 export interface Client {
   id?: number;
   name: string;
   dag_id?: string;
   trigger_id?: string;
-  
 }
 export interface ClientCreateResponse {
   id: number;
@@ -135,9 +129,6 @@ export interface ClientCreateResponse {
   write_salesforce_configs: any[];
 }
 
-
-
-
 export interface ClientWithStatus {
   id: number;
   name: string;
@@ -146,26 +137,24 @@ export interface ClientWithStatus {
   dag_status: string;
 }
 
-
 export interface SchemaItem {
-  name: string
-  type?: string
-  datatype: 'string' | 'integer' | 'boolean' | 'complex' | string; // Allow string for extensibility
-  description?: string
-  required?: boolean
-  originalName?: string
-  sourceNodeId?: string
+  name: string;
+  type?: string;
+  datatype: "string" | "integer" | "boolean" | "complex" | string; // Allow string for extensibility
+  description?: string;
+  required?: boolean;
+  originalName?: string;
+  sourceNodeId?: string;
 }
 
 export interface SchemaModalData {
-  nodeId: string
-  nodeType: NodeType
-  baseInputSchema: SchemaItem[]
-  baseOutputSchema: SchemaItem[]
-  availableInputsFromPrevious: SchemaItem[] // Outputs from connected source nodes
-  nodeLabel?: string // Optional: Pass the specific node's label
+  nodeId: string;
+  nodeType: NodeType;
+  baseInputSchema: SchemaItem[];
+  baseOutputSchema: SchemaItem[];
+  availableInputsFromPrevious: SchemaItem[]; // Outputs from connected source nodes
+  nodeLabel?: string; // Optional: Pass the specific node's label
 }
-
 
 export interface WorkflowNodeData {
   label?: string; // Optional: A user-defined label for this specific node instance
@@ -219,8 +208,7 @@ export interface NodePosition {
   y: number;
 }
 
-export type NodeStatus = "idle" | "running" | "success" | "error"
-
+export type NodeStatus = "idle" | "running" | "success" | "error";
 
 export interface WorkflowNode {
   id: string; // Unique ID for this node instance
@@ -233,18 +221,16 @@ export interface WorkflowNode {
 }
 
 interface NodeComponentProps {
-  key: string
-  node: WorkflowNode
-  selected: boolean
-  isConnecting: boolean
-  onSelect: () => void
-  onDragStart: (nodeId: string, e: React.MouseEvent) => void
-  onExecuteNode: (nodeId: string) => void
-  onOpenProperties: (nodeId: string) => void
-  onOpenSchemaModal: (nodeId: string) => void
+  key: string;
+  node: WorkflowNode;
+  selected: boolean;
+  isConnecting: boolean;
+  onSelect: () => void;
+  onDragStart: (nodeId: string, e: React.MouseEvent) => void;
+  onExecuteNode: (nodeId: string) => void;
+  onOpenProperties: (nodeId: string) => void;
+  onOpenSchemaModal: (nodeId: string) => void;
 }
-
-
 
 export interface FileConversionConfig {
   input: {
@@ -270,7 +256,6 @@ export interface FileConversionConfig {
   dag_id?: string; // This is good to have for association
 }
 
-
 // DagRun type (from previous example, adjust if necessary)
 export interface DagRun {
   id: number; // This is the trigger_id or dag_run_id
@@ -290,7 +275,6 @@ export interface DagRunMapEntry {
   events: any[]; // Define more specifically if possible
   stage_details: any; // Define more specifically if possible
 }
-
 
 export interface DAGStatusResponse {
   dag_id: string;

@@ -1,6 +1,7 @@
 //schema-mapper.ts
 // Schema mapper service to map node properties to file conversion payload
 import type { WorkflowNode } from "@/components/workflow/workflow-context";
+import type { CliOperatorConfig } from "./cli-operator-service"; // Adjust path
 
 // Default spark config
 export const DEFAULT_SPARK_CONFIG = {
@@ -105,5 +106,33 @@ export function createFileConversionConfigFromNodes(
     ...filterConfigs,
     spark_config: DEFAULT_SPARK_CONFIG,
     dag_id: dagId,
+  };
+}
+
+
+export function mapMoveFileToCliOperator(moveNode: WorkflowNode): CliOperatorConfig {
+  if (!moveNode || !moveNode.data) {
+    throw new Error("Invalid move file node data");
+  }
+
+  // Assuming moveNode.data contains source_path, destination_path, and optionally overwrite
+  const { source_path, destination_path, overwrite } = moveNode.data;
+
+  if (!source_path) {
+    throw new Error("Move file node is missing a source path.");
+  }
+  if (!destination_path) {
+    throw new Error("Move file node is missing a destination path.");
+  }
+
+  return {
+    operation: "move",
+    source_path: source_path,
+    destination_path: destination_path,
+    options: {
+      overwrite: overwrite || false, // Default to false if not provided
+      // Add any other move-specific options your backend might support
+    },
+    executed_by: "workflow_user", // Or "cli_user" or a dynamic value
   };
 }

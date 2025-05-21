@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
-import { useWorkflow } from "../workflow/workflow-context"
+import { useWorkflow } from "@/components/workflow/workflow-context"
 
 
 

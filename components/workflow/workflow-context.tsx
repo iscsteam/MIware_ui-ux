@@ -10,7 +10,7 @@ import { saveAndRunWorkflow as saveAndRunWorkflowUtil } from "@/services/workflo
 
 const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT
 
-export type NodeStatus = "idle" | "running" | "success" | "error"
+export type NodeStatus = "idle" | "running" | "success" | "error" | "configured"
 
 export interface NodePosition {
   x: number
