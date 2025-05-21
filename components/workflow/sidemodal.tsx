@@ -73,6 +73,13 @@ const nodeTypes: NodeTypeDefinition[] = [
     description: "Deletes a file or directory",
     category: "file"
   },
+    {
+    type: "move-file",
+    label: "Move File",
+    icon: <Files className="h-5 w-5 text-red-500" />,
+    description: "Move a file or directory",
+    category: "file"
+  },
   {
     type: "list-files",
     label: "List Files",

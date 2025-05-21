@@ -5,13 +5,13 @@ import { useState, useEffect, useRef } from "react";
 import { useWorkflow } from "./workflow-context";
 import { Button } from "@/components/ui/button";
 import {Dialog,DialogContent,DialogHeader,DialogTitle,} from "@/components/ui/dialog";
-import CreateFileNodeProperties,{createFileSchema} from "@/components/node-properties/CreateFileNodeProperties";
-import CopyFileNodeProperties, {copyFileSchema} from "@/components/node-properties/CopyFileNodeProperties";
-import ReadFileNodeProperties, {readFileSchema} from "@/components/node-properties/ReadFileNodeProperties";
-import DeleteFileNodeProperties,{deleteFileSchema} from "@/components/node-properties/deletefilenodeproperties";
+import CreateFileNodeProperties,{createFileSchema} from "@/components/node-properties/Fileoperations/CreateFileNodeProperties";
+import CopyFileNodeProperties, {copyFileSchema} from "@/components/node-properties/Fileoperations/CopyFileNodeProperties";
+import ReadFileNodeProperties, {readFileSchema} from "@/components/node-properties/Fileoperations/ReadFileNodeProperties";
+import DeleteFileNodeProperties,{deleteFileSchema} from "@/components/node-properties/Fileoperations/deletefilenodeproperties";
 import ListFilesNodeProperties,{ listFilesSchema} from "@/components/node-properties/listfilesnodeproperties";
 import PollerFileNodeProperties, {filePollerSchema} from "@/components/node-properties/pollerfilenodeproperties";
-import WriteFileNodeProperties,{writeFileSchema} from "../node-properties/WriteFileNodeProperties";
+import WriteFileNodeProperties,{writeFileSchema} from "@/components/node-properties/Fileoperations/WriteFileNodeProperties";
 import ParseXMLNodeProperties,{parseXMLSchema} from "../node-properties/ParseXMLNodeProperties";
 import RenderXMLNodeProperties, {renderXMLSchema} from "../node-properties/RenderXMLNodeProperties";
 import TransformXMLNodeProperties,{transformXMLSchema} from "../node-properties/TransformXMLNodeProperties";
@@ -24,7 +24,8 @@ import FileNodeProperties,{fileNodeSchema} from "../node-properties/FileNodeProp
 import HTTPSendResponseNodeProperties,{httpSendResponseSchema} from "../node-properties/HTTPsendresponseNodeProperties";
 import ParsedDataNodeProperties,{parseDataSchema} from "../node-properties/ParsedataNodeProperties";
 import RenderDataNodeProperties,{renderDataSchema} from "../node-properties/RenderdataNodeProperties";
-import RenameFileNodeProperties,{renameFileSchema} from "../node-properties/RenameFileNodeProperties";
+import RenameFileNodeProperties,{renameFileSchema} from "@/components/node-properties/Fileoperations/RenameFileNodeProperties";
+import MoveFileNodeProperties,{moveFileSchema} from "@/components/node-properties/Fileoperations/MoveFileNodeProperties";
 
 import {
   Tooltip,
@@ -54,6 +55,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "file":FileNodeProperties,
   "parse-data": ParsedDataNodeProperties,
   "render-data": RenderDataNodeProperties,
+  "move-file":MoveFileNodeProperties,
 };
 
 // Component-specific schemas - use these instead of getNodeSchema for these node types
@@ -79,6 +81,7 @@ const componentSchemas: Record<string, any> = {
   "send-http-response": httpSendResponseSchema,
   "parse-data": parseDataSchema,
   "render-data": renderDataSchema,
+  "move-file": moveFileSchema,
 
   // Add other component-specific schemas here as they're implemented
 };
