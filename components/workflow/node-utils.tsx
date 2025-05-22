@@ -20,7 +20,7 @@ export function getNodeIcon(type: NodeType) {
     "list-files": "/icons/copy.png",
     "database":"/icons/copy.png",
     "file-poller": "/icons/pollar.png",
-    "rename-file": "/icons/rename.png", // Added rename-file icon
+    "rename-file": "/icons/write.png", // Added rename-file icon
     "end": "/icons/stop.png",
     // add more PNG types if needed
   }
@@ -52,6 +52,8 @@ export function getNodeIcon(type: NodeType) {
       return <Code className="h-10 w-10 text-slate-800" />
     case "rename-file":
       return <FilePenLine className="h-10 w-10 text-slate-800" />
+     case "filter":
+      return <Filter className="h-10 w-10 text-orange-500" />
     default:
       return <Filter className="h-10 w-10 text-slate-800" />
   }
