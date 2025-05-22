@@ -19,35 +19,40 @@ export interface NodeSchema {
   outputSchema: SchemaItem[]
 }
 
-export const parseXMLSchema: NodeSchema = {
+export const transformXMLSchema: NodeSchema = {
   inputSchema: [
     {
-      name: "xmlInput",
+      name: "xmlString",
       datatype: "string",
-      description: "The XML content to parse as a string.",
+      description: "The source XML to transform.",
       required: true,
     },
     {
-      name: "inputStyle",
+      name: "styleSheet",
       datatype: "string",
-      description: "The style of the input: string or binary.",
+      description: "The XSLT stylesheet to use for transformation.",
     },
     {
-      name: "encoding",
+      name: "parameter",
+      datatype: "array",
+      description: "Optional XSLT parameters.",
+    },
+    {
+      name: "inputOutputStyle",
       datatype: "string",
-      description: "The encoding type used in the XML (e.g., UTF-8).",
+      description: "Format for input/output: text or binary.",
+    },
+    {
+      name: "disablePrettyPrint",
+      datatype: "boolean",
+      description: "Disable formatting in the output XML.",
     },
   ],
   outputSchema: [
     {
-      name: "parsedData",
-      datatype: "object",
-      description: "The result of the parsed XML as a JSON object.",
-    },
-    {
-      name: "isValid",
-      datatype: "boolean",
-      description: "Whether the XML content is valid.",
+      name: "xmlString",
+      datatype: "string",
+      description: "Transformed XML output.",
     },
   ],
 }
@@ -57,13 +62,11 @@ interface Props {
   onChange: (name: string, value: any) => void
 }
 
-export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
+export default function TransformXMLNodeProperties({ formData, onChange }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const { updateNode, selectedNodeId } = useWorkflow()
-
-  const schema = parseXMLSchema
 
   const handleSubmit = async () => {
     setLoading(true)
@@ -71,7 +74,7 @@ export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
     setSuccess(null)
 
     try {
-      const response = await fetch("http://localhost:5000/api/xml/parse", {
+      const response = await fetch("http://localhost:5000/api/xml/transform", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -82,7 +85,7 @@ export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess("XML parsed successfully.")
+        setSuccess("XML transformed successfully.")
         if (selectedNodeId) {
           updateNode(selectedNodeId, {
             status: "success",
@@ -90,7 +93,7 @@ export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
           })
         }
       } else {
-        setError(data.message || "Failed to parse XML.")
+        setError(data.message || "Failed to transform XML.")
         if (selectedNodeId) {
           updateNode(selectedNodeId, {
             status: "error",
@@ -116,58 +119,61 @@ export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Display Name */}
       <div className="space-y-2">
         <Label htmlFor="displayName">Node Name</Label>
         <Input
           id="displayName"
           value={formData.displayName || ""}
-          placeholder="Parse XML"
+          placeholder="Transform XML"
           onChange={(e) => onChange("displayName", e.target.value)}
         />
       </div>
 
-      {/* XML Input */}
       <div className="space-y-2">
-        <Label htmlFor="xmlInput">XML Input</Label>
+        <Label htmlFor="xmlString">XML Input</Label>
         <Input
-          id="xmlInput"
-          value={formData.xmlInput || ""}
-          placeholder="<root><item>value</item></root>"
-          onChange={(e) => onChange("xmlInput", e.target.value)}
+          id="xmlString"
+          value={formData.xmlString || ""}
+          placeholder="<book><title>Example</title></book>"
+          onChange={(e) => onChange("xmlString", e.target.value)}
         />
       </div>
 
-      {/* Input Style */}
       <div className="space-y-2">
-        <Label htmlFor="inputStyle">Input Style</Label>
+        <Label htmlFor="styleSheet">XSLT Stylesheet</Label>
         <Input
-          id="inputStyle"
-          value={formData.inputStyle || ""}
-          placeholder="string or binary"
-          onChange={(e) => onChange("inputStyle", e.target.value)}
+          id="styleSheet"
+          value={formData.styleSheet || ""}
+          placeholder="<xsl:stylesheet>...</xsl:stylesheet>"
+          onChange={(e) => onChange("styleSheet", e.target.value)}
         />
       </div>
 
-      {/* Encoding */}
       <div className="space-y-2">
-        <Label htmlFor="encoding">Encoding</Label>
+        <Label htmlFor="inputOutputStyle">Input/Output Style</Label>
         <Input
-          id="encoding"
-          value={formData.encoding || ""}
-          placeholder="UTF-8"
-          onChange={(e) => onChange("encoding", e.target.value)}
+          id="inputOutputStyle"
+          value={formData.inputOutputStyle || ""}
+          placeholder="text or binary"
+          onChange={(e) => onChange("inputOutputStyle", e.target.value)}
         />
       </div>
 
-      {/* Submit Button */}
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="disablePrettyPrint"
+          checked={formData.disablePrettyPrint || false}
+          onCheckedChange={(val) => onChange("disablePrettyPrint", val)}
+        />
+        <Label htmlFor="disablePrettyPrint">Disable Pretty Print</Label>
+      </div>
+
       <div>
         <Button onClick={handleSubmit} disabled={loading} className="bg-blue-500 hover:bg-blue-600 text-white">
-          {loading ? "Parsing..." : "Parse XML"}
+          {loading ? "Transforming..." : "Transform XML"}
         </Button>
       </div>
 
-      {/* Success/Error Messages */}
       {success && <p className="text-green-500">{success}</p>}
       {error && <p className="text-red-500">{error}</p>}
     </div>

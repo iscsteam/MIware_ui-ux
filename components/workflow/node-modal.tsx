@@ -4,22 +4,29 @@ import type React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useWorkflow } from "./workflow-context";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import CreateFileNodeProperties,{createFileSchema} from "@/components/node-properties/CreateFileNodeProperties";
-import CopyFileNodeProperties, {copyFileSchema} from "@/components/node-properties/CopyFileNodeProperties";
-import ReadFileNodeProperties, {
-  readFileSchema,
-} from "@/components/node-properties/ReadFileNodeProperties";
-import DeleteFileNodeProperties from "@/components/node-properties/deletefilenodeproperties";
+import {Dialog,DialogContent,DialogHeader,DialogTitle,} from "@/components/ui/dialog";
+import CreateFileNodeProperties,{createFileSchema} from "@/components/node-properties/Fileoperations/CreateFileNodeProperties";
+import CopyFileNodeProperties, {copyFileSchema} from "@/components/node-properties/Fileoperations/CopyFileNodeProperties";
+import ReadFileNodeProperties, {readFileSchema} from "@/components/node-properties/Fileoperations/ReadFileNodeProperties";
+import DeleteFileNodeProperties,{deleteFileSchema} from "@/components/node-properties/Fileoperations/deletefilenodeproperties";
 import ListFilesNodeProperties,{ listFilesSchema} from "@/components/node-properties/listfilesnodeproperties";
 import PollerFileNodeProperties, {filePollerSchema} from "@/components/node-properties/pollerfilenodeproperties";
-import WriteFileNodeProperties from "../node-properties/WriteFileNodeProperties";
-import ParseXMLNodeProperties from "../node-properties/ParseXMLNodeProperties";
+import WriteFileNodeProperties,{writeFileSchema} from "@/components/node-properties/Fileoperations/WriteFileNodeProperties";
+import ParseXMLNodeProperties,{parseXMLSchema} from "../node-properties/ParseXMLNodeProperties";
+import RenderXMLNodeProperties, {renderXMLSchema} from "../node-properties/RenderXMLNodeProperties";
+import TransformXMLNodeProperties,{transformXMLSchema} from "../node-properties/TransformXMLNodeProperties";
+import ParseJSONNodeProperties,{parseJSONSchema} from "../node-properties/ParseJSONNodeProperties";
+import RenderJSONNodeProperties,{renderJSONSchema} from "../node-properties/RenderJSONNodeProperties";
+import TransformJSONNodeProperties,{transformJSONSchema} from "../node-properties/TransformJSONNodeProperties";
+import HTTPReceiverNodeProperties,{httpReceiverSchema} from "../node-properties/HTTPreceiverNodeProperties";
+import HTTPSendRequestNodeProperties,{httpSendRequestSchema} from "../node-properties/HTTPsendrequestNodeProperties";
+import FileNodeProperties,{fileNodeSchema} from "../node-properties/FileNodeProperties";
+import HTTPSendResponseNodeProperties,{httpSendResponseSchema} from "../node-properties/HTTPsendresponseNodeProperties";
+import ParsedDataNodeProperties,{parseDataSchema} from "../node-properties/ParsedataNodeProperties";
+import RenderDataNodeProperties,{renderDataSchema} from "../node-properties/RenderdataNodeProperties";
+import RenameFileNodeProperties,{renameFileSchema} from "@/components/node-properties/Fileoperations/RenameFileNodeProperties";
+import MoveFileNodeProperties,{moveFileSchema} from "@/components/node-properties/Fileoperations/MoveFileNodeProperties";
+import FilterNodeProperties,{filterSchema} from "@/components/node-properties/Fileoperations/FilterNodeproperties";
 
 import {
   Tooltip,
@@ -32,11 +39,25 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "create-file": CreateFileNodeProperties,
   "read-file": ReadFileNodeProperties,
   "copy-file": CopyFileNodeProperties,
+  "rename-file": RenameFileNodeProperties,
   "delete-file": DeleteFileNodeProperties,
   "list-files": ListFilesNodeProperties,
   "file-poller": PollerFileNodeProperties,
   "write-file": WriteFileNodeProperties,
   "xml-parser": ParseXMLNodeProperties,
+  "xml-render": RenderXMLNodeProperties,
+  "transform-xml":TransformXMLNodeProperties,
+  "json-parse":ParseJSONNodeProperties,
+  "json-render":RenderJSONNodeProperties,
+  "transform-json":TransformJSONNodeProperties,
+  "http-receiver": HTTPReceiverNodeProperties,
+  "send-http-response": HTTPSendResponseNodeProperties,
+  "send-http-request": HTTPSendRequestNodeProperties,
+  "file":FileNodeProperties,
+  "parse-data": ParsedDataNodeProperties,
+  "render-data": RenderDataNodeProperties,
+  "move-file":MoveFileNodeProperties,
+  "filter":FilterNodeProperties,
 };
 
 // Component-specific schemas - use these instead of getNodeSchema for these node types
@@ -47,8 +68,23 @@ const componentSchemas: Record<string, any> = {
   "delete-file": deleteFileSchema,
   "create-file":createFileSchema,
   "copy-file": copyFileSchema,
+  "rename-file": renameFileSchema,
   "list-files": listFilesSchema,
   "file-poller": filePollerSchema,
+  "xml-parser":parseXMLSchema,
+  "xml-render":renderXMLSchema,
+  "transform-xml":transformXMLSchema,
+  "json-parse":parseJSONSchema,
+  "json-render":renderJSONSchema,
+  "transform-json":transformJSONSchema,
+  "http-receiver": httpReceiverSchema,
+  "send-http-request": httpSendRequestSchema,
+  "file":fileNodeSchema,
+  "send-http-response": httpSendResponseSchema,
+  "parse-data": parseDataSchema,
+  "render-data": renderDataSchema,
+  "move-file": moveFileSchema,
+  "filter":filterSchema,
 
   // Add other component-specific schemas here as they're implemented
 };
@@ -73,7 +109,7 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
 
   // Get schema from component-specific schema if available, otherwise fall back to node-schemas.tsx
   const nodeSchema = node
-    ? componentSchemas[node.type] || getNodeSchema(node.type)
+    ? componentSchemas[node.type]
     : undefined;
 
   const NodePropsComponent = node

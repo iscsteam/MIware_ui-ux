@@ -2,10 +2,9 @@
 
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
-import { useWorkflow } from "../workflow/workflow-context"
+import { useWorkflow } from "@/components/workflow/workflow-context"
 
 export interface SchemaItem {
   name: string
@@ -19,35 +18,32 @@ export interface NodeSchema {
   outputSchema: SchemaItem[]
 }
 
-export const parseXMLSchema: NodeSchema = {
+// Updated schema based on the payload
+export const renameFileSchema: NodeSchema = {
   inputSchema: [
     {
-      name: "xmlInput",
+      name: "source_path",
       datatype: "string",
-      description: "The XML content to parse as a string.",
+      description: "The absolute path of the file or directory to rename.",
       required: true,
     },
     {
-      name: "inputStyle",
+      name: "destination_path",
       datatype: "string",
-      description: "The style of the input: string or binary.",
-    },
-    {
-      name: "encoding",
-      datatype: "string",
-      description: "The encoding type used in the XML (e.g., UTF-8).",
+      description: "The new absolute path of the renamed file or directory.",
+      required: true,
     },
   ],
   outputSchema: [
     {
-      name: "parsedData",
-      datatype: "object",
-      description: "The result of the parsed XML as a JSON object.",
+      name: "message",
+      datatype: "string",
+      description: "Status message returned after rename operation.",
     },
     {
-      name: "isValid",
+      name: "success",
       datatype: "boolean",
-      description: "Whether the XML content is valid.",
+      description: "Indicates whether the rename operation was successful.",
     },
   ],
 }
@@ -57,13 +53,11 @@ interface Props {
   onChange: (name: string, value: any) => void
 }
 
-export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
+export default function RenameFileNodeProperties({ formData, onChange }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const { updateNode, selectedNodeId } = useWorkflow()
-
-  const schema = parseXMLSchema
 
   const handleSubmit = async () => {
     setLoading(true)
@@ -71,18 +65,23 @@ export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
     setSuccess(null)
 
     try {
-      const response = await fetch("http://localhost:5000/api/xml/parse", {
+      const response = await fetch("http://localhost:5000/api/file-operations/rename", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          operation: "rename",
+          source_path: formData.source_path,
+          destination_path: formData.destination_path,
+          executed_by: "cli_user",
+        }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess("XML parsed successfully.")
+        setSuccess(data.message)
         if (selectedNodeId) {
           updateNode(selectedNodeId, {
             status: "success",
@@ -90,7 +89,7 @@ export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
           })
         }
       } else {
-        setError(data.message || "Failed to parse XML.")
+        setError(data.message)
         if (selectedNodeId) {
           updateNode(selectedNodeId, {
             status: "error",
@@ -116,54 +115,38 @@ export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Display Name */}
+      {/* Source Path */}
       <div className="space-y-2">
-        <Label htmlFor="displayName">Node Name</Label>
+        <Label htmlFor="source_path">Source Path</Label>
         <Input
-          id="displayName"
-          value={formData.displayName || ""}
-          placeholder="Parse XML"
-          onChange={(e) => onChange("displayName", e.target.value)}
+          id="source_path"
+          value={formData.source_path || ""}
+          placeholder="/data/report_draft.txt"
+          onChange={(e) => onChange("source_path", e.target.value)}
         />
+        <p className="text-xs text-gray-500">
+          The absolute path of the file or directory to rename.
+        </p>
       </div>
 
-      {/* XML Input */}
+      {/* Destination Path */}
       <div className="space-y-2">
-        <Label htmlFor="xmlInput">XML Input</Label>
+        <Label htmlFor="destination_path">Destination Path</Label>
         <Input
-          id="xmlInput"
-          value={formData.xmlInput || ""}
-          placeholder="<root><item>value</item></root>"
-          onChange={(e) => onChange("xmlInput", e.target.value)}
+          id="destination_path"
+          value={formData.destination_path || ""}
+          placeholder="/data/report_final.txt"
+          onChange={(e) => onChange("destination_path", e.target.value)}
         />
-      </div>
-
-      {/* Input Style */}
-      <div className="space-y-2">
-        <Label htmlFor="inputStyle">Input Style</Label>
-        <Input
-          id="inputStyle"
-          value={formData.inputStyle || ""}
-          placeholder="string or binary"
-          onChange={(e) => onChange("inputStyle", e.target.value)}
-        />
-      </div>
-
-      {/* Encoding */}
-      <div className="space-y-2">
-        <Label htmlFor="encoding">Encoding</Label>
-        <Input
-          id="encoding"
-          value={formData.encoding || ""}
-          placeholder="UTF-8"
-          onChange={(e) => onChange("encoding", e.target.value)}
-        />
+        <p className="text-xs text-gray-500">
+          The new absolute path of the renamed file or directory.
+        </p>
       </div>
 
       {/* Submit Button */}
       <div>
         <Button onClick={handleSubmit} disabled={loading} className="bg-blue-500 hover:bg-blue-600 text-white">
-          {loading ? "Parsing..." : "Parse XML"}
+          {loading ? "Renaming..." : "Rename File"}
         </Button>
       </div>
 

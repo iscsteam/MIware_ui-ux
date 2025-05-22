@@ -1,14 +1,16 @@
 // // src/components/workflow/SchemaFieldList.tsx (or similar path)
 import React, { forwardRef } from "react";
 import { Badge } from "@/components/ui/badge";
-import { SchemaItem } from "./workflow-context";
+import { SchemaItem } from "@/services/interface";
 
 interface SchemaFieldListProps {
+
   type: "input" | "output";
   fields: SchemaItem[];
   selectedId: string | null;
   onFieldClick: (field: SchemaItem) => void;
   setRef: (key: string, element: HTMLDivElement | null) => void;
+  datatype: string;
 }
 
 export const SchemaFieldList = forwardRef<HTMLDivElement, SchemaFieldListProps>(

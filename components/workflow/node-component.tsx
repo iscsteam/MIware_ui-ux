@@ -27,7 +27,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import type { NodeType } from "./workflow-context";
+import { NodeType } from "@/services/interface";
 import SchemaModal from "./SchemaModal"; // Adjust path
 
 // --- Interfaces ---
