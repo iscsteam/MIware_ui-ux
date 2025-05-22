@@ -26,7 +26,7 @@ import ParsedDataNodeProperties,{parseDataSchema} from "../node-properties/Parse
 import RenderDataNodeProperties,{renderDataSchema} from "../node-properties/RenderdataNodeProperties";
 import RenameFileNodeProperties,{renameFileSchema} from "@/components/node-properties/Fileoperations/RenameFileNodeProperties";
 import MoveFileNodeProperties,{moveFileSchema} from "@/components/node-properties/Fileoperations/MoveFileNodeProperties";
-
+import DatabaseNodeProperties,{databaseSchema} from  "@/components/node-properties/database-node-properties";
 import {
   Tooltip,
   TooltipContent,
@@ -52,6 +52,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "http-receiver": HTTPReceiverNodeProperties,
   "send-http-response": HTTPSendResponseNodeProperties,
   "send-http-request": HTTPSendRequestNodeProperties,
+  "database": DatabaseNodeProperties,
   "file":FileNodeProperties,
   "parse-data": ParsedDataNodeProperties,
   "render-data": RenderDataNodeProperties,
@@ -78,6 +79,7 @@ const componentSchemas: Record<string, any> = {
   "http-receiver": httpReceiverSchema,
   "send-http-request": httpSendRequestSchema,
   "file":fileNodeSchema,
+  "database":databaseSchema,
   "send-http-response": httpSendResponseSchema,
   "parse-data": parseDataSchema,
   "render-data": renderDataSchema,

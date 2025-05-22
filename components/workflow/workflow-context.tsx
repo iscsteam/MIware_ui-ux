@@ -1,4 +1,4 @@
-//workflow-context.tsx
+//workflow-context.tsx 
 "use client"
 
 import type React from "react"
@@ -652,6 +652,22 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
               renamed: true,
             }
             break
+
+             case "database":
+        console.log(
+          `Simulating DATABASE operation: ${
+            nodeData.input?.format || "unknown"
+          } to ${nodeData.output?.provider || "unknown"}`,
+        )
+        output = {
+          success: true,
+          rowsProcessed: Math.floor(Math.random() * 1000) + 100,
+          executionTime: Math.floor(Math.random() * 5000) + 500,
+          message: "Database operation completed successfully",
+          timestamp: new Date().toISOString(),
+        }
+        break
+
           case "code":
             console.log(`Simulating EXECUTE code: ${nodeData.language || "unknown"}`)
             // In real scenario, execute nodeData.code with inputData
