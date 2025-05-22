@@ -12,7 +12,7 @@ interface NodeTypeDefinition {
   label: string
   icon: React.ReactNode
   description: string
-  category: "file" | "general" | "http" | "xml" | "json" | "filenode" | "data"
+  category: "file" | "general" | "http" | "xml" | "json" | "filenode" | "data"| "databaseoperations"
 }
 
 const nodeTypes: NodeTypeDefinition[] = [
@@ -115,6 +115,13 @@ const nodeTypes: NodeTypeDefinition[] = [
     description: "Sends an HTTP response back to the client",
     category: "http"
   },
+   {
+    type: "database",
+    label: "Database",
+    icon: <Database className="h-5 w-5 text-green-500" />,
+    description: "Import/export data to/from databases",
+    category: "databaseoperations",
+  },
   {
     type: "xml-parser",
     label: "XML Parser",
@@ -196,7 +203,7 @@ interface SideModalProps {
   onSelectNodeType?: (nodeType: NodeType) => void;
 }
 
-type CategoryType = "main" | "file" | "general" | "http" | "xml" | "json" | "filenode" | "data";
+type CategoryType = "main" | "file" | "general" | "http" | "xml" | "json" | "filenode" | "data"|"databaseoperations";
 
 export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps) {
   const [isVisible, setIsVisible] = useState(false);
@@ -248,6 +255,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
   const jsonOperations = filteredNodeTypes.filter(node => node.category === "json");
   const fileOperation = filteredNodeTypes.filter(node => node.category === "filenode");
   const dataOperations = filteredNodeTypes.filter(node => node.category === "data");
+  
 
   // Search input that appears on every view
   const searchInput = (
@@ -312,6 +320,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       const generalResults = allFilteredNodes.filter(node => node.category === "general");
       const fileOperation = allFilteredNodes.filter(node => node.category === "filenode");
       const dataResults = allFilteredNodes.filter(node => node.category === "data");
+      const databaseResults = allFilteredNodes.filter((node) => node.category === "databaseoperations")
       
       return (
         <>
@@ -377,6 +386,17 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
                 {renderNodeList(jsonResults)}
               </div>
             )}
+
+             {databaseResults.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
+                  <Database className="h-4 w-4 text-green-500" />
+                  Database Operations
+                </h3>
+                {renderNodeList(databaseResults)}
+              </div>
+            )}
+
             
             {dataResults.length > 0 && (
               <div className="space-y-2">
@@ -469,6 +489,20 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
             </div>
           </div>
 
+            {/* Database Operations Card */}
+          <div
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
+            onClick={() => setCurrentView("databaseoperations")}
+          >
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
+              <div className="flex items-center space-x-2">
+                <Database className="h-5 w-5 text-green-500" />
+                <span className="font-semibold">Database Operations</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
+
           {/* Data Operations Card */}
           <div 
             className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
@@ -501,7 +535,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
     );
   };
 
-  const renderCategoryView = (category: "file" | "general" | "http" | "xml" | "json" | "filenode" | "data", title: string, icon: React.ReactNode) => {
+  const renderCategoryView = (category: "file" | "general" | "http" | "xml" | "json" | "filenode" | "data"|"databaseoperations", title: string, icon: React.ReactNode) => {
     const operations = filteredNodeTypes.filter(node => node.category === category);
     
     return (
@@ -547,6 +581,11 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
         return renderCategoryView("json","JSON Operations", <FileCode className="h-5 w-5 text-violet-500" />); 
       case "data":
         return renderCategoryView("data", "Data Operations", <Database className="h-5 w-5 text-blue-500" />);
+
+      case "databaseoperations":
+      return renderCategoryView( "databaseoperations","Database Operations",<Database className="h-5 w-5 text-green-500" />);
+
+
       case "filenode":
         return renderCategoryView("filenode","File Operation", <File className="h-5 w-5 text-violet-500" />); 
       case "general":

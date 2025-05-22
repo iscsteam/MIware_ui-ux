@@ -1,4 +1,4 @@
-// src/types/workflow.ts
+//interface.ts
 
 // Define the possible node types
 
@@ -28,6 +28,7 @@ export type NodeType =
   | "transform-json"
   | "file"
   | "filter"
+    | "database"
   | "move-file"
   | "code";
 

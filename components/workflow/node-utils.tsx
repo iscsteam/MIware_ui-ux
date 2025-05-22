@@ -1,5 +1,5 @@
 //node-utils.tsx 
-"use client"
+"use client" 
 import { Play, Filter, FileText, FileInput, FileOutput, Copy, CheckCircle, Code, Trash2, Files, Clock, Server, Send, Globe, FileJson, FileCode, Database, FilePenLine } from "lucide-react"
 
 import  { NodeType } from "@/services/interface"
@@ -18,6 +18,7 @@ export function getNodeIcon(type: NodeType) {
     "copy-file": "/icons/copy.png",
     "delete-file": "/icons/delete.png", 
     "list-files": "/icons/copy.png",
+    "database":"/icons/copy.png",
     "file-poller": "/icons/pollar.png",
     "rename-file": "/icons/write.png", // Added rename-file icon
     "end": "/icons/stop.png",
@@ -45,6 +46,8 @@ export function getNodeIcon(type: NodeType) {
       return <Database className="h-10 w-10 text-blue-500" />
     case "render-data":
       return <Database className="h-10 w-10 text-purple-500" />
+    case "database":
+      return <Database className="h-10 w-10 text-green-500" />
     case "code":
       return <Code className="h-10 w-10 text-slate-800" />
     case "rename-file":
