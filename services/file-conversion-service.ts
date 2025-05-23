@@ -1,4 +1,4 @@
-
+//file-conversion-service.ts
 import { toast } from "@/components/ui/use-toast"
 
 const baseUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT
@@ -161,6 +161,41 @@ export async function triggerDagRun(dagId: string): Promise<any> {
     return null
   }
 }
+
+// Add a new function to stop a running DAG after the triggerDagRun function
+
+export async function stopDagRun(dagId: string): Promise<any> {
+  try {
+    console.log("Stopping DAG run for:", dagId)
+
+    // Use the force_stop_active_run endpoint
+    const response = await fetch(`${baseUrl}/dag_runs/${dagId}/force_stop_active_run`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+      throw new Error(errorData.detail || `Failed to stop DAG run: ${response.status}`)
+    }
+
+    const result = await response.json()
+    console.log("DAG run stopped successfully:", result)
+    return result
+  } catch (error) {
+    console.error("Error stopping DAG run:", error)
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to stop DAG run",
+      variant: "destructive",
+    })
+    return null
+  }
+}
+
 
 // Helper function to ensure Python-compatible IDs
 export function makePythonSafeId(id: string): string {
