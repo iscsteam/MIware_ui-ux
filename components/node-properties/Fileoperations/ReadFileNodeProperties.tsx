@@ -229,7 +229,8 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
       const result = await res.json()
       if (!res.ok) throw new Error(result.detail || "Upload failed")
 
-      onChange("path", result.path || file.name)
+      onChange("path", result.filepath || file.name)
+      
       setSuccessMessage(`Uploaded ${file.name} to "${subfolder}" successfully`)
     } catch (err: any) {
       setError(`Upload failed: ${err.message}`)

@@ -58,7 +58,13 @@ export function mapWriteFileToOutput(writeNode: WorkflowNode) {
 /**
  * Maps filter node properties to filter, order_by, and aggregation configurations
  */
-export function mapFilterNodeToConfigs(filterNode: WorkflowNode) {
+export function 
+
+
+
+
+
+mapFilterNodeToConfigs(filterNode: WorkflowNode) {
   if (!filterNode || !filterNode.data) {
     return {};
   }
