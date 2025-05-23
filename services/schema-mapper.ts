@@ -7,8 +7,8 @@ import type { CliOperatorConfig } from "./cli-operator-service"; // Adjust path
 export const DEFAULT_SPARK_CONFIG = {
   executor_instances: 1,
   executor_cores: 1,
-  executor_memory: "512m",
-  driver_memory: "512m",
+  executor_memory: "2g",
+  driver_memory: "2g",
   driver_cores: 1,
 };
 

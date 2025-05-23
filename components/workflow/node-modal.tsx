@@ -28,7 +28,7 @@ import RenameFileNodeProperties,{renameFileSchema} from "@/components/node-prope
 import MoveFileNodeProperties,{moveFileSchema} from "@/components/node-properties/Fileoperations/MoveFileNodeProperties";
 
 import DatabaseNodeProperties,{databaseSchema} from  "@/components/node-properties/database-node-properties";
-
+import FilterNodeProperties,{filterSchema} from "../node-properties/Fileoperations/FilterNodeproperties";
 import {
   Tooltip,
   TooltipContent,
