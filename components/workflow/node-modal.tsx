@@ -26,6 +26,7 @@ import ParsedDataNodeProperties,{parseDataSchema} from "../node-properties/Parse
 import RenderDataNodeProperties,{renderDataSchema} from "../node-properties/RenderdataNodeProperties";
 import RenameFileNodeProperties,{renameFileSchema} from "@/components/node-properties/Fileoperations/RenameFileNodeProperties";
 import MoveFileNodeProperties,{moveFileSchema} from "@/components/node-properties/Fileoperations/MoveFileNodeProperties";
+import FilterNodeProperties,{filterSchema} from "@/components/node-properties/Fileoperations/FilterNodeproperties";
 
 import DatabaseNodeProperties,{databaseSchema} from  "@/components/node-properties/database-node-properties";
 
