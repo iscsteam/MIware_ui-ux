@@ -28,7 +28,8 @@ export type NodeType =
   | "transform-json"
   | "file"
   | "filter"
-    | "database"
+  | "database"
+  |"source"
   | "move-file"
   | "code";
 

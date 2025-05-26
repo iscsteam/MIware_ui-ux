@@ -1,4 +1,3 @@
-//workflow-context.tsx 
 "use client"
 
 import type React from "react"
@@ -86,6 +85,16 @@ export interface WorkflowNodeData {
     }
     executed_by: string
   }
+  // Database specific fields
+  connectionString?: string
+  writeMode?: string
+  tableName?: string
+  username?: string
+  password?: string
+  batchSize?: string
+  // Source specific fields
+  filePath?: string
+  csvOptions?: Record<string, any>
 }
 
 export interface WorkflowNode {
@@ -178,30 +187,31 @@ const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined
 export const getCurrentClientId = (): string | null => {
   try {
     // 1. Check dedicated "currentClient" item
-    const clientDataString = localStorage.getItem("currentClient");
+    const clientDataString = localStorage.getItem("currentClient")
     if (clientDataString) {
-      const parsedClient = JSON.parse(clientDataString);
-      if (parsedClient && parsedClient.id && String(parsedClient.id).trim() !== '') {
-        return String(parsedClient.id);
+      const parsedClient = JSON.parse(clientDataString)
+      if (parsedClient && parsedClient.id && String(parsedClient.id).trim() !== "") {
+        return String(parsedClient.id)
       }
     }
 
     // 2. Fallback: Check for "client_id" inside "currentWorkflow" item
-    const workflowDataString = localStorage.getItem("currentWorkflow");
+    const workflowDataString = localStorage.getItem("currentWorkflow")
     if (workflowDataString) {
-      const parsedWorkflow = JSON.parse(workflowDataString);
-      if (parsedWorkflow && parsedWorkflow.client_id && String(parsedWorkflow.client_id).trim() !== '') {
-        return String(parsedWorkflow.client_id);
+      const parsedWorkflow = JSON.parse(workflowDataString)
+      if (parsedWorkflow && parsedWorkflow.client_id && String(parsedWorkflow.client_id).trim() !== "") {
+        return String(parsedWorkflow.client_id)
       }
     }
     // If neither found:
-    console.warn("getCurrentClientId: No valid client_id found in localStorage ('currentClient' or 'currentWorkflow.client_id').");
+    console.warn(
+      "getCurrentClientId: No valid client_id found in localStorage ('currentClient' or 'currentWorkflow.client_id').",
+    )
   } catch (error) {
-    console.error("getCurrentClientId: Error accessing localStorage:", error);
+    console.error("getCurrentClientId: Error accessing localStorage:", error)
   }
-  return null;
-};
-
+  return null
+}
 
 export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const [nodes, setNodes] = useState<WorkflowNode[]>([])
@@ -653,20 +663,31 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             }
             break
 
-             case "database":
-        console.log(
-          `Simulating DATABASE operation: ${
-            nodeData.input?.format || "unknown"
-          } to ${nodeData.output?.provider || "unknown"}`,
-        )
-        output = {
-          success: true,
-          rowsProcessed: Math.floor(Math.random() * 1000) + 100,
-          executionTime: Math.floor(Math.random() * 5000) + 500,
-          message: "Database operation completed successfully",
-          timestamp: new Date().toISOString(),
-        }
-        break
+          case "database":
+            console.log(
+              `Simulating DATABASE operation: ${nodeData.provider || "unknown"} to ${nodeData.tableName || "unknown"}`,
+            )
+            output = {
+              success: true,
+              rowsProcessed: Math.floor(Math.random() * 1000) + 100,
+              executionTime: Math.floor(Math.random() * 5000) + 500,
+              message: "Database operation completed successfully",
+              timestamp: new Date().toISOString(),
+            }
+            break
+
+          case "source":
+            console.log(
+              `Simulating SOURCE operation: ${nodeData.provider || "unknown"} format ${nodeData.format || "unknown"}`,
+            )
+            output = {
+              data: { sample: "data from source" },
+              schema: nodeData.schema,
+              rowCount: Math.floor(Math.random() * 1000) + 100,
+              filePath: nodeData.filePath,
+              format: nodeData.format,
+            }
+            break
 
           case "code":
             console.log(`Simulating EXECUTE code: ${nodeData.language || "unknown"}`)

@@ -1,11 +1,12 @@
+
 // src/components/workflow/nodeSchemas.ts
-import { NodeType, SchemaItem } from "@/services/interface"; // Assuming SchemaItem is also in workflow-context
+import type { NodeType, SchemaItem } from "@/services/interface" // Assuming SchemaItem is also in workflow-context
 
 export interface NodeSchema {
-  label: string;
-  description?: string;
-  inputSchema?: SchemaItem[];
-  outputSchema?: SchemaItem[];
+  label: string
+  description?: string
+  inputSchema?: SchemaItem[]
+  outputSchema?: SchemaItem[]
 }
 
 // Define schemas for all available node types
@@ -20,19 +21,15 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         name: "triggerData", // Example: Data that triggered the workflow (if applicable)
         datatype: "any",
         description: "Data that initiated the workflow run.",
-        sourceNodeId:"",
-
-        originalName:"",
-
-
+        sourceNodeId: "",
+        originalName: "",
       },
       {
         name: "startTime",
         datatype: "string", // ISO timestamp
         description: "Timestamp when the workflow instance started.",
-        sourceNodeId:"",
-
-        originalName:"",
+        sourceNodeId: "",
+        originalName: "",
       },
     ],
   },
@@ -46,9 +43,8 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "any",
         description: "The final data payload to conclude the workflow.",
         required: true, // Usually requires some input to signify completion
-        sourceNodeId:"",
-
-        originalName:"",
+        sourceNodeId: "",
+        originalName: "",
       },
     ],
     outputSchema: [], // End nodes typically don't output data via connections
@@ -63,52 +59,25 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "string",
         description: "Path and name of the file/directory to create.",
         required: true,
-        sourceNodeId:"",
-
-        originalName:"",
+        sourceNodeId: "",
+        originalName: "",
       },
-      //{
-      //   name: "content",
-      //   datatype: "string",
-      //   description: "Initial content (for files only).",
-      //   required: false,
-      // },
-      // {
-      //   name: "overwrite",
-      //   datatype: "boolean",
-      //   description: "Whether to overwrite if the file/directory exists.",
-      //   required: false,
-      // },
-      // {
-      //   name: "isDirectory",
-      //   datatype: "boolean",
-      //   description: "Set to true to create a directory instead of a file.",
-      //   required: false,
-      // },
     ],
     outputSchema: [
-      // {
-      //   name: "fileInfo",
-      //   datatype: "object",
-      //   description: "Information about the created file/directory.",
-      // },
       {
         name: "fileInfo.fullName",
         datatype: "string",
         description: "Full path and name of the created item.",
-        sourceNodeId:"",
-
-        originalName:"",
+        sourceNodeId: "",
+        originalName: "",
       },
       {
         name: "file size",
         datatype: "Number",
         description: "file size",
-        sourceNodeId:"",
-
-        originalName:"",
+        sourceNodeId: "",
+        originalName: "",
       },
-
     ],
   },
 
@@ -121,86 +90,68 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "string",
         description: "Path and name of the file to read.",
         required: true,
-        sourceNodeId:"",
-
-        originalName:"",
+        sourceNodeId: "",
+        originalName: "",
       },
       {
         name: "encoding",
         datatype: "string", // Consider specific options: 'utf-8', 'ascii', 'binary'
         description: "Character encoding (default: UTF-8).",
         required: false,
-        sourceNodeId:"",
-
-        originalName:"",
+        sourceNodeId: "",
+        originalName: "",
       },
-      // {
-      //   name: "readAs",
-      //   datatype: "string", // 'text' or 'binary'
-      //   description: "How to read the file content (default: text).",
-      //   required: false,
-      // },
     ],
     outputSchema: [
       {
         name: "textContent", // Or binaryContent depending on readAs
         datatype: "string", // or 'Buffer'/'Blob'/'ArrayBuffer' if binary
         description: "Content of the file.",
-        sourceNodeId:"",
-
-        originalName:"",
+        sourceNodeId: "",
+        originalName: "",
       },
       {
         name: "fileName",
         datatype: "object",
         description: "Information about the read file.",
-        sourceNodeId:"",
-
-        originalName:"",
+        sourceNodeId: "",
+        originalName: "",
       },
-     {
-      name :"file fullname",
-      datatype: "string",
-      description:" Context of file",
-      sourceNodeId:"",
-
-      originalName:"",
-     },
-     {
-      name :"filepath",
-      datatype: "string",
-      description:" Context of file",
-      sourceNodeId:"",
-
-      originalName:"",
-     },
-     {
-      name :"file size",
-      datatype: "Number",
-      description:" Context of file",
-      sourceNodeId:"",
-
-      originalName:"",
-     },
-     {
-      name:"file type",
-      datatype:"string",
-      description:" Context of file",
-      sourceNodeId:"",
-
-      originalName:"",
-
-     },
-     {
-      name:"lastmodified",
-      datatype:"string",
-      description:" Context of file",
-      sourceNodeId:"",
-
-      originalName:"",
-     }
-
-    
+      {
+        name: "file fullname",
+        datatype: "string",
+        description: " Context of file",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "filepath",
+        datatype: "string",
+        description: " Context of file",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "file size",
+        datatype: "Number",
+        description: " Context of file",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "file type",
+        datatype: "string",
+        description: " Context of file",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "lastmodified",
+        datatype: "string",
+        description: " Context of file",
+        sourceNodeId: "",
+        originalName: "",
+      },
     ],
   },
 
@@ -213,48 +164,25 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "string",
         description: "Path and name of the file to write.",
         required: true,
-        sourceNodeId:"",
-
-        originalName:"",
+        sourceNodeId: "",
+        originalName: "",
       },
       {
         name: "Text Content",
         datatype: "any", // Can be string or binary data
         description: "Content to write to the file.",
         required: true,
-        sourceNodeId:"",
-
-        originalName:"",
+        sourceNodeId: "",
+        originalName: "",
       },
-      // {
-      //   name: "append",
-      //   datatype: "boolean",
-      //   description: "Whether to append to existing content (default: overwrite).",
-      //   required: false,
-      // },
       {
         name: "encoding",
         datatype: "string", // 'utf-8', 'ascii', etc. (if content is text)
         description: "Character encoding (default: UTF-8).",
         required: false,
-        sourceNodeId:"",
-
-        originalName:"",
+        sourceNodeId: "",
+        originalName: "",
       },
-      // {
-      //   name: "createDirectory",
-      //   datatype: "boolean",
-      //   description: "Create parent directories if they don't exist.",
-      //   required: false,
-      // },
-      // {
-      //   name: "writeAs",
-      //   datatype: "string",
-      //   description: "text.",
-      //   required: false,
-      // },
-
-      
     ],
     outputSchema: [
       {
@@ -267,32 +195,31 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "object",
         description: "Information about the read file.",
       },
-     {
-      name :"file fullname",
-      datatype: "string",
-      description:" Context of file",
-     },
-     {
-      name :"filepath",
-      datatype: "string",
-      description:" Context of file",
-     },
-     {
-      name :"file size",
-      datatype: "Number",
-      description:" Context of file",
-     },
-     {
-      name:"file type",
-      datatype:"string",
-      description:" Context of file",
-
-     },
-     {
-      name:"lastmodified",
-      datatype:"string",
-      description:" Context of file",
-     }
+      {
+        name: "file fullname",
+        datatype: "string",
+        description: " Context of file",
+      },
+      {
+        name: "filepath",
+        datatype: "string",
+        description: " Context of file",
+      },
+      {
+        name: "file size",
+        datatype: "Number",
+        description: " Context of file",
+      },
+      {
+        name: "file type",
+        datatype: "string",
+        description: " Context of file",
+      },
+      {
+        name: "lastmodified",
+        datatype: "string",
+        description: " Context of file",
+      },
     ],
   },
 
@@ -325,7 +252,6 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "object",
         description: "Information about the copied item at the target location.",
       },
-       // Add other relevant fileInfo properties
     ],
   },
 
@@ -337,13 +263,11 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         name: "path",
         datatype: "string",
         description: "Path of the file or directory to delete.",
-        // required: true,
       },
       {
         name: "file Name",
         datatype: "string",
         description: "it will remove the file from flow",
-        // required: false,
       },
     ],
     outputSchema: [
@@ -357,32 +281,31 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "object",
         description: "Information about the read file.",
       },
-     {
-      name :"file fullname",
-      datatype: "string",
-      description:" Context of file",
-     },
-     {
-      name :"filepath",
-      datatype: "string",
-      description:" Context of file",
-     },
-     {
-      name :"file size",
-      datatype: "Number",
-      description:" Context of file",
-     },
-     {
-      name:"file type",
-      datatype:"string",
-      description:" Context of file",
-
-     },
-     {
-      name:"lastmodified",
-      datatype:"string",
-      description:" Context of file",
-     }
+      {
+        name: "file fullname",
+        datatype: "string",
+        description: " Context of file",
+      },
+      {
+        name: "filepath",
+        datatype: "string",
+        description: " Context of file",
+      },
+      {
+        name: "file size",
+        datatype: "Number",
+        description: " Context of file",
+      },
+      {
+        name: "file type",
+        datatype: "string",
+        description: " Context of file",
+      },
+      {
+        name: "lastmodified",
+        datatype: "string",
+        description: " Context of file",
+      },
     ],
   },
 
@@ -408,7 +331,7 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         description: "Include items in subdirectories.",
         required: false,
       },
-       {
+      {
         name: "type", // 'files', 'directories', 'all'
         datatype: "string",
         description: "Type of items to list (default: all).",
@@ -432,10 +355,12 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
   "file-poller": {
     label: "File Poller",
     description: "Triggers when files change in a directory.",
-    inputSchema: [ // Configured via properties panel, not typically dynamic inputs
-        // Usually configuration like directory, filter, interval
+    inputSchema: [
+      // Configured via properties panel, not typically dynamic inputs
+      // Usually configuration like directory, filter, interval
     ],
-    outputSchema: [ // Output depends on the event
+    outputSchema: [
+      // Output depends on the event
       {
         name: "event", // 'create', 'modify', 'delete'
         datatype: "string",
@@ -457,8 +382,9 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
   "http-receiver": {
     label: "HTTP Receiver",
     description: "Starts a listener for incoming HTTP requests.",
-     inputSchema: [ // Configured via properties panel, not typically dynamic inputs
-        // Usually configuration like path, method, port
+    inputSchema: [
+      // Configured via properties panel, not typically dynamic inputs
+      // Usually configuration like path, method, port
     ],
     outputSchema: [
       {
@@ -491,7 +417,7 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "any",
         description: "Request body content.",
       },
-       {
+      {
         name: "responseHandle", // An identifier or object needed by Send HTTP Response
         datatype: "any",
         description: "Handle required to send a response back.",
@@ -561,7 +487,7 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
     label: "Send HTTP Response",
     description: "Sends response back for a received HTTP request.",
     inputSchema: [
-       {
+      {
         name: "responseHandle", // The identifier from HTTP Receiver
         datatype: "any",
         description: "Handle for the request to respond to.",
@@ -586,7 +512,8 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         required: false,
       },
     ],
-    outputSchema: [ // Often doesn't output data, just completes an interaction
+    outputSchema: [
+      // Often doesn't output data, just completes an interaction
       {
         name: "sent",
         datatype: "boolean",
@@ -598,14 +525,15 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
   code: {
     label: "Execute Code",
     description: "Executes custom JavaScript code.",
-    inputSchema: [ // Inputs can be dynamically defined or passed as a single object
+    inputSchema: [
+      // Inputs can be dynamically defined or passed as a single object
       {
         name: "inputData",
         datatype: "any",
         description: "Data passed into the code execution context.",
         required: false,
       },
-       // Code itself is usually configured in the properties panel
+      // Code itself is usually configured in the properties panel
     ],
     outputSchema: [
       {
@@ -613,7 +541,7 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         datatype: "any",
         description: "The value returned by the executed code.",
       },
-       {
+      {
         name: "error",
         datatype: "string",
         description: "Error message if code execution failed.",
@@ -625,6 +553,194 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
       },
     ],
   },
+
+  // Database node schema
+  database: {
+    label: "Database",
+    description: "Database operations with connection and write modes.",
+    inputSchema: [
+      {
+        name: "provider",
+        datatype: "string",
+        description: "Database provider (e.g., postgresql, mysql, sqlserver, oracle).",
+        required: true,
+      },
+      {
+        name: "format",
+        datatype: "string",
+        description: "Database format (always sql).",
+        required: true,
+      },
+      {
+        name: "connectionString",
+        datatype: "string",
+        description: "JDBC connection string for the database.",
+        required: true,
+      },
+      {
+        name: "writeMode",
+        datatype: "string",
+        description: "Write mode (overwrite, append, ignore, error).",
+        required: true,
+      },
+      {
+        name: "tableName",
+        datatype: "string",
+        description: "Database table name.",
+        required: true,
+      },
+      {
+        name: "username",
+        datatype: "string",
+        description: "Database username.",
+        required: true,
+      },
+      {
+        name: "password",
+        datatype: "string",
+        description: "Database password.",
+        required: true,
+      },
+      {
+        name: "batchSize",
+        datatype: "string",
+        description: "Batch size for database operations.",
+        required: false,
+      },
+    ],
+    outputSchema: [
+      {
+        name: "success",
+        datatype: "boolean",
+        description: "Whether the database operation was successful.",
+      },
+      {
+        name: "rowsProcessed",
+        datatype: "integer",
+        description: "Number of rows processed in the operation.",
+      },
+      {
+        name: "executionTime",
+        datatype: "integer",
+        description: "Time taken to execute the operation in milliseconds.",
+      },
+      {
+        name: "message",
+        datatype: "string",
+        description: "Status message or error details.",
+      },
+      {
+        name: "timestamp",
+        datatype: "string",
+        description: "Timestamp of when the operation completed.",
+      },
+    ],
+  },
+
+// Updated source node schema in nodeSchemas.ts
+source: {
+  label: "Source",
+  description: "Load data from various source providers including databases with schema definition.",
+  inputSchema: [
+    {
+      name: "provider",
+      datatype: "string",
+      description: "Source data provider (e.g., local, s3, hdfs, database).",
+      required: true,
+    },
+    {
+      name: "format",
+      datatype: "string",
+      description: "Source file format (e.g., csv, json, parquet) or sql for database.",
+      required: true,
+    },
+    {
+      name: "filePath",
+      datatype: "string",
+      description: "Path to the source file or data location (not required for database).",
+      required: false,
+    },
+    {
+      name: "connectionString",
+      datatype: "string",
+      description: "Database connection string (required when provider is database).",
+      required: false,
+    },
+    {
+      name: "tableName",
+      datatype: "string",
+      description: "Database table name (required when provider is database).",
+      required: false,
+    },
+    {
+      name: "username",
+      datatype: "string",
+      description: "Database username (required when provider is database).",
+      required: false,
+    },
+    {
+      name: "password",
+      datatype: "string",
+      description: "Database password (required when provider is database).",
+      required: false,
+    },
+    {
+      name: "batchSize",
+      datatype: "string",
+      description: "Batch size for database operations (optional for database provider).",
+      required: false,
+    },
+    {
+      name: "csvOptions",
+      datatype: "complex",
+      description: "CSV-specific options (header, inferSchema).",
+      required: false,
+    },
+    {
+      name: "schema",
+      datatype: "complex",
+      description: "Schema definition for the source data.",
+      required: false,
+    },
+  ],
+  outputSchema: [
+    {
+      name: "data",
+      datatype: "object",
+      description: "The loaded data from the source.",
+    },
+    {
+      name: "schema",
+      datatype: "object",
+      description: "The inferred or defined schema of the data.",
+    },
+    {
+      name: "rowCount",
+      datatype: "integer",
+      description: "Number of rows loaded from the source.",
+    },
+    {
+      name: "filePath",
+      datatype: "string",
+      description: "The source file path that was processed (for file sources).",
+    },
+    {
+      name: "tableName",
+      datatype: "string",
+      description: "The database table name that was processed (for database sources).",
+    },
+    {
+      name: "format",
+      datatype: "string",
+      description: "The format of the source data.",
+    },
+    {
+      name: "provider",
+      datatype: "string",
+      description: "The provider used for the source data.",
+    },
+  ],
+},
 
   // ----- MISSING SCHEMAS ADDED BELOW -----
   "xml-parser": {
@@ -668,7 +784,7 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         description: "The JavaScript object to render as XML.",
         required: true,
       },
-       {
+      {
         name: "options", // e.g., rootName, prettyPrint, indentation
         datatype: "object",
         description: "Rendering options (specific to the library used).",
@@ -689,32 +805,30 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
     ],
   },
   // ----- END OF ADDED SCHEMAS -----
-};
+}
 
 // Helper function to get a schema by node type
 export const getNodeSchema = (nodeType: NodeType | null | undefined): NodeSchema | undefined => {
   // Handle null/undefined input
   if (!nodeType) {
-    return undefined;
+    return undefined
   }
 
   // Direct case-sensitive match (most efficient)
   if (nodeSchemas[nodeType]) {
-    return nodeSchemas[nodeType];
+    return nodeSchemas[nodeType]
   }
 
   // Fallback: Case-insensitive check (only if direct match fails)
   // Ensure nodeType is treated as a string for safety before lowercasing
-  const normalizedType = typeof nodeType === 'string' ? nodeType.toLowerCase() : null;
+  const normalizedType = typeof nodeType === "string" ? nodeType.toLowerCase() : null
   if (!normalizedType) {
-      return undefined; // If nodeType wasn't a string
+    return undefined // If nodeType wasn't a string
   }
 
   // Find the key in nodeSchemas that matches case-insensitively
-  const matchingKey = Object.keys(nodeSchemas).find(
-    (key) => key.toLowerCase() === normalizedType
-  );
+  const matchingKey = Object.keys(nodeSchemas).find((key) => key.toLowerCase() === normalizedType)
 
   // Return the schema if a matching key was found
-  return matchingKey ? nodeSchemas[matchingKey as NodeType] : undefined;
-};
+  return matchingKey ? nodeSchemas[matchingKey as NodeType] : undefined
+}
