@@ -209,3 +209,16 @@ export function makePythonSafeId(id: string): string {
 
   return safeId
 }
+
+
+
+export async function getDatabaseDriver(provider: string): string {
+  const drivers: Record<string, string> = {
+    postgresql: "org.postgresql.Driver",
+    mysql: "com.mysql.cj.jdbc.Driver",
+    sqlserver: "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+    oracle: "oracle.jdbc.driver.OracleDriver",
+    local: "org.sqlite.JDBC",
+  }
+  return drivers[provider] || drivers.local
+}

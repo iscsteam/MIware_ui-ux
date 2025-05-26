@@ -555,38 +555,32 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
   },
 
   // Database node schema
-  database: {
+   database: {
     label: "Database",
-    description: "Database operations with connection and write modes.",
+    description: "Database operations with connection and write modes, supports file input from read-file nodes.",
     inputSchema: [
+      {
+        name: "fileData",
+        datatype: "object",
+        description: "File data from read-file node (content, path, metadata).",
+        required: false,
+      },
       {
         name: "provider",
         datatype: "string",
-        description: "Database provider (e.g., postgresql, mysql, sqlserver, oracle).",
+        description: "Database provider (postgresql, mysql, sqlserver, oracle, local).",
         required: true,
       },
       {
-        name: "format",
+        name: "host",
         datatype: "string",
-        description: "Database format (always sql).",
+        description: "Database host.",
         required: true,
       },
       {
-        name: "connectionString",
-        datatype: "string",
-        description: "JDBC connection string for the database.",
-        required: true,
-      },
-      {
-        name: "writeMode",
-        datatype: "string",
-        description: "Write mode (overwrite, append, ignore, error).",
-        required: true,
-      },
-      {
-        name: "tableName",
-        datatype: "string",
-        description: "Database table name.",
+        name: "port",
+        datatype: "integer",
+        description: "Database port.",
         required: true,
       },
       {
@@ -602,9 +596,33 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         required: true,
       },
       {
-        name: "batchSize",
+        name: "databaseName",
         datatype: "string",
-        description: "Batch size for database operations.",
+        description: "Database name.",
+        required: true,
+      },
+      {
+        name: "tableName",
+        datatype: "string",
+        description: "Table name to write to.",
+        required: true,
+      },
+      {
+        name: "writeMode",
+        datatype: "string",
+        description: "Write mode (insert, update, upsert).",
+        required: true,
+      },
+      {
+        name: "batchSize",
+        datatype: "integer",
+        description: "Batch size for writing to the database.",
+        required: false,
+      },
+      {
+        name: "columns",
+        datatype: "array",
+        description: "Array of column names to write to the database.",
         required: false,
       },
     ],
@@ -620,19 +638,14 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         description: "Number of rows processed in the operation.",
       },
       {
-        name: "executionTime",
-        datatype: "integer",
-        description: "Time taken to execute the operation in milliseconds.",
+        name: "inputFile",
+        datatype: "string",
+        description: "Path of the input file that was processed.",
       },
       {
-        name: "message",
+        name: "tableName",
         datatype: "string",
-        description: "Status message or error details.",
-      },
-      {
-        name: "timestamp",
-        datatype: "string",
-        description: "Timestamp of when the operation completed.",
+        description: "Name of the database table that was updated.",
       },
     ],
   },

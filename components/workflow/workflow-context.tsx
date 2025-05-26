@@ -1,11 +1,16 @@
+// //workflow-context.tsx
 "use client"
-
 import type React from "react"
 import { createContext, useContext, useState, useCallback, useEffect } from "react"
 import { v4 as uuidv4 } from "uuid"
 import type { NodeType, SchemaItem } from "@/services/interface"
 import { useToast } from "@/components/ui/use-toast"
-import { saveAndRunWorkflow as saveAndRunWorkflowUtil } from "@/services/workflow-utils"
+import {
+  createFileConversionConfig,
+  updateDag,
+  triggerDagRun,
+  makePythonSafeId,
+} from "@/services/file-conversion-service"
 
 const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT
 
@@ -232,7 +237,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   } | null>(null)
 
   // Get toast hook for notifications
-  const toast = useToast()
+  const { toast } = useToast()
 
   // --- Node Management ---
   const addNode = useCallback((type: NodeType, position: NodePosition, initialData?: Partial<WorkflowNodeData>) => {
@@ -258,19 +263,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     setNodes((prev) => [...prev, newNode])
     return newNode.id
   }, [])
-
-  // Helper function to create Python-compatible IDs
-  const makePythonSafeId = (name: string): string => {
-    // Remove any non-alphanumeric characters and replace with underscores
-    let safeId = name.replace(/[^a-zA-Z0-9_]/g, "_")
-
-    // Ensure it starts with a letter or underscore (Python variable naming rule)
-    if (!/^[a-zA-Z_]/.test(safeId)) {
-      safeId = "node_" + safeId
-    }
-
-    return safeId
-  }
 
   const updateNode = useCallback(
     (
@@ -457,7 +449,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (!workflowId) {
-      toast.toast({
+      toast({
         title: "Error",
         description: "No active workflow to save. Please create a workflow first.",
         variant: "destructive",
@@ -466,7 +458,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (nodes.length === 0) {
-      toast.toast({
+      toast({
         title: "Error",
         description: "Cannot save an empty workflow. Please add nodes first.",
         variant: "destructive",
@@ -497,14 +489,14 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       // Save to localStorage as well
       saveWorkflow()
 
-      toast.toast({
+      toast({
         title: "Success",
         description: "Workflow saved successfully",
         variant: "default",
       })
     } catch (error) {
       console.error("Error saving workflow:", error)
-      toast.toast({
+      toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to save workflow",
         variant: "destructive",
@@ -628,6 +620,11 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             output = {
               content: `Content of ${nodeData.path || nodeData.filename || "default.txt"}`,
               encoding: nodeData.encoding || "utf-8",
+              path: nodeData.path || nodeData.filename,
+              provider: nodeData.provider || "local",
+              format: nodeData.format || "csv",
+              options: nodeData.options || {},
+              schema: nodeData.schema,
             }
             break
           case "write-file":
@@ -667,12 +664,32 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             console.log(
               `Simulating DATABASE operation: ${nodeData.provider || "unknown"} to ${nodeData.tableName || "unknown"}`,
             )
-            output = {
-              success: true,
-              rowsProcessed: Math.floor(Math.random() * 1000) + 100,
-              executionTime: Math.floor(Math.random() * 5000) + 500,
-              message: "Database operation completed successfully",
-              timestamp: new Date().toISOString(),
+
+            // Check if we have input data from a read-file node
+            if (inputData && (inputData.content || inputData.path)) {
+              console.log(`Processing file data for database insertion: ${nodeData.tableName}`)
+              output = {
+                success: true,
+                rowsProcessed: Math.floor(Math.random() * 1000) + 100,
+                executionTime: Math.floor(Math.random() * 5000) + 500,
+                message: `Successfully inserted file data from ${inputData.path || "uploaded file"} into ${nodeData.tableName}`,
+                timestamp: new Date().toISOString(),
+                inputFile: inputData.path,
+                tableName: nodeData.tableName,
+                provider: nodeData.provider,
+                connectionString: nodeData.connectionString,
+                writeMode: nodeData.writeMode,
+              }
+            } else {
+              output = {
+                success: true,
+                rowsProcessed: Math.floor(Math.random() * 1000) + 100,
+                executionTime: Math.floor(Math.random() * 5000) + 500,
+                message: "Database operation completed successfully",
+                timestamp: new Date().toISOString(),
+                tableName: nodeData.tableName,
+                provider: nodeData.provider,
+              }
             }
             break
 
@@ -849,19 +866,241 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   }, [loadWorkflow]) // Load only on initial mount or when loadWorkflow function identity changes
 
-  // Update the saveAndRunWorkflow function to use the utility function
+  // Helper function to get database driver based on provider
+  const getDatabaseDriver = (provider: string): string => {
+    const drivers: Record<string, string> = {
+      postgresql: "org.postgresql.Driver",
+      mysql: "com.mysql.cj.jdbc.Driver",
+      sqlserver: "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+      oracle: "oracle.jdbc.driver.OracleDriver",
+      local: "org.sqlite.JDBC",
+    }
+    return drivers[provider] || drivers.postgresql
+  }
+
+  // Update the saveAndRunWorkflow function to use the existing file-conversion-service functions
   const saveAndRunWorkflow = useCallback(async () => {
-    const workflowId = getCurrentWorkflowId()
-    if (!workflowId) {
-      toast.toast({
+    const dynamicClientIdString = getCurrentClientId()
+    if (!dynamicClientIdString) {
+      toast({
         title: "Error",
-        description: "No active workflow to save. Please create a workflow first.",
+        description: "No client ID found. Please create or select a client first.",
         variant: "destructive",
       })
       return
     }
 
-    await saveAndRunWorkflowUtil(nodes, connections, workflowId)
+    const clientId = Number.parseInt(dynamicClientIdString, 10)
+    if (isNaN(clientId)) {
+      toast({
+        title: "Error",
+        description: "Invalid client ID format.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const currentWorkflowId = getCurrentWorkflowId()
+    if (!currentWorkflowId) {
+      toast({
+        title: "Error",
+        description: "No workflow ID found. Please create a workflow first.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (nodes.length === 0) {
+      toast({
+        title: "Error",
+        description: "Cannot save an empty workflow. Please add nodes first.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const startNodes = nodes.filter((node) => node.type === "start")
+      const endNodes = nodes.filter((node) => node.type === "end")
+      if (startNodes.length === 0 || endNodes.length === 0) {
+        toast({
+          title: "Error",
+          description: "Workflow must have both start and end nodes.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Check for the type of workflow
+      const readFileNodes = nodes.filter((node) => node.type === "read-file")
+      const writeFileNodes = nodes.filter((node) => node.type === "write-file")
+      const databaseNodes = nodes.filter((node) => node.type === "database")
+      const filterNodes = nodes.filter((node) => node.type === "filter")
+
+      let dagSequence: any[] = []
+      let createdConfigId: number | null = null
+      let operationTypeForDag: "file_conversion" | null = null
+
+      // --- FILE CONVERSION WORKFLOW ---
+      if (readFileNodes.length > 0 && writeFileNodes.length > 0) {
+        operationTypeForDag = "file_conversion"
+        const readNode = readFileNodes[0]
+        const writeNode = writeFileNodes[0]
+        const filterNode = filterNodes.length > 0 ? filterNodes[0] : null
+
+        if (!readNode.data.path || !writeNode.data.path) {
+          toast({
+            title: "Error",
+            description: "File conversion workflow requires both input and output paths.",
+            variant: "destructive",
+          })
+          return
+        }
+
+        const configPayload = {
+          input: {
+            provider: readNode.data.provider || "local",
+            format: readNode.data.format || "csv",
+            path: readNode.data.path,
+            options: readNode.data.options || {},
+            schema: readNode.data.schema,
+          },
+          output: {
+            provider: writeNode.data.provider || "local",
+            format: writeNode.data.format || "parquet",
+            path: writeNode.data.path,
+            mode: writeNode.data.writeMode || "overwrite",
+            options: writeNode.data.options || {},
+          },
+          filter: filterNode
+            ? {
+                operator: filterNode.data.operator || "and",
+                conditions: filterNode.data.conditions || [],
+              }
+            : undefined,
+          dag_id: currentWorkflowId,
+        }
+
+        console.log("Creating file conversion config with:", configPayload)
+        const configResponse = await createFileConversionConfig(clientId, configPayload)
+        if (!configResponse) throw new Error("Failed to create file conversion config")
+        createdConfigId = configResponse.id
+      }
+      // --- DATABASE WORKFLOW ---
+      else if (readFileNodes.length > 0 && databaseNodes.length > 0) {
+        operationTypeForDag = "file_conversion"
+        const readNode = readFileNodes[0]
+        const databaseNode = databaseNodes[0]
+        const filterNode = filterNodes.length > 0 ? filterNodes[0] : null
+
+        if (!readNode.data.path || !databaseNode.data.connectionString || !databaseNode.data.tableName) {
+          toast({
+            title: "Error",
+            description: "Database workflow requires file path, connection string, and table name.",
+            variant: "destructive",
+          })
+          return
+        }
+
+        // Create file conversion config for database workflow using existing service
+        const configPayload = {
+          input: {
+            provider: readNode.data.provider || "local",
+            format: readNode.data.format || "csv",
+            path: readNode.data.path,
+            options: readNode.data.options || {},
+            schema: readNode.data.schema,
+          },
+          output: {
+            provider: databaseNode.data.provider === "local" ? "sqlite" : databaseNode.data.provider,
+            format: "sql",
+            path: databaseNode.data.connectionString,
+            mode: databaseNode.data.writeMode || "overwrite",
+            options: {
+              tableName: databaseNode.data.tableName,
+              username: databaseNode.data.username || "",
+              password: databaseNode.data.password || "",
+              batchSize: databaseNode.data.batchSize || "5000",
+              driver: getDatabaseDriver(databaseNode.data.provider),
+            },
+          },
+          filter: filterNode
+            ? {
+                operator: filterNode.data.operator || "and",
+                conditions: filterNode.data.conditions || [],
+              }
+            : undefined,
+          dag_id: currentWorkflowId,
+        }
+
+        console.log("Creating database workflow config with:", configPayload)
+        const configResponse = await createFileConversionConfig(clientId, configPayload)
+        if (!configResponse) throw new Error("Failed to create database workflow config")
+        createdConfigId = configResponse.id
+      } else {
+        toast({
+          title: "Error",
+          description: "Workflow must contain a recognized operation (read/write files or database).",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Check if a config was successfully created and an operation type determined
+      if (createdConfigId === null || operationTypeForDag === null) {
+        toast({
+          title: "Error",
+          description: "Failed to determine workflow operation or create necessary configuration.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Create DAG sequence using the createdConfigId and operationTypeForDag
+      const taskNodeIdPrefix = "fc_node_"
+      dagSequence = [
+        {
+          id: makePythonSafeId(startNodes[0].id),
+          type: "start",
+          config_id: 1,
+          next: [`${taskNodeIdPrefix}${createdConfigId}`],
+        },
+        {
+          id: `${taskNodeIdPrefix}${createdConfigId}`,
+          type: operationTypeForDag,
+          config_id: createdConfigId,
+          next: [makePythonSafeId(endNodes[0].id)],
+        },
+        { id: makePythonSafeId(endNodes[0].id), type: "end", config_id: 1, next: [] },
+      ]
+
+      // Update DAG and Trigger Run using existing service functions
+      const dagUpdateData = { dag_sequence: dagSequence, active: true }
+      const updatedDag = await updateDag(currentWorkflowId, dagUpdateData)
+      if (!updatedDag) throw new Error("Failed to update DAG")
+
+      try {
+        const triggerResult = await triggerDagRun(currentWorkflowId)
+        if (!triggerResult) console.log("Trigger returned null, but continuing.")
+      } catch (triggerError) {
+        console.error("Error triggering DAG run, but workflow was saved:", triggerError)
+        toast({
+          title: "Partial Success",
+          description: "Workflow saved but failed to trigger. Run manually.",
+          variant: "default",
+        })
+        return
+      }
+
+      toast({ title: "Success", description: "Workflow saved and triggered successfully." })
+    } catch (error) {
+      console.error("Error in saveAndRunWorkflow:", error)
+      toast({
+        title: "Workflow Error",
+        description: error instanceof Error ? error.message : "Failed to save and run workflow.",
+        variant: "destructive",
+      })
+    }
   }, [nodes, connections, getCurrentWorkflowId, toast])
 
   // --- Context Value ---

@@ -40,7 +40,6 @@ export type NodeType =
 //   description: string;
 //   required?: boolean; // Optional flag
 // }
-
 // Interface for the complete schema definition of a node
 export interface NodeSchema {
   label: string;
@@ -285,4 +284,14 @@ export interface DAGStatusResponse {
   started_at?: string;
   ended_at?: string;
   logs?: string;
+}
+
+export interface UploadedFileItem {
+  name: string; // Mapped from API's `filename`
+  type: "file" | "directory"; // Defaulted to "file"
+  path: string; // Mapped from API's `filepath` (this is what you need)
+  // Optional fields below, can be omitted if not used by UI
+  original_filename?: string;
+  size_bytes?: number;
+  last_modified?: string;
 }
