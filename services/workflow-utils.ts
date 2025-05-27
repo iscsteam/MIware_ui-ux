@@ -1,14 +1,14 @@
-// Utility functions for workflow operations
+// src/services/workflow-utils.ts (or your equivalent path)
 import type {
   WorkflowNode,
   NodeConnection,
-} from "@/components/workflow/workflow-context";
+} from "@/components/workflow/workflow-context"; // Adjust path if necessary
 import {
   createFileConversionConfig,
   updateDag,
   triggerDagRun,
 } from "@/services/file-conversion-service";
-import { createFileConversionConfigFromNodes } from "@/services/schema-mapper"; // Assumed to handle read-file to write-file
+// Removed: import { createFileConversionConfigFromNodes } from "@/services/schema-mapper"; // Was unused in the provided saveAndRunWorkflow
 import {
   createCliOperatorConfig,
   mapCopyFileToCliOperator,
@@ -16,8 +16,8 @@ import {
   mapRenameFileToCliOperator,
   mapDeleteFileToCliOperator,
 } from "@/services/cli-operator-service";
-import { toast } from "@/components/ui/use-toast";
-import { getCurrentClientId } from "@/components/workflow/workflow-context";
+import { toast } from "@/components/ui/use-toast"; // Assuming this path is correct for your project
+import { getCurrentClientId } from "@/components/workflow/workflow-context"; // Adjust path if necessary
 
 // Helper function to ensure Python-compatible IDs
 function makePythonSafeId(id: string): string {
@@ -28,11 +28,26 @@ function makePythonSafeId(id: string): string {
   return safeId;
 }
 
+// Helper function to get database driver based on provider
+function getDatabaseDriver(provider?: string): string {
+  const drivers: Record<string, string> = {
+    postgresql: "org.postgresql.Driver",
+    mysql: "com.mysql.cj.jdbc.Driver",
+    sqlserver: "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+    oracle: "oracle.jdbc.driver.OracleDriver",
+    sqlite: "org.sqlite.JDBC",
+    local: "org.postgresql.Driver", // Assuming local defaults to PostgreSQL for Spark, or adjust to org.sqlite.JDBC if SQLite
+  };
+  return (
+    drivers[provider?.toLowerCase() || "postgresql"] || "org.postgresql.Driver"
+  );
+}
+
 export async function saveAndRunWorkflow(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
   currentWorkflowId: string | null
-): Promise<boolean> {
+): Promise<boolean> { // Return boolean to indicate pre-check failures
   const dynamicClientIdString = getCurrentClientId();
   if (!dynamicClientIdString) {
     toast({
@@ -81,14 +96,14 @@ export async function saveAndRunWorkflow(
           description: "Workflow needs start and end nodes.",
           variant: "destructive",
         });
-        return;
+        return false; // Changed from return to return false
       }
 
       const readFileNodes = nodes.filter((node) => node.type === "read-file");
       const writeFileNodes = nodes.filter((node) => node.type === "write-file");
       const databaseNodes = nodes.filter((node) => node.type === "database");
       const databaseSourceNodes = nodes.filter(
-        (node) => node.type === "source"
+        (node) => node.type === "source" // Assuming 'source' type is for database sources
       );
       const copyFileNodes = nodes.filter((node) => node.type === "copy-file");
       const moveFileNodes = nodes.filter((node) => node.type === "move-file");
@@ -103,7 +118,7 @@ export async function saveAndRunWorkflow(
       let dagSequence: any[] = [];
       let createdConfigId: number | null = null;
       let operationTypeForDag: "file_conversion" | "cli_operator" | null = null;
-      let configPayload: any = null; // Generic payload for either type
+      let configPayload: any = null;
 
       // --- FILE-TO-FILE ---
       if (readFileNodes.length > 0 && writeFileNodes.length > 0) {
@@ -118,7 +133,7 @@ export async function saveAndRunWorkflow(
             description: "File-to-File: Input/Output paths required.",
             variant: "destructive",
           });
-          return;
+          return false; // Changed
         }
         configPayload = {
           input: {
@@ -154,7 +169,7 @@ export async function saveAndRunWorkflow(
         if (
           !readNode.data.path ||
           !databaseNode.data.connectionString ||
-          !databaseNode.data.table
+          !databaseNode.data.table // Changed from tableName to table
         ) {
           toast({
             title: "Error",
@@ -162,7 +177,7 @@ export async function saveAndRunWorkflow(
               "File-to-DB: File path, DB connection, and table required.",
             variant: "destructive",
           });
-          return;
+          return false; // Changed
         }
         configPayload = {
           input: {
@@ -175,14 +190,14 @@ export async function saveAndRunWorkflow(
           output: {
             provider:
               databaseNode.data.provider === "local"
-                ? "sqlite"
+                ? "local" // Assuming 'local' database provider means SQLite for output
                 : databaseNode.data.provider,
             format: "sql",
             path: databaseNode.data.connectionString,
             mode: databaseNode.data.writeMode || "overwrite",
             options: {
-              table: databaseNode.data.table,
-              user: databaseNode.data.user || "",
+              table: databaseNode.data.table, // Changed from tableName
+              user: databaseNode.data.user || "", // Changed from username
               password: databaseNode.data.password || "",
               batchSize: databaseNode.data.batchSize || "5000",
               driver: getDatabaseDriver(databaseNode.data.provider),
@@ -199,17 +214,15 @@ export async function saveAndRunWorkflow(
       }
       // --- DATABASESOURCE-TO-FILE ---
       else if (databaseSourceNodes.length > 0 && writeFileNodes.length > 0) {
-        // << ENSURE THIS LINE IS CORRECT
-        console.log("Detected: DatabaseSource('source' node)-to-File"); // << THIS LOG SHOULD APPEAR
+        console.log("Detected: DatabaseSource('source' node)-to-File");
         operationTypeForDag = "file_conversion";
         const dbSourceNode = databaseSourceNodes[0];
         const writeNode = writeFileNodes[0];
         const filterNode = filterNodes.length > 0 ? filterNodes[0] : null;
 
-        // Validation using the correct field names from your node data
         if (
           !dbSourceNode.data.connectionString ||
-          (!dbSourceNode.data.query && !dbSourceNode.data.table) || // Check 'tableName'
+          (!dbSourceNode.data.query && !dbSourceNode.data.table) || // Use 'table'
           !writeNode.data.path
         ) {
           toast({
@@ -218,13 +231,8 @@ export async function saveAndRunWorkflow(
               "DB-to-File: DB conn, (query or table name), and output path required.",
             variant: "destructive",
           });
-          return; // Exit if validation fails
+          return false; // Changed
         }
-
-        // Determine the actual database provider
-        // const actualDbProvider =
-        //   // dbSourceNode.data.databaseprovider ||
-        //   dbSourceNode.data.provider || "postgresql";
 
         configPayload = {
           input: {
@@ -232,28 +240,25 @@ export async function saveAndRunWorkflow(
             format: "sql",
             path: dbSourceNode.data.connectionString,
             options: {
-              // query:
-              //   dbSourceNode.data.query ||
-              //   (dbSourceNode.data.table
-              //     ? `SELECT * FROM "${dbSourceNode.data.table}"`
-              //     : undefined), // Use 'tableName'
-              table: dbSourceNode.data.table,
-              user: dbSourceNode.data.user || dbSourceNode.data.user || "", // Use 'username'
+              // Query logic can be complex; if only table is provided, backend might construct query
+              // Or, ensure 'query' is populated if that's the primary way to define input.
+              query: dbSourceNode.data.query, // Prefer explicit query if available
+              table: dbSourceNode.data.table, // Send table name as well
+              user: dbSourceNode.data.user || "", // Changed from username
               password: dbSourceNode.data.password || "",
-
               driver: getDatabaseDriver(dbSourceNode.data.provider),
             },
             schema: dbSourceNode.data.schema,
           },
           output: {
             provider: writeNode.data.provider || "local",
-            format: writeNode.data.format || "xml", // Assuming XML from your earlier payload example
+            format: writeNode.data.format || "xml",
             path: writeNode.data.path,
             mode: writeNode.data.writeMode || "overwrite",
             options: writeNode.data.options || {
-              rootTag: "TableData",
+              rootTag: "TableData", // Example default for XML
               rowTag: "Row",
-            }, // Default XML options
+            },
           },
           filter: filterNode
             ? {
@@ -275,9 +280,9 @@ export async function saveAndRunWorkflow(
             description: "Copy: Source/Destination paths required.",
             variant: "destructive",
           });
-          return;
+          return false; // Changed
         }
-        configPayload = mapCopyFileToCliOperator(node);
+        configPayload = mapCopyFileToCliOperator(node); // map... functions should handle node.data
       }
       // --- MOVE FILE ---
       else if (moveFileNodes.length > 0) {
@@ -290,7 +295,7 @@ export async function saveAndRunWorkflow(
             description: "Move: Source/Destination paths required.",
             variant: "destructive",
           });
-          return;
+          return false; // Changed
         }
         configPayload = mapMoveFileToCliOperator(node);
       }
@@ -299,14 +304,14 @@ export async function saveAndRunWorkflow(
         console.log("Detected: Rename-File");
         operationTypeForDag = "cli_operator";
         const node = renameFileNodes[0];
-        // Assuming rename also uses source_path for old and destination_path for new for consistency with mappers
+        // Ensure your mapRenameFileToCliOperator uses source_path for old and destination_path for new if that's the convention
         if (!node.data.source_path || !node.data.destination_path) {
           toast({
             title: "Error",
-            description: "Rename: Old/New paths required.",
+            description: "Rename: Old/New paths (source/destination) required.",
             variant: "destructive",
           });
-          return;
+          return false; // Changed
         }
         configPayload = mapRenameFileToCliOperator(node);
       }
@@ -321,7 +326,7 @@ export async function saveAndRunWorkflow(
             description: "Delete: Source path required.",
             variant: "destructive",
           });
-          return;
+          return false; // Changed
         }
         configPayload = mapDeleteFileToCliOperator(node);
       }
@@ -330,10 +335,10 @@ export async function saveAndRunWorkflow(
         console.log("No recognized workflow operation type found.");
         toast({
           title: "Error",
-          description: "Unsupported workflow operation.",
+          description: "Unsupported workflow operation. Please connect appropriate source and target nodes (e.g., read-file to write-file, or a CLI operation node).",
           variant: "destructive",
         });
-        return;
+        return false; // Changed
       }
 
       // Create configuration
@@ -356,6 +361,8 @@ export async function saveAndRunWorkflow(
           `Creating CLI operator config (${configPayload.operation}) with:`,
           JSON.stringify(configPayload, null, 2)
         );
+        // Add dag_id to CLI operator payload if your backend expects it for association
+        // configPayload.dag_id = currentWorkflowId; // Example if needed
         const response = await createCliOperatorConfig(clientId, configPayload);
         if (!response?.id)
           throw new Error(
@@ -367,10 +374,10 @@ export async function saveAndRunWorkflow(
       if (createdConfigId === null || !operationTypeForDag) {
         toast({
           title: "Error",
-          description: "Config creation failed.",
+          description: "Config creation failed or operation type missing.",
           variant: "destructive",
         });
-        return;
+        return false; // Changed
       }
 
       const taskNodeIdPrefix =
@@ -379,7 +386,7 @@ export async function saveAndRunWorkflow(
         {
           id: makePythonSafeId(startNodesList[0].id),
           type: "start",
-          config_id: 1,
+          config_id: 1, // Default/placeholder config_id for start/end
           next: [`${taskNodeIdPrefix}${createdConfigId}`],
         },
         {
@@ -391,7 +398,7 @@ export async function saveAndRunWorkflow(
         {
           id: makePythonSafeId(endNodesList[0].id),
           type: "end",
-          config_id: 1,
+          config_id: 1, // Default/placeholder config_id for start/end
           next: [],
         },
       ];
@@ -401,12 +408,12 @@ export async function saveAndRunWorkflow(
         JSON.stringify(dagSequence, null, 2)
       );
       const dagUpdateData = { dag_sequence: dagSequence, active: true };
-      const updatedDag = await updateDag(currentWorkflowId, dagUpdateData);
+      const updatedDag = await updateDag(currentWorkflowId, dagUpdateData); // Pass workflowId (dag_id)
       if (!updatedDag) throw new Error("Failed to update DAG on backend.");
 
       try {
         console.log("Triggering DAG run for workflow:", currentWorkflowId);
-        const triggerResult = await triggerDagRun(currentWorkflowId);
+        const triggerResult = await triggerDagRun(currentWorkflowId); // Pass workflowId (dag_id)
         if (!triggerResult)
           console.warn(
             "DAG run trigger returned non-truthy value, but workflow saved."
@@ -418,56 +425,43 @@ export async function saveAndRunWorkflow(
         );
         toast({
           title: "Partial Success",
-          description: "Workflow saved; run trigger failed. Run manually.",
-          variant: "default",
+          description: "Workflow saved; run trigger failed. You may need to run it manually.",
+          variant: "default", // Or "warning" if you have one
         });
+        // Do not return false here, as saving was successful
       }
 
       toast({
         title: "Success",
         description: "Workflow saved and run triggered.",
       });
+      return true; // Indicate overall success
+
     } catch (error) {
       console.error("Error in saveAndRunWorkflow:", error);
       toast({
-        title: "Workflow Error",
+        title: "Workflow Operation Error",
         description:
           error instanceof Error
             ? error.message
-            : "Failed to save/run workflow.",
+            : "An unexpected error occurred while saving or running the workflow.",
         variant: "destructive",
       });
+      return false; // Indicate failure
     }
 }
 
-// Helper function to get database driver based on provider
-function getDatabaseDriver(provider?: string): string {
-  // Made provider optional for safety
-  const drivers: Record<string, string> = {
-    postgresql: "org.postgresql.Driver",
-    mysql: "com.mysql.cj.jdbc.Driver",
-    sqlserver: "com.microsoft.sqlserver.jdbc.SQLServerDriver",
-    oracle: "oracle.jdbc.driver.OracleDriver",
-    sqlite: "org.sqlite.JDBC", // SQLite driver (often used with 'local' or 'sqlite' provider)
-    local: "org.postgresql.Driver", // Alias for SQLite
-  };
-  return (
-    drivers[provider?.toLowerCase() || "postgresql"] || "org.postgresql.Driver"
-  ); // Default to postgresql if not found
-}
-
-// Keep the existing findWriteNodesInPath function unchanged (if it's still needed elsewhere)
-function findWriteNodesInPath(
+// Keep the existing findWriteNodesInPath function unchanged if it's still needed elsewhere
+// For this refactoring, it's not directly used by saveAndRunWorkflow
+export function findWriteNodesInPath( // Added export if it's used by other modules
   startNodeId: string,
   nodes: WorkflowNode[],
   connections: NodeConnection[],
   visited: Set<string> = new Set()
 ): WorkflowNode[] {
-  // ... (implementation as provided) ...
   if (visited.has(startNodeId)) {
     return [];
   }
-
   visited.add(startNodeId);
   const writeNodes: WorkflowNode[] = [];
 
