@@ -26,6 +26,7 @@ const formatOptions = {
   csv: { header: true, inferSchema: true },
   json: { multiline: true },
   xml: { rowTag: "Record", rootTag: "Records" },
+  parquet: { compression: "snappy" },
 }
 
 // Write File node schema
