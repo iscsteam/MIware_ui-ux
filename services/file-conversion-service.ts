@@ -218,7 +218,7 @@ export async function getDatabaseDriver(provider: string): string {
     mysql: "com.mysql.cj.jdbc.Driver",
     sqlserver: "com.microsoft.sqlserver.jdbc.SQLServerDriver",
     oracle: "oracle.jdbc.driver.OracleDriver",
-    local: "org.sqlite.JDBC",
+    local: "org.postgresql.Driver",
   }
   return drivers[provider] || drivers.local
 }

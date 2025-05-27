@@ -1,25 +1,31 @@
 //sourcenodeproperties.tsx
-"use client"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { useState, useEffect } from "react"
-import { useWorkflow } from "@/components/workflow/workflow-context"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Trash2 } from "lucide-react"
+"use client";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { useWorkflow } from "@/components/workflow/workflow-context";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Trash2 } from "lucide-react";
 
 // Define the schema directly in this component
 export interface SchemaItem {
-  name: string
-  datatype: string
-  description: string
-  required?: boolean
+  name: string;
+  datatype: string;
+  description: string;
+  required?: boolean;
 }
 
 export interface NodeSchema {
-  inputSchema: SchemaItem[]
-  outputSchema: SchemaItem[]
+  inputSchema: SchemaItem[];
+  outputSchema: SchemaItem[];
 }
 
 // Format-specific options
@@ -31,7 +37,7 @@ const formatOptions = {
   orc: {},
   xml: { rootTag: "TableData", rowTag: "Row" },
   sql: {},
-}
+};
 
 // Database provider options
 const databaseProviders = {
@@ -42,8 +48,8 @@ const databaseProviders = {
     batchsize: "5000",
   },
   oracle: { driver: "oracle.jdbc.driver.OracleDriver", batchsize: "5000" },
-  local:{ driver: "org.postgresql.Driver", batchsize: "5000" },
-}
+  local: { driver: "org.postgresql.Driver", batchsize: "5000" },
+};
 
 // Source node schema (updated to include database fields)
 export const sourceSchema: NodeSchema = {
@@ -73,15 +79,15 @@ export const sourceSchema: NodeSchema = {
       required: false,
     },
     {
-      name: "tableName",
+      name: "table",
       datatype: "string",
       description: "Database table name (for database provider).",
       required: false,
     },
     {
-      name: "username",
+      name: "user",
       datatype: "string",
-      description: "Database username (for database provider).",
+      description: "Database user (for database provider).",
       required: false,
     },
     {
@@ -142,142 +148,158 @@ export const sourceSchema: NodeSchema = {
       description: "The format of the source data.",
     },
   ],
-}
+};
 
 interface Props {
-  formData: Record<string, any>
-  onChange: (name: string, value: any) => void
+  formData: Record<string, any>;
+  onChange: (name: string, value: any) => void;
 }
 
 export default function SourceNodeProperties({ formData, onChange }: Props) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const { updateNode, selectedNodeId } = useWorkflow()
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const { updateNode, selectedNodeId } = useWorkflow();
 
   // Check if database provider is selected
-  const isDatabaseProvider = formData.provider === "source"
+  const isDatabaseProvider = formData.provider === "local";
 
   // Initialize default values
   useEffect(() => {
     if (!formData.provider) {
-      onChange("provider", "local")
+      onChange("provider", "local");
     }
     if (!formData.format) {
-      onChange("format", "csv")
+      onChange("format", "csv");
     }
     if (!formData.csvOptions) {
-      onChange("csvOptions", formatOptions.csv)
+      onChange("csvOptions", formatOptions.csv);
     }
     if (!formData.schema) {
-      onChange("schema", { fields: [] })
+      onChange("schema", { fields: [] });
     }
     if (!formData.batchSize) {
-      onChange("batchSize", "5000")
+      onChange("batchSize", "5000");
     }
     if (!formData.databaseProvider) {
-      onChange("databaseProvider", "postgresql")
+      onChange("databaseProvider", "postgresql");
     }
-  }, [formData])
+  }, [formData]);
 
   // Handle provider change
   useEffect(() => {
     if (formData.provider === "source") {
       // Set format to SQL for database
       if (formData.format !== "sql") {
-        onChange("format", "sql")
+        onChange("format", "sql");
       }
     } else {
       // Reset database-specific fields when switching away from database
       if (formData.format === "sql") {
-        onChange("format", "csv")
+        onChange("format", "csv");
       }
     }
-  }, [formData.provider])
+  }, [formData.provider]);
 
   // Handle format change to update options
   useEffect(() => {
-    if (formData.format && formatOptions[formData.format as keyof typeof formatOptions]) {
-      const newOptions = formatOptions[formData.format as keyof typeof formatOptions]
-      const currentOptions = formData.csvOptions || {}
+    if (
+      formData.format &&
+      formatOptions[formData.format as keyof typeof formatOptions]
+    ) {
+      const newOptions =
+        formatOptions[formData.format as keyof typeof formatOptions];
+      const currentOptions = formData.csvOptions || {};
 
       if (JSON.stringify(newOptions) !== JSON.stringify(currentOptions)) {
-        onChange("csvOptions", newOptions)
+        onChange("csvOptions", newOptions);
       }
     }
-  }, [formData.format, formData])
+  }, [formData.format, formData]);
 
   // Handle database provider change to update batch size
   useEffect(() => {
-    if (formData.databaseProvider && databaseProviders[formData.databaseProvider as keyof typeof databaseProviders]) {
-      const providerDefaults = databaseProviders[formData.databaseProvider as keyof typeof databaseProviders]
+    if (
+      formData.databaseProvider &&
+      databaseProviders[
+        formData.databaseProvider as keyof typeof databaseProviders
+      ]
+    ) {
+      const providerDefaults =
+        databaseProviders[
+          formData.databaseProvider as keyof typeof databaseProviders
+        ];
       if (!formData.batchSize || formData.batchSize === "5000") {
-        onChange("batchSize", providerDefaults.batchsize)
+        onChange("batchSize", providerDefaults.batchsize);
       }
     }
-  }, [formData.databaseProvider])
+  }, [formData.databaseProvider]);
 
   // Handle CSV options change
   const handleCsvOptionChange = (option: string, value: any) => {
     const updatedOptions = {
       ...(formData.csvOptions || {}),
       [option]: value,
-    }
-    onChange("csvOptions", updatedOptions)
-  }
+    };
+    onChange("csvOptions", updatedOptions);
+  };
 
   // Handle schema field changes
-  const handleSchemaFieldChange = (index: number, field: string, value: any) => {
-    const updatedSchema = { ...(formData.schema || {}) }
+  const handleSchemaFieldChange = (
+    index: number,
+    field: string,
+    value: any
+  ) => {
+    const updatedSchema = { ...(formData.schema || {}) };
 
     if (!updatedSchema.fields) {
-      updatedSchema.fields = []
+      updatedSchema.fields = [];
     }
 
     // Ensure the fields array has enough elements
     while (updatedSchema.fields.length <= index) {
-      updatedSchema.fields.push({ name: "", type: "string", nullable: true })
+      updatedSchema.fields.push({ name: "", type: "string", nullable: true });
     }
 
     updatedSchema.fields[index] = {
       ...updatedSchema.fields[index],
       [field]: value,
-    }
+    };
 
-    onChange("schema", updatedSchema)
-  }
+    onChange("schema", updatedSchema);
+  };
 
   // Add a new schema field
   const addSchemaField = () => {
-    const updatedSchema = { ...(formData.schema || {}) }
+    const updatedSchema = { ...(formData.schema || {}) };
 
     if (!updatedSchema.fields) {
-      updatedSchema.fields = []
+      updatedSchema.fields = [];
     }
 
-    updatedSchema.fields.push({ name: "", type: "string", nullable: true })
-    onChange("schema", updatedSchema)
-  }
+    updatedSchema.fields.push({ name: "", type: "string", nullable: true });
+    onChange("schema", updatedSchema);
+  };
 
   // Remove a schema field
   const removeSchemaField = (index: number) => {
-    const updatedSchema = { ...(formData.schema || {}) }
+    const updatedSchema = { ...(formData.schema || {}) };
 
     if (updatedSchema.fields && updatedSchema.fields.length > index) {
-      updatedSchema.fields.splice(index, 1)
-      onChange("schema", updatedSchema)
+      updatedSchema.fields.splice(index, 1);
+      onChange("schema", updatedSchema);
     }
-  }
+  };
 
   // Execute source operation
   async function handleExecuteSource() {
-    setLoading(true)
-    setError(null)
-    setSuccessMessage(null)
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
 
     try {
       // Simulate source operation
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       if (selectedNodeId) {
         updateNode(selectedNodeId, {
@@ -286,17 +308,19 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
             data: { sample: "data from source" },
             schema: formData.schema,
             rowCount: Math.floor(Math.random() * 1000) + 100,
-            filePath: isDatabaseProvider ? formData.tableName : formData.filePath,
+            filePath: isDatabaseProvider
+              ? formData.table
+              : formData.filePath,
             format: formData.format,
           },
-        })
+        });
       }
 
-      setSuccessMessage("Source data loaded successfully!")
+      setSuccessMessage("Source data loaded successfully!");
     } catch (err: any) {
-      console.error(err)
-      const errorMessage = err.message || "Unknown error occurred"
-      setError(errorMessage)
+      console.error(err);
+      const errorMessage = err.message || "Unknown error occurred";
+      setError(errorMessage);
 
       if (selectedNodeId) {
         updateNode(selectedNodeId, {
@@ -305,35 +329,38 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
           output: {
             error: errorMessage,
           },
-        })
+        });
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   // Validation function
   const isFormValid = () => {
-    if (!formData.provider || !formData.format) return false
-    
+    if (!formData.provider || !formData.format) return false;
+
     if (isDatabaseProvider) {
       return !!(
         formData.connectionString &&
-        formData.tableName &&
-        formData.username &&
+        formData.table &&
+        formData.user &&
         formData.password
-      )
+      );
     } else {
-      return !!formData.filePath
+      return !!formData.filePath;
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
       {/* Source Provider */}
       <div className="space-y-2">
         <Label htmlFor="provider">Source Provider</Label>
-        <Select value={formData.provider || "local"} onValueChange={(value) => onChange("provider", value)}>
+        <Select
+          value={formData.provider || "local"}
+          onValueChange={(value) => onChange("provider", value)}
+        >
           <SelectTrigger id="provider">
             <SelectValue placeholder="Select provider" />
           </SelectTrigger>
@@ -350,7 +377,7 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
       </div>
 
       {/* Database Provider (only shown if database is selected) */}
-      {isDatabaseProvider && (
+      {/* {isDatabaseProvider && (
         <div className="space-y-2">
           <Label htmlFor="databaseProvider">Database Provider</Label>
           <Select 
@@ -369,13 +396,13 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
           </Select>
           <p className="text-xs text-gray-500">Specific database provider</p>
         </div>
-      )}
+      )} */}
 
       {/* Format */}
       <div className="space-y-2">
         <Label htmlFor="format">Format</Label>
-        <Select 
-          value={formData.format || "csv"} 
+        <Select
+          value={formData.format || "csv"}
           onValueChange={(value) => onChange("format", value)}
           disabled={isDatabaseProvider}
         >
@@ -393,7 +420,9 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
           </SelectContent>
         </Select>
         <p className="text-xs text-gray-500">
-          {isDatabaseProvider ? "Database format is always SQL" : "File format for source data"}
+          {isDatabaseProvider
+            ? "Database format is always SQL"
+            : "File format for source data"}
         </p>
       </div>
 
@@ -407,7 +436,9 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
             placeholder="/path/to/source/file.csv"
             onChange={(e) => onChange("filePath", e.target.value)}
           />
-          <p className="text-xs text-gray-500">Path to the source file or data location</p>
+          <p className="text-xs text-gray-500">
+            Path to the source file or data location
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -418,7 +449,9 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
             placeholder="jdbc:postgresql://hostname:5432/database"
             onChange={(e) => onChange("connectionString", e.target.value)}
           />
-          <p className="text-xs text-gray-500">JDBC connection string for the database</p>
+          <p className="text-xs text-gray-500">
+            JDBC connection string for the database
+          </p>
         </div>
       )}
 
@@ -427,26 +460,28 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
         <div className="space-y-4">
           {/* Table Name */}
           <div className="space-y-2">
-            <Label htmlFor="tableName">Table Name</Label>
+            <Label htmlFor="table">Table Name</Label>
             <Input
-              id="tableName"
-              value={formData.tableName || ""}
+              id="table"
+              value={formData.table || ""}
               placeholder="table_name"
-              onChange={(e) => onChange("tableName", e.target.value)}
+              onChange={(e) => onChange("table", e.target.value)}
             />
-            <p className="text-xs text-gray-500">Name of the database table to read from</p>
+            <p className="text-xs text-gray-500">
+              Name of the database table to read from
+            </p>
           </div>
 
-          {/* Username */}
+          {/* user */}
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="user">user</Label>
             <Input
-              id="username"
-              value={formData.username || ""}
-              placeholder="username"
-              onChange={(e) => onChange("username", e.target.value)}
+              id="user"
+              value={formData.user || ""}
+              placeholder="user"
+              onChange={(e) => onChange("user", e.target.value)}
             />
-            <p className="text-xs text-gray-500">Database username</p>
+            <p className="text-xs text-gray-500">Database user</p>
           </div>
 
           {/* Password */}
@@ -471,7 +506,9 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
               value={formData.batchSize || "5000"}
               onChange={(e) => onChange("batchSize", e.target.value)}
             />
-            <p className="text-xs text-gray-500">Number of rows to process in each batch</p>
+            <p className="text-xs text-gray-500">
+              Number of rows to process in each batch
+            </p>
           </div>
         </div>
       )}
@@ -485,7 +522,9 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
               <Checkbox
                 id="has-header"
                 checked={formData.csvOptions?.header === "true"}
-                onCheckedChange={(checked) => handleCsvOptionChange("header", checked ? "true" : "false")}
+                onCheckedChange={(checked) =>
+                  handleCsvOptionChange("header", checked ? "true" : "false")
+                }
               />
               <Label htmlFor="has-header" className="text-sm">
                 Has Header
@@ -495,7 +534,12 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
               <Checkbox
                 id="infer-schema"
                 checked={formData.csvOptions?.inferSchema === "true"}
-                onCheckedChange={(checked) => handleCsvOptionChange("inferSchema", checked ? "true" : "false")}
+                onCheckedChange={(checked) =>
+                  handleCsvOptionChange(
+                    "inferSchema",
+                    checked ? "true" : "false"
+                  )
+                }
               />
               <Label htmlFor="infer-schema" className="text-sm">
                 Infer Schema
@@ -515,13 +559,17 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
                 <Input
                   placeholder="Field name"
                   value={field.name || ""}
-                  onChange={(e) => handleSchemaFieldChange(index, "name", e.target.value)}
+                  onChange={(e) =>
+                    handleSchemaFieldChange(index, "name", e.target.value)
+                  }
                 />
               </div>
               <div className="col-span-3">
                 <Select
                   value={field.type || "string"}
-                  onValueChange={(value) => handleSchemaFieldChange(index, "type", value)}
+                  onValueChange={(value) =>
+                    handleSchemaFieldChange(index, "type", value)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Type" />
@@ -542,7 +590,9 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
                   <Checkbox
                     id={`nullable-${index}`}
                     checked={field.nullable !== false}
-                    onCheckedChange={(checked) => handleSchemaFieldChange(index, "nullable", !!checked)}
+                    onCheckedChange={(checked) =>
+                      handleSchemaFieldChange(index, "nullable", !!checked)
+                    }
                   />
                   <Label htmlFor={`nullable-${index}`} className="text-sm">
                     Nullable
@@ -550,13 +600,22 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
                 </div>
               </div>
               <div className="col-span-2 flex justify-end">
-                <Button variant="ghost" size="icon" onClick={() => removeSchemaField(index)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeSchemaField(index)}
+                >
                   <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
               </div>
             </div>
           ))}
-          <Button variant="outline" size="sm" onClick={addSchemaField} className="w-full mt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addSchemaField}
+            className="w-full mt-2"
+          >
             Add Field
           </Button>
         </div>
@@ -574,8 +633,10 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
       </div>
 
       {/* Success or Error messages */}
-      {successMessage && <p className="text-green-500 mt-2">{successMessage}</p>}
+      {successMessage && (
+        <p className="text-green-500 mt-2">{successMessage}</p>
+      )}
       {error && <p className="text-red-500 mt-2">{error}</p>}
     </div>
-  )
+  );
 }
