@@ -29,7 +29,7 @@ export type NodeType =
   | "file"
   | "filter"
   | "database"
-  |"source"
+  | "source"
   | "move-file"
   | "code";
 

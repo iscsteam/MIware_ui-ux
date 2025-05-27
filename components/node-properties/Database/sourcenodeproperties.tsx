@@ -42,6 +42,7 @@ const databaseProviders = {
     batchsize: "5000",
   },
   oracle: { driver: "oracle.jdbc.driver.OracleDriver", batchsize: "5000" },
+  local:{ driver: "org.postgresql.Driver", batchsize: "5000" },
 }
 
 // Source node schema (updated to include database fields)
@@ -155,7 +156,7 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
   const { updateNode, selectedNodeId } = useWorkflow()
 
   // Check if database provider is selected
-  const isDatabaseProvider = formData.provider === "database"
+  const isDatabaseProvider = formData.provider === "source"
 
   // Initialize default values
   useEffect(() => {
@@ -181,7 +182,7 @@ export default function SourceNodeProperties({ formData, onChange }: Props) {
 
   // Handle provider change
   useEffect(() => {
-    if (formData.provider === "database") {
+    if (formData.provider === "source") {
       // Set format to SQL for database
       if (formData.format !== "sql") {
         onChange("format", "sql")

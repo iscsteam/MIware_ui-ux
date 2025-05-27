@@ -44,8 +44,8 @@ import MoveFileNodeProperties, {
 } from "@/components/node-properties/Fileoperations/MoveFileNodeProperties"
 import FilterNodeProperties, { filterSchema } from "@/components/node-properties/Fileoperations/FilterNodeproperties"
 
-import DatabaseNodeProperties, { databaseSchema } from "@/components/node-properties/database-node-properties"
-import SourceNodeProperties, { sourceSchema } from "@/components/node-properties/sourcenodeproperties"
+import DatabaseNodeProperties, { databaseSchema } from "@/components/node-properties/Database/database-node-properties"
+import SourceNodeProperties, { sourceSchema } from "@/components/node-properties/Database/sourcenodeproperties"
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
