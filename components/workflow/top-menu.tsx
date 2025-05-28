@@ -141,7 +141,8 @@ export function TopMenu({
         </div>
 
         {/* Center: Current Workflow Name and Tabs */}
-        <div className="flex items-center gap-4">
+        <div className="
+        flex items-center gap-1 mt-11">
           {currentWorkflowName && (
             <div className="flex items-center gap-2 px-3 py-1 bg-purple-50 rounded-md border border-purple-200">
               <span className="text-sm font-medium text-purple-700">{currentWorkflowName}</span>
@@ -159,6 +160,8 @@ export function TopMenu({
             </TabsList>
           </Tabs>
         </div>
+
+
 
         {/* Right: Share + Saved + Create Client */}
         <div className="flex items-center gap-4">
