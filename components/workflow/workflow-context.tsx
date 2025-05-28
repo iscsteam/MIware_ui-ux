@@ -12,8 +12,10 @@ import { v4 as uuidv4 } from "uuid";
 import type { NodeType, SchemaItem } from "@/services/interface";
 import { useToast as useUIToast } from "@/components/ui/use-toast"; // Aliased to avoid conflict with context's toast
 import { saveAndRunWorkflow as saveAndRunWorkflowUtil } from "@/services/workflow-utils"; // Import the utility
+import { buildUrl } from "@/services/api"; // Assuming this handles base URLs etc.
+import { URLS } from "@/services/url"; // Assuming this contains endpoint constants
 
-const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
+// const buildUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
 
 export type NodeStatus =
   | "idle"
@@ -440,7 +442,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       // Note: This saveWorkflowToBackend only updates the DAG structure (sequence of tasks).
       // It does NOT create/update task configurations like saveAndRunWorkflow does.
       // This is suitable for saving the visual layout and connections.
-      const response = await fetch(`${baseurl}/dags/${workflowId}`, {
+      const response = await fetch(buildUrl(`/dags/${workflowId}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dagData),
