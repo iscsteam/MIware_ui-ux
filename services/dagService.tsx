@@ -1,3 +1,4 @@
+//dagService.tsx
 import { buildUrl } from "./api";
 import { URLS } from "./url";
 import { DAGStatusResponse } from "./interface";
@@ -114,5 +115,25 @@ export async function getDAGStatus(dagId: string, triggerId: string): Promise<DA
   } catch (error) {
     console.error(`Error getting DAG status for dagId=${dagId}, triggerId=${triggerId}:`, error);
     return null;
+  }
+}
+
+export async function getFileConversionConfigsForDAG(clientId: string, dagId?: string): Promise<any[] | null> {
+  try {
+    let url = buildUrl(`/clients/${clientId}/file_conversion_configs`)
+    if (dagId) {
+      url += `?dag_id=${dagId}`
+    }
+
+    const res = await fetch(url)
+    if (!res.ok) {
+      console.error(`Failed to fetch file conversion configs. Status: ${res.status}`)
+      return null
+    }
+
+    return await res.json()
+  } catch (error) {
+    console.error("Error fetching file conversion configs:", error)
+    return null
   }
 }

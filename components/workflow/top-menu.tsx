@@ -1,4 +1,4 @@
-//top-menu.tsx(navbar.tsx)
+// //top-menu.tsx(navbar.tsx)
 "use client"
 import { useState } from "react"
 import { Share2, UserPlus, Save, Play, Loader2 } from "lucide-react"
@@ -23,7 +23,7 @@ export function TopMenu({
   activeView: string
   setActiveView: (view: string) => void
 }) {
-  const { runWorkflow, saveWorkflowToBackend, saveAndRunWorkflow } = useWorkflow()
+  const { runWorkflow, saveWorkflowToBackend, saveAndRunWorkflow, currentWorkflowName } = useWorkflow()
   const [activeTab, setActiveTab] = useState("ORGANIZATION")
 
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false)
@@ -37,112 +37,66 @@ export function TopMenu({
   const [isSaving, setIsSaving] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
 
-  // const handleCreateClient = async () => {
-  //   if (!clientName) return
-
-  //   setIsSubmitting(true)
-  //   setErrorMessage("")
-
-  //   try {
-  //     const created = await createClient({ name: clientName })
-
-  //     if (!created) {
-  //       throw new Error("Client creation returned null")
-  //     }
-
-  //     setCreatedClient(created)
-  //     setClientName("")
-  //   } catch (error: unknown) {
-  //     console.error("Failed to create client:", error)
-  //     if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
-  //       setErrorMessage("Cannot connect to the API server. Please ensure the backend service is accessible.")
-  //     } else if (error instanceof Error) {
-  //       setErrorMessage(`Error: ${error.message}`)
-  //     } else {
-  //       setErrorMessage("An unknown error occurred.")
-  //     }
-  //   } finally {
-  //     setIsSubmitting(false)
-  //   }
-  // }
-
   const handleCreateClient = async () => {
-    if (!clientName.trim()) { // Also good to trim whitespace
-      setErrorMessage("Client name cannot be empty.");
-      return;
+    if (!clientName.trim()) {
+      setErrorMessage("Client name cannot be empty.")
+      return
     }
 
-    setIsSubmitting(true);
-    setErrorMessage("");
+    setIsSubmitting(true)
+    setErrorMessage("")
 
     try {
-      // Your `createClient` service function might need more than just `name`
-      // depending on your `Client` interface and backend requirements.
-      // For now, assuming it just needs a name.
-      const clientPayload = { name: clientName.trim() }; // Ensure your createClient service expects this shape
+      const clientPayload = { name: clientName.trim() }
 
-      const created: ClientCreateResponse | null = await createClient(clientPayload); // Pass the payload
+      const created: ClientCreateResponse | null = await createClient(clientPayload)
 
-      if (!created || !created.id) { // Check for created object AND its id
-        console.error("Client creation returned null or missing ID", created);
-        throw new Error("Client creation failed or didn't return an ID.");
+      if (!created || !created.id) {
+        console.error("Client creation returned null or missing ID", created)
+        throw new Error("Client creation failed or didn't return an ID.")
       }
 
-      setCreatedClient(created); // For displaying in the dialog
-      setClientName(""); // Clear input
+      setCreatedClient(created)
+      setClientName("")
 
-      // --- BEGIN SOLUTION ---
       try {
         const clientDataToStore = {
-          id: String(created.id), // Ensure ID is a string
+          id: String(created.id),
           name: created.name,
-          // Add any other client properties you might want to store/display later
-        };
-        localStorage.setItem("currentClient", JSON.stringify(clientDataToStore));
-        console.log("TopMenu: 'currentClient' set in localStorage:", clientDataToStore);
+        }
+        localStorage.setItem("currentClient", JSON.stringify(clientDataToStore))
+        console.log("TopMenu: 'currentClient' set in localStorage:", clientDataToStore)
 
-        // Optional: If you want to also update "currentWorkflow" with this new client_id
-        // This depends on your application logic - does creating a client automatically
-        // make it the client for the "currentWorkflow"?
-        const workflowDataString = localStorage.getItem("currentWorkflow");
+        const workflowDataString = localStorage.getItem("currentWorkflow")
         if (workflowDataString) {
           try {
-            const parsedWorkflow = JSON.parse(workflowDataString);
-            parsedWorkflow.client_id = String(created.id); // Add/update client_id
-            localStorage.setItem("currentWorkflow", JSON.stringify(parsedWorkflow));
-            console.log("TopMenu: Updated 'currentWorkflow' with new client_id:", parsedWorkflow);
+            const parsedWorkflow = JSON.parse(workflowDataString)
+            parsedWorkflow.client_id = String(created.id)
+            localStorage.setItem("currentWorkflow", JSON.stringify(parsedWorkflow))
+            console.log("TopMenu: Updated 'currentWorkflow' with new client_id:", parsedWorkflow)
           } catch (e) {
-            console.error("TopMenu: Failed to parse/update 'currentWorkflow' for new client_id", e);
+            console.error("TopMenu: Failed to parse/update 'currentWorkflow' for new client_id", e)
           }
         }
-        // toast({ title: "Client Active", description: `Client "${created.name}" is now the active client.` });
-
       } catch (storageError) {
-        console.error("TopMenu: Failed to save client to localStorage:", storageError);
-        // Potentially show a non-blocking error to the user about local storage failure
-        setErrorMessage("Client created, but failed to set as active locally. Please try selecting the client manually.");
+        console.error("TopMenu: Failed to save client to localStorage:", storageError)
+        setErrorMessage(
+          "Client created, but failed to set as active locally. Please try selecting the client manually.",
+        )
       }
-      // --- END SOLUTION ---
-
     } catch (error: unknown) {
-      console.error("Failed to create client:", error);
+      console.error("Failed to create client:", error)
       if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
-        setErrorMessage("Cannot connect to the API server. Please ensure the backend service is accessible.");
+        setErrorMessage("Cannot connect to the API server. Please ensure the backend service is accessible.")
       } else if (error instanceof Error) {
-        setErrorMessage(`Error: ${error.message}`);
+        setErrorMessage(`Error: ${error.message}`)
       } else {
-        setErrorMessage("An unknown error occurred.");
+        setErrorMessage("An unknown error occurred.")
       }
-      // If the error was setting to localStorage, createdClient would still be set.
-      // If the error was API call, createdClient would be null.
-      // We might want to clear createdClient if API call itself failed.
-      // if (!(error instanceof StorageError)) { // A custom error type for localStorage issues
-      //    setCreatedClient(null);
-      // }
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -158,7 +112,6 @@ export function TopMenu({
   const handleRun = async () => {
     setIsRunning(true)
     try {
-      // Use the saveAndRunWorkflow function from the workflow context
       await saveAndRunWorkflow()
     } catch (error) {
       console.error("Failed to run workflow:", error)
@@ -187,8 +140,14 @@ export function TopMenu({
           ))}
         </div>
 
-        {/* Center: Tabs (Studio, History) */}
-        <div className="flex items-center gap-1 mt-11">
+        {/* Center: Current Workflow Name and Tabs */}
+        <div className="flex items-center gap-4">
+          {currentWorkflowName && (
+            <div className="flex items-center gap-2 px-3 py-1 bg-purple-50 rounded-md border border-purple-200">
+              <span className="text-sm font-medium text-purple-700">{currentWorkflowName}</span>
+            </div>
+          )}
+
           <Tabs value={activeView} onValueChange={setActiveView}>
             <TabsList className="h-8">
               <TabsTrigger value="editor" className="text-xs px-2">
@@ -283,8 +242,6 @@ export function TopMenu({
                   <span>{createdClient.id}</span>
                   <span className="text-muted-foreground">Name:</span>
                   <span>{createdClient.name}</span>
-                  {/* <span className="text-muted-foreground">API Key:</span> */}
-                  {/* <span className="break-all">{createdClient.api_key}</span> */}
                 </div>
               </div>
             </div>
