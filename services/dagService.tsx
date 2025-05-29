@@ -98,10 +98,6 @@ export async function getDAGById(dagId: string): Promise<DAG | null> {
 
 
 
-// import { buildUrl } from "./api";
-// import { URLS } from "./url";
-
-
 export async function getDAGStatus(dagId: string, triggerId: string): Promise<DAGStatusResponse | null> {
   try {
     const res = await fetch(buildUrl(URLS.getDAGStatus(dagId, triggerId)));
@@ -118,22 +114,3 @@ export async function getDAGStatus(dagId: string, triggerId: string): Promise<DA
   }
 }
 
-export async function getFileConversionConfigsForDAG(clientId: string, dagId?: string): Promise<any[] | null> {
-  try {
-    let url = buildUrl(`/clients/${clientId}/file_conversion_configs`)
-    if (dagId) {
-      url += `?dag_id=${dagId}`
-    }
-
-    const res = await fetch(url)
-    if (!res.ok) {
-      console.error(`Failed to fetch file conversion configs. Status: ${res.status}`)
-      return null
-    }
-
-    return await res.json()
-  } catch (error) {
-    console.error("Error fetching file conversion configs:", error)
-    return null
-  }
-}

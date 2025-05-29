@@ -210,6 +210,45 @@ export function makePythonSafeId(id: string): string {
   return safeId
 }
 
+// Update DAG name and schedule specifically
+export async function updateDagNameAndSchedule(
+  dagId: string,
+  data: {
+    name?: string
+    schedule?: string
+  },
+): Promise<any> {
+  try {
+    console.log("Updating DAG name and schedule:", JSON.stringify(data, null, 2))
+
+    const response = await fetch(`${baseUrl}/dags/${dagId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+      throw new Error(errorData.detail || `Failed to update DAG: ${response.status}`)
+    }
+
+    const result = await response.json()
+    console.log("DAG updated successfully:", result)
+    return result
+  } catch (error) {
+    console.error("Error updating DAG:", error)
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to update DAG",
+      variant: "destructive",
+    })
+    return null
+  }
+}
+
+
 
 
 export async function getDatabaseDriver(provider: string): string {
@@ -222,3 +261,5 @@ export async function getDatabaseDriver(provider: string): string {
   }
   return drivers[provider] || drivers.local
 }
+
+
