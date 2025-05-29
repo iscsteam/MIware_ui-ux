@@ -196,7 +196,7 @@ export async function updateDagNameAndSchedule(
   try {
     console.log("Updating DAG name and schedule:", JSON.stringify(data, null, 2))
 
-    const response = await fetch(`${baseUrl}/dags/${dagId}`, {
+    const response = await fetch(buildUrl(URLS.manageDAG(dagId)), {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
