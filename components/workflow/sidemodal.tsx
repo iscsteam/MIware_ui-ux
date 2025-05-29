@@ -1,8 +1,8 @@
-// //sidemodal.tsx 
+// //sidemodal.tsx
 
-"use client"
-import { useState, useEffect } from "react"
-import type React from "react"
+"use client";
+import { useState, useEffect } from "react";
+import type React from "react";
 
 import {
   Play,
@@ -29,18 +29,26 @@ import {
   Database,
   FilePenLine,
   FileInput,
-} from "lucide-react"
+} from "lucide-react";
 
-import type { NodeType } from "@/services/interface"
+import type { NodeType } from "@/services/interface";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
 interface NodeTypeDefinition {
-  type: NodeType
-  label: string
-  icon: React.ReactNode
-  description: string
-  category: "file" | "general" | "http" | "xml" | "json" | "filenode" | "data" | "databaseoperations"
+  type: NodeType;
+  label: string;
+  icon: React.ReactNode;
+  description: string;
+  category:
+    | "file"
+    | "general"
+    | "http"
+    | "xml"
+    | "json"
+    | "filenode"
+    | "data"
+    | "databaseoperations";
 }
 
 const nodeTypes: NodeTypeDefinition[] = [
@@ -154,7 +162,8 @@ const nodeTypes: NodeTypeDefinition[] = [
     type: "source",
     label: "Source",
     icon: <FileInput className="h-5 w-5 text-blue-500" />,
-    description: "Load data from various source providers with schema definition",
+    description:
+      "Load data from various source providers with schema definition",
     category: "databaseoperations",
   },
   {
@@ -227,71 +236,100 @@ const nodeTypes: NodeTypeDefinition[] = [
     description: "Filters data based on specified conditions",
     category: "data",
   },
-]
+];
 
 // Updated to use minimal styling for a plain look without borders
-const nodeTypeStyles = "hover:bg-slate-50"
+const nodeTypeStyles = "hover:bg-slate-50";
 
 interface SideModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onSelectNodeType?: (nodeType: NodeType) => void
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectNodeType?: (nodeType: NodeType) => void;
 }
 
-type CategoryType = "main" | "file" | "general" | "http" | "xml" | "json" | "filenode" | "data" | "databaseoperations"
+type CategoryType =
+  | "main"
+  | "file"
+  | "general"
+  | "http"
+  | "xml"
+  | "json"
+  | "filenode"
+  | "data"
+  | "databaseoperations";
 
-export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps) {
-  const [isVisible, setIsVisible] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [currentView, setCurrentView] = useState<CategoryType>("main")
+export function SideModal({
+  isOpen,
+  onClose,
+  onSelectNodeType,
+}: SideModalProps) {
+  const [isVisible, setIsVisible] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentView, setCurrentView] = useState<CategoryType>("main");
 
   useEffect(() => {
     if (isOpen) {
-      setIsVisible(true)
+      setIsVisible(true);
     } else {
       const timer = setTimeout(() => {
-        setIsVisible(false)
-      }, 300)
-      return () => clearTimeout(timer)
+        setIsVisible(false);
+      }, 300);
+      return () => clearTimeout(timer);
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   // Reset to main view when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setCurrentView("main")
-      setSearchTerm("")
+      setCurrentView("main");
+      setSearchTerm("");
     }
-  }, [isOpen])
+  }, [isOpen]);
 
-  if (!isVisible && !isOpen) return null
+  if (!isVisible && !isOpen) return null;
 
   const handleDragStart = (e: React.DragEvent, nodeType: NodeType) => {
-    e.dataTransfer.setData("nodeType", nodeType)
-    e.dataTransfer.effectAllowed = "move"
-  }
+    e.dataTransfer.setData("nodeType", nodeType);
+    e.dataTransfer.effectAllowed = "move";
+  };
 
   const handleSelect = (nodeType: NodeType) => {
-    onSelectNodeType?.(nodeType)
-    onClose()
-  }
+    onSelectNodeType?.(nodeType);
+    onClose();
+  };
 
   // Filter nodes based on search term
   const filteredNodeTypes = nodeTypes.filter(
     (node) =>
       node.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      node.description.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+      node.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // Get nodes by category
-  const fileOperations = filteredNodeTypes.filter((node) => node.category === "file")
-  const generalOperations = filteredNodeTypes.filter((node) => node.category === "general")
-  const httpOperations = filteredNodeTypes.filter((node) => node.category === "http")
-  const xmlOperations = filteredNodeTypes.filter((node) => node.category === "xml")
-  const jsonOperations = filteredNodeTypes.filter((node) => node.category === "json")
-  const fileOperation = filteredNodeTypes.filter((node) => node.category === "filenode")
-  const dataOperations = filteredNodeTypes.filter((node) => node.category === "data")
-  const databaseOperations = filteredNodeTypes.filter((node) => node.category === "databaseoperations")
+  const fileOperations = filteredNodeTypes.filter(
+    (node) => node.category === "file"
+  );
+  const generalOperations = filteredNodeTypes.filter(
+    (node) => node.category === "general"
+  );
+  const httpOperations = filteredNodeTypes.filter(
+    (node) => node.category === "http"
+  );
+  const xmlOperations = filteredNodeTypes.filter(
+    (node) => node.category === "xml"
+  );
+  const jsonOperations = filteredNodeTypes.filter(
+    (node) => node.category === "json"
+  );
+  const fileOperation = filteredNodeTypes.filter(
+    (node) => node.category === "filenode"
+  );
+  const dataOperations = filteredNodeTypes.filter(
+    (node) => node.category === "data"
+  );
+  const databaseOperations = filteredNodeTypes.filter(
+    (node) => node.category === "databaseoperations"
+  );
 
   // Search input that appears on every view
   const searchInput = (
@@ -305,7 +343,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
         onChange={(e) => setSearchTerm(e.target.value)}
       />
     </div>
-  )
+  );
 
   // Helper function to render a list of nodes
   const renderNodeList = (nodes: NodeTypeDefinition[]) => {
@@ -319,40 +357,64 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
             onDragStart={(e) => handleDragStart(e, nodeType.type)}
             onClick={() => handleSelect(nodeType.type)}
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-md shadow-sm">{nodeType.icon}</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md shadow-sm">
+              {nodeType.icon}
+            </div>
             <div className="leading-tight">
-              <div className="font-medium text-sm text-slate-800">{nodeType.label}</div>
-              <div className="text-xs text-slate-500">{nodeType.description}</div>
+              <div className="font-medium text-sm text-slate-800">
+                {nodeType.label}
+              </div>
+              <div className="text-xs text-slate-500">
+                {nodeType.description}
+              </div>
             </div>
           </div>
         ))}
       </div>
-    )
-  }
+    );
+  };
 
   const renderMainView = () => {
     // Show search results directly on main view if there's a search term
     if (searchTerm.trim() !== "") {
-      const allFilteredNodes = filteredNodeTypes
+      const allFilteredNodes = filteredNodeTypes;
 
       if (allFilteredNodes.length === 0) {
         return (
           <>
             {searchInput}
-            <div className="text-center py-8 text-slate-500">No nodes found matching "{searchTerm}"</div>
+            <div className="text-center py-8 text-slate-500">
+              No nodes found matching "{searchTerm}"
+            </div>
           </>
-        )
+        );
       }
 
       // Group search results by category
-      const fileResults = allFilteredNodes.filter((node) => node.category === "file")
-      const httpResults = allFilteredNodes.filter((node) => node.category === "http")
-      const xmlResults = allFilteredNodes.filter((node) => node.category === "xml")
-      const jsonResults = allFilteredNodes.filter((node) => node.category === "json")
-      const generalResults = allFilteredNodes.filter((node) => node.category === "general")
-      const fileOperation = allFilteredNodes.filter((node) => node.category === "filenode")
-      const dataResults = allFilteredNodes.filter((node) => node.category === "data")
-      const databaseResults = allFilteredNodes.filter((node) => node.category === "databaseoperations")
+      const fileResults = allFilteredNodes.filter(
+        (node) => node.category === "file"
+      );
+      const httpResults = allFilteredNodes.filter(
+        (node) => node.category === "http"
+      );
+      const xmlResults = allFilteredNodes.filter(
+        (node) => node.category === "xml"
+      );
+      const jsonResults = allFilteredNodes.filter(
+        (node) => node.category === "json"
+      );
+      const generalResults = allFilteredNodes.filter(
+        (node) => node.category === "general"
+      );
+      const fileOperation = allFilteredNodes.filter(
+        (node) => node.category === "filenode"
+      );
+      const dataResults = allFilteredNodes.filter(
+        (node) => node.category === "data"
+      );
+      const databaseResults = allFilteredNodes.filter(
+        (node) => node.category === "databaseoperations"
+      );
 
       return (
         <>
@@ -439,7 +501,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
             )}
           </div>
         </>
-      )
+      );
     }
 
     // Default main view with category cards - simplified with no borders or backgrounds
@@ -462,7 +524,10 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </div>
 
           {/* File Operations Card */}
-          <div className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md" onClick={() => setCurrentView("file")}>
+          <div
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
+            onClick={() => setCurrentView("file")}
+          >
             <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
               <div className="flex items-center space-x-2">
                 <FolderOpen className="h-5 w-5 text-blue-500" />
@@ -473,7 +538,10 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </div>
 
           {/* HTTP Operations Card */}
-          <div className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md" onClick={() => setCurrentView("http")}>
+          <div
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
+            onClick={() => setCurrentView("http")}
+          >
             <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
               <div className="flex items-center space-x-2">
                 <Globe className="h-5 w-5 text-emerald-500" />
@@ -484,7 +552,10 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </div>
 
           {/* XML Operations Card */}
-          <div className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md" onClick={() => setCurrentView("xml")}>
+          <div
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
+            onClick={() => setCurrentView("xml")}
+          >
             <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
               <div className="flex items-center space-x-2">
                 <FileCode className="h-5 w-5 text-violet-500" />
@@ -495,7 +566,10 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </div>
 
           {/* JSON Operations Card */}
-          <div className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md" onClick={() => setCurrentView("json")}>
+          <div
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
+            onClick={() => setCurrentView("json")}
+          >
             <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
               <div className="flex items-center space-x-2">
                 <FileCode className="h-5 w-5 text-violet-500" />
@@ -520,7 +594,10 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </div>
 
           {/* Data Operations Card */}
-          <div className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md" onClick={() => setCurrentView("data")}>
+          <div
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
+            onClick={() => setCurrentView("data")}
+          >
             <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
               <div className="flex items-center space-x-2">
                 <Database className="h-5 w-5 text-blue-500" />
@@ -545,15 +622,25 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </div>
         </div>
       </>
-    )
-  }
+    );
+  };
 
   const renderCategoryView = (
-    category: "file" | "general" | "http" | "xml" | "json" | "filenode" | "data" | "databaseoperations",
+    category:
+      | "file"
+      | "general"
+      | "http"
+      | "xml"
+      | "json"
+      | "filenode"
+      | "data"
+      | "databaseoperations",
     title: string,
-    icon: React.ReactNode,
+    icon: React.ReactNode
   ) => {
-    const operations = filteredNodeTypes.filter((node) => node.category === category)
+    const operations = filteredNodeTypes.filter(
+      (node) => node.category === category
+    );
 
     return (
       <>
@@ -577,41 +664,71 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
         {operations.length > 0 ? (
           renderNodeList(operations)
         ) : (
-          <div className="text-center py-8 text-slate-500">No nodes found matching "{searchTerm}"</div>
+          <div className="text-center py-8 text-slate-500">
+            No nodes found matching "{searchTerm}"
+          </div>
         )}
       </>
-    )
-  }
+    );
+  };
 
   // Content based on current view
   const renderContent = () => {
     switch (currentView) {
       case "file":
-        return renderCategoryView("file", "File Operations", <FolderOpen className="h-5 w-5 text-blue-500" />)
+        return renderCategoryView(
+          "file",
+          "File Operations",
+          <FolderOpen className="h-5 w-5 text-blue-500" />
+        );
       case "http":
-        return renderCategoryView("http", "HTTP Operations", <Globe className="h-5 w-5 text-emerald-500" />)
+        return renderCategoryView(
+          "http",
+          "HTTP Operations",
+          <Globe className="h-5 w-5 text-emerald-500" />
+        );
       case "xml":
-        return renderCategoryView("xml", "XML Operations", <FileCode className="h-5 w-5 text-violet-500" />)
+        return renderCategoryView(
+          "xml",
+          "XML Operations",
+          <FileCode className="h-5 w-5 text-violet-500" />
+        );
       case "json":
-        return renderCategoryView("json", "JSON Operations", <FileCode className="h-5 w-5 text-violet-500" />)
+        return renderCategoryView(
+          "json",
+          "JSON Operations",
+          <FileCode className="h-5 w-5 text-violet-500" />
+        );
       case "data":
-        return renderCategoryView("data", "Data Operations", <Database className="h-5 w-5 text-blue-500" />)
+        return renderCategoryView(
+          "data",
+          "Data Operations",
+          <Database className="h-5 w-5 text-blue-500" />
+        );
 
       case "databaseoperations":
         return renderCategoryView(
           "databaseoperations",
           "Database Operations",
-          <Database className="h-5 w-5 text-green-500" />,
-        )
+          <Database className="h-5 w-5 text-green-500" />
+        );
 
       case "filenode":
-        return renderCategoryView("filenode", "File Operation", <File className="h-5 w-5 text-violet-500" />)
+        return renderCategoryView(
+          "filenode",
+          "File Operation",
+          <File className="h-5 w-5 text-violet-500" />
+        );
       case "general":
-        return renderCategoryView("general", "Workflow Controls", <Play className="h-5 w-5 text-green-500" />)
+        return renderCategoryView(
+          "general",
+          "Workflow Controls",
+          <Play className="h-5 w-5 text-green-500" />
+        );
       default:
-        return renderMainView()
+        return renderMainView();
     }
-  }
+  };
 
   return (
     <div
@@ -624,12 +741,17 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
     >
       <div className="p-4 border-b flex justify-between items-center bg-slate-50">
         <h2 className="text-lg font-semibold text-slate-800">Add Node</h2>
-        <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-slate-200 rounded-full">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          className="hover:bg-slate-200 rounded-full"
+        >
           <X className="h-4 w-4" />
         </Button>
       </div>
 
       <div className="p-4 space-y-4">{renderContent()}</div>
     </div>
-  )
+  );
 }

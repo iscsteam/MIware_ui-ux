@@ -1,124 +1,161 @@
 // //top-menu.tsx(navbar.tsx)
-"use client"
-import { useState } from "react"
-import { Share2, UserPlus, Save, Play, Loader2 } from "lucide-react"
+"use client";
+import { useState } from "react";
+import { Share2, UserPlus, Save, Play, Loader2 } from "lucide-react";
 
-import { useWorkflow } from "./workflow-context"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
+import { useWorkflow } from "./workflow-context";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { createClient } from "@/services/client"
-import type { ClientCreateResponse } from "@/services/interface"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { createClient } from "@/services/client";
+import type { ClientCreateResponse } from "@/services/interface";
 
-const topTabs = ["File", "Edit", "Project", "Run"]
+const topTabs = ["File", "Edit", "Project", "Run"];
 
 export function TopMenu({
   activeView,
   setActiveView,
 }: {
-  activeView: string
-  setActiveView: (view: string) => void
+  activeView: string;
+  setActiveView: (view: string) => void;
 }) {
-  const { runWorkflow, saveWorkflowToBackend, saveAndRunWorkflow, currentWorkflowName } = useWorkflow()
-  const [activeTab, setActiveTab] = useState("ORGANIZATION")
+  const {
+    runWorkflow,
+    saveWorkflowToBackend,
+    saveAndRunWorkflow,
+    currentWorkflowName,
+  } = useWorkflow();
+  const [activeTab, setActiveTab] = useState("ORGANIZATION");
 
-  const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false)
-  const [clientName, setClientName] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [createdClient, setCreatedClient] = useState<ClientCreateResponse | null>(null)
-  const [error, SetError] = useState<string | null>(null)
+  const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdClient, setCreatedClient] =
+    useState<ClientCreateResponse | null>(null);
+  const [error, SetError] = useState<string | null>(null);
 
-  const [errorMessage, setErrorMessage] = useState("")
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const [isSaving, setIsSaving] = useState(false)
-  const [isRunning, setIsRunning] = useState(false)
+  const [isSaving, setIsSaving] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
 
   const handleCreateClient = async () => {
     if (!clientName.trim()) {
-      setErrorMessage("Client name cannot be empty.")
-      return
+      setErrorMessage("Client name cannot be empty.");
+      return;
     }
 
-    setIsSubmitting(true)
-    setErrorMessage("")
+    setIsSubmitting(true);
+    setErrorMessage("");
 
     try {
-      const clientPayload = { name: clientName.trim() }
+      const clientPayload = { name: clientName.trim() };
 
-      const created: ClientCreateResponse | null = await createClient(clientPayload)
+      const created: ClientCreateResponse | null = await createClient(
+        clientPayload
+      );
 
       if (!created || !created.id) {
-        console.error("Client creation returned null or missing ID", created)
-        throw new Error("Client creation failed or didn't return an ID.")
+        console.error("Client creation returned null or missing ID", created);
+        throw new Error("Client creation failed or didn't return an ID.");
       }
 
-      setCreatedClient(created)
-      setClientName("")
+      setCreatedClient(created);
+      setClientName("");
 
       try {
         const clientDataToStore = {
           id: String(created.id),
           name: created.name,
-        }
-        localStorage.setItem("currentClient", JSON.stringify(clientDataToStore))
-        console.log("TopMenu: 'currentClient' set in localStorage:", clientDataToStore)
+        };
+        localStorage.setItem(
+          "currentClient",
+          JSON.stringify(clientDataToStore)
+        );
+        console.log(
+          "TopMenu: 'currentClient' set in localStorage:",
+          clientDataToStore
+        );
 
-        const workflowDataString = localStorage.getItem("currentWorkflow")
+        const workflowDataString = localStorage.getItem("currentWorkflow");
         if (workflowDataString) {
           try {
-            const parsedWorkflow = JSON.parse(workflowDataString)
-            parsedWorkflow.client_id = String(created.id)
-            localStorage.setItem("currentWorkflow", JSON.stringify(parsedWorkflow))
-            console.log("TopMenu: Updated 'currentWorkflow' with new client_id:", parsedWorkflow)
+            const parsedWorkflow = JSON.parse(workflowDataString);
+            parsedWorkflow.client_id = String(created.id);
+            localStorage.setItem(
+              "currentWorkflow",
+              JSON.stringify(parsedWorkflow)
+            );
+            console.log(
+              "TopMenu: Updated 'currentWorkflow' with new client_id:",
+              parsedWorkflow
+            );
           } catch (e) {
-            console.error("TopMenu: Failed to parse/update 'currentWorkflow' for new client_id", e)
+            console.error(
+              "TopMenu: Failed to parse/update 'currentWorkflow' for new client_id",
+              e
+            );
           }
         }
       } catch (storageError) {
-        console.error("TopMenu: Failed to save client to localStorage:", storageError)
+        console.error(
+          "TopMenu: Failed to save client to localStorage:",
+          storageError
+        );
         setErrorMessage(
-          "Client created, but failed to set as active locally. Please try selecting the client manually.",
-        )
+          "Client created, but failed to set as active locally. Please try selecting the client manually."
+        );
       }
     } catch (error: unknown) {
-      console.error("Failed to create client:", error)
-      if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
-        setErrorMessage("Cannot connect to the API server. Please ensure the backend service is accessible.")
+      console.error("Failed to create client:", error);
+      if (
+        error instanceof TypeError &&
+        error.message.includes("Failed to fetch")
+      ) {
+        setErrorMessage(
+          "Cannot connect to the API server. Please ensure the backend service is accessible."
+        );
       } else if (error instanceof Error) {
-        setErrorMessage(`Error: ${error.message}`)
+        setErrorMessage(`Error: ${error.message}`);
       } else {
-        setErrorMessage("An unknown error occurred.")
+        setErrorMessage("An unknown error occurred.");
       }
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleSave = async () => {
-    setIsSaving(true)
+    setIsSaving(true);
     try {
-      await saveWorkflowToBackend()
+      await saveWorkflowToBackend();
     } catch (error) {
-      console.error("Failed to save workflow:", error)
+      console.error("Failed to save workflow:", error);
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleRun = async () => {
-    setIsRunning(true)
+    setIsRunning(true);
     try {
-      await saveAndRunWorkflow()
+      await saveAndRunWorkflow();
     } catch (error) {
-      console.error("Failed to run workflow:", error)
+      console.error("Failed to run workflow:", error);
     } finally {
-      setIsRunning(false)
+      setIsRunning(false);
     }
-  }
+  };
 
   return (
     <div className="w-full">
@@ -131,21 +168,27 @@ export function TopMenu({
               onClick={() => setActiveTab(tab)}
               className={cn(
                 "relative pb-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors",
-                activeTab === tab && "text-foreground",
+                activeTab === tab && "text-foreground"
               )}
             >
               {tab}
-              {activeTab === tab && <span className="absolute left-0 bottom-0 h-1 w-full bg-purple-600 rounded-sm" />}
+              {activeTab === tab && (
+                <span className="absolute left-0 bottom-0 h-1 w-full bg-purple-600 rounded-sm" />
+              )}
             </button>
           ))}
         </div>
 
         {/* Center: Current Workflow Name and Tabs */}
-        <div className="
-        flex items-center gap-1 mt-11">
+        <div
+          className="
+        flex items-center gap-1 mt-11"
+        >
           {currentWorkflowName && (
             <div className="flex items-center gap-2 px-3 py-1 bg-purple-50 rounded-md border border-purple-200">
-              <span className="text-sm font-medium text-purple-700">{currentWorkflowName}</span>
+              <span className="text-sm font-medium text-purple-700">
+                {currentWorkflowName}
+              </span>
             </div>
           )}
 
@@ -161,11 +204,14 @@ export function TopMenu({
           </Tabs>
         </div>
 
-
-
         {/* Right: Share + Saved + Create Client */}
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
             {isSaving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -179,7 +225,12 @@ export function TopMenu({
             )}
           </Button>
 
-          <Button variant="outline" size="sm" onClick={handleRun} disabled={isRunning}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRun}
+            disabled={isRunning}
+          >
             {isRunning ? (
               <>
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -193,7 +244,11 @@ export function TopMenu({
             )}
           </Button>
 
-          <Button variant="outline" size="sm" onClick={() => setCreateClientDialogOpen(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCreateClientDialogOpen(true)}
+          >
             <UserPlus className="h-4 w-4 mr-1" />
             Create Client
           </Button>
@@ -206,7 +261,10 @@ export function TopMenu({
       </div>
 
       {/* Create Client Dialog */}
-      <Dialog open={createClientDialogOpen} onOpenChange={setCreateClientDialogOpen}>
+      <Dialog
+        open={createClientDialogOpen}
+        onOpenChange={setCreateClientDialogOpen}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create New Client</DialogTitle>
@@ -238,7 +296,9 @@ export function TopMenu({
           ) : (
             <div className="grid gap-4 py-4">
               <div className="bg-muted p-4 rounded-md">
-                <h3 className="font-medium mb-2">Client Created Successfully</h3>
+                <h3 className="font-medium mb-2">
+                  Client Created Successfully
+                </h3>
                 <hr />
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <span className="text-muted-foreground">ID:</span>
@@ -254,18 +314,24 @@ export function TopMenu({
           <DialogFooter>
             {!createdClient ? (
               <>
-                <Button variant="outline" onClick={() => setCreateClientDialogOpen(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setCreateClientDialogOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleCreateClient} disabled={!clientName || isSubmitting}>
+                <Button
+                  onClick={handleCreateClient}
+                  disabled={!clientName || isSubmitting}
+                >
                   {isSubmitting ? "Creating..." : "Create"}
                 </Button>
               </>
             ) : (
               <Button
                 onClick={() => {
-                  setCreateClientDialogOpen(false)
-                  setCreatedClient(null)
+                  setCreateClientDialogOpen(false);
+                  setCreatedClient(null);
                 }}
               >
                 Done
@@ -275,5 +341,5 @@ export function TopMenu({
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
