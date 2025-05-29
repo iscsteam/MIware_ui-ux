@@ -1,4 +1,4 @@
-// src/services/workflow-utils.ts (or your equivalent path)
+// src/services/workflow-utils.ts
 import type {
   WorkflowNode,
   NodeConnection,
@@ -8,14 +8,21 @@ import {
   updateDag,
   triggerDagRun,
 } from "@/services/file-conversion-service";
-// Removed: import { createFileConversionConfigFromNodes } from "@/services/schema-mapper"; // Was unused in the provided saveAndRunWorkflow
 import {
-  createCliOperatorConfig,
+  createCliOperatorConfig, // Only this one is kept from cli-operator-service directly
+} from "@/services/cli-operator-service";
+
+import {
+  // --- CRITICAL: Import ALL mapping functions from schema-mapper.ts ---
+  createFileToFileConfig,
+  createFileToDatabaseConfig,
+  createDatabaseToFileConfig,
   mapCopyFileToCliOperator,
   mapMoveFileToCliOperator,
   mapRenameFileToCliOperator,
   mapDeleteFileToCliOperator,
-} from "@/services/cli-operator-service";
+} from "@/services/schema-mapper";
+
 import { toast } from "@/components/ui/use-toast"; // Assuming this path is correct for your project
 import { getCurrentClientId } from "@/components/workflow/workflow-context"; // Adjust path if necessary
 
@@ -27,21 +34,6 @@ function makePythonSafeId(id: string): string {
     safeId = "task_" + safeId;
   }
   return safeId;
-}
-
-// Helper function to get database driver based on provider
-function getDatabaseDriver(provider?: string): string {
-  const drivers: Record<string, string> = {
-    postgresql: "org.postgresql.Driver",
-    mysql: "com.mysql.cj.jdbc.Driver",
-    sqlserver: "com.microsoft.sqlserver.jdbc.SQLServerDriver",
-    oracle: "oracle.jdbc.driver.OracleDriver",
-    sqlite: "org.sqlite.JDBC",
-    local: "org.postgresql.Driver", // Assuming local defaults to PostgreSQL for Spark, or adjust to org.sqlite.JDBC if SQLite
-  };
-  return (
-    drivers[provider?.toLowerCase() || "postgresql"] || "org.postgresql.Driver"
-  );
 }
 
 export async function saveAndRunWorkflow(
@@ -97,14 +89,14 @@ export async function saveAndRunWorkflow(
           description: "Workflow needs start and end nodes.",
           variant: "destructive",
         });
-        return false; // Changed from return to return false
+        return false;
       }
 
       const readFileNodes = nodes.filter((node) => node.type === "read-file");
       const writeFileNodes = nodes.filter((node) => node.type === "write-file");
       const databaseNodes = nodes.filter((node) => node.type === "database");
       const databaseSourceNodes = nodes.filter(
-        (node) => node.type === "source" // Assuming 'source' type is for database sources
+        (node) => node.type === "source"
       );
       const copyFileNodes = nodes.filter((node) => node.type === "copy-file");
       const moveFileNodes = nodes.filter((node) => node.type === "move-file");
@@ -115,6 +107,16 @@ export async function saveAndRunWorkflow(
         (node) => node.type === "delete-file"
       );
       const filterNodes = nodes.filter((node) => node.type === "filter");
+
+      // --- CRUCIAL DEBUG LOG ---
+      // This debug log will show you the filter node's data as it is stored in your frontend state
+      const filterNodeForConversion = filterNodes.length > 0 ? filterNodes[0] : null;
+      if (filterNodeForConversion) {
+          console.log("DEBUG(workflow-utils): Filter node data *before mapper call*:", JSON.stringify(filterNodeForConversion.data, null, 2));
+      } else {
+          console.log("DEBUG(workflow-utils): No filter node detected in the workflow.");
+      }
+      // --- END CRUCIAL DEBUG LOG ---
 
       let dagSequence: any[] = [];
       let createdConfigId: number | null = null;
@@ -127,38 +129,16 @@ export async function saveAndRunWorkflow(
         operationTypeForDag = "file_conversion";
         const readNode = readFileNodes[0];
         const writeNode = writeFileNodes[0];
-        const filterNode = filterNodes.length > 0 ? filterNodes[0] : null;
         if (!readNode.data.path || !writeNode.data.path) {
           toast({
             title: "Error",
             description: "File-to-File: Input/Output paths required.",
             variant: "destructive",
           });
-          return false; // Changed
+          return false;
         }
-        configPayload = {
-          input: {
-            provider: readNode.data.provider || "local",
-            format: readNode.data.format || "csv",
-            path: readNode.data.path,
-            options: readNode.data.options || {},
-            schema: readNode.data.schema,
-          },
-          output: {
-            provider: writeNode.data.provider || "local",
-            format: writeNode.data.format || "parquet",
-            path: writeNode.data.path,
-            mode: writeNode.data.writeMode || "overwrite",
-            options: writeNode.data.options || {},
-          },
-          filter: filterNode
-            ? {
-                operator: filterNode.data.operator || "and",
-                conditions: filterNode.data.conditions || [],
-              }
-            : undefined,
-          dag_id: currentWorkflowId,
-        };
+        // --- USE MAPPING FUNCTION FROM SCHEMA-MAPPER.TS ---
+        configPayload = createFileToFileConfig(readNode, writeNode, filterNodeForConversion, currentWorkflowId);
       }
       // --- FILE-TO-DATABASE ---
       else if (readFileNodes.length > 0 && databaseNodes.length > 0) {
@@ -166,11 +146,10 @@ export async function saveAndRunWorkflow(
         operationTypeForDag = "file_conversion";
         const readNode = readFileNodes[0];
         const databaseNode = databaseNodes[0];
-        const filterNode = filterNodes.length > 0 ? filterNodes[0] : null;
         if (
           !readNode.data.path ||
           !databaseNode.data.connectionString ||
-          !databaseNode.data.table // Changed from tableName to table
+          !databaseNode.data.table
         ) {
           toast({
             title: "Error",
@@ -178,40 +157,10 @@ export async function saveAndRunWorkflow(
               "File-to-DB: File path, DB connection, and table required.",
             variant: "destructive",
           });
-          return false; // Changed
+          return false;
         }
-        configPayload = {
-          input: {
-            provider: readNode.data.provider || "local",
-            format: readNode.data.format || "csv",
-            path: readNode.data.path,
-            options: readNode.data.options || {},
-            schema: readNode.data.schema,
-          },
-          output: {
-            provider:
-              databaseNode.data.provider === "local"
-                ? "local" // Assuming 'local' database provider means SQLite for output
-                : databaseNode.data.provider,
-            format: "sql",
-            path: databaseNode.data.connectionString,
-            mode: databaseNode.data.writeMode || "overwrite",
-            options: {
-              table: databaseNode.data.table, // Changed from tableName
-              user: databaseNode.data.user || "", // Changed from username
-              password: databaseNode.data.password || "",
-              batchSize: databaseNode.data.batchSize || "5000",
-              driver: getDatabaseDriver(databaseNode.data.provider),
-            },
-          },
-          filter: filterNode
-            ? {
-                operator: filterNode.data.operator || "and",
-                conditions: filterNode.data.conditions || [],
-              }
-            : undefined,
-          dag_id: currentWorkflowId,
-        };
+        // --- USE MAPPING FUNCTION FROM SCHEMA-MAPPER.TS ---
+        configPayload = createFileToDatabaseConfig(readNode, databaseNode, filterNodeForConversion, currentWorkflowId);
       }
       // --- DATABASESOURCE-TO-FILE ---
       else if (databaseSourceNodes.length > 0 && writeFileNodes.length > 0) {
@@ -219,11 +168,10 @@ export async function saveAndRunWorkflow(
         operationTypeForDag = "file_conversion";
         const dbSourceNode = databaseSourceNodes[0];
         const writeNode = writeFileNodes[0];
-        const filterNode = filterNodes.length > 0 ? filterNodes[0] : null;
 
         if (
           !dbSourceNode.data.connectionString ||
-          (!dbSourceNode.data.query && !dbSourceNode.data.table) || // Use 'table'
+          (!dbSourceNode.data.query && !dbSourceNode.data.table) ||
           !writeNode.data.path
         ) {
           toast({
@@ -232,43 +180,10 @@ export async function saveAndRunWorkflow(
               "DB-to-File: DB conn, (query or table name), and output path required.",
             variant: "destructive",
           });
-          return false; // Changed
+          return false;
         }
-
-        configPayload = {
-          input: {
-            provider: dbSourceNode.data.provider || "postgresql",
-            format: "sql",
-            path: dbSourceNode.data.connectionString,
-            options: {
-              // Query logic can be complex; if only table is provided, backend might construct query
-              // Or, ensure 'query' is populated if that's the primary way to define input.
-              query: dbSourceNode.data.query, // Prefer explicit query if available
-              table: dbSourceNode.data.table, // Send table name as well
-              user: dbSourceNode.data.user || "", // Changed from username
-              password: dbSourceNode.data.password || "",
-              driver: getDatabaseDriver(dbSourceNode.data.provider),
-            },
-            schema: dbSourceNode.data.schema,
-          },
-          output: {
-            provider: writeNode.data.provider || "local",
-            format: writeNode.data.format || "xml",
-            path: writeNode.data.path,
-            mode: writeNode.data.writeMode || "overwrite",
-            options: writeNode.data.options || {
-              rootTag: "TableData", // Example default for XML
-              rowTag: "Row",
-            },
-          },
-          filter: filterNode
-            ? {
-                operator: filterNode.data.operator || "and",
-                conditions: filterNode.data.conditions || [],
-              }
-            : undefined,
-          dag_id: currentWorkflowId,
-        };
+        // --- USE MAPPING FUNCTION FROM SCHEMA-MAPPER.TS ---
+        configPayload = createDatabaseToFileConfig(dbSourceNode, writeNode, filterNodeForConversion, currentWorkflowId);
       }
       // --- COPY FILE ---
       else if (copyFileNodes.length > 0) {
@@ -281,9 +196,10 @@ export async function saveAndRunWorkflow(
             description: "Copy: Source/Destination paths required.",
             variant: "destructive",
           });
-          return false; // Changed
+          return false;
         }
-        configPayload = mapCopyFileToCliOperator(node); // map... functions should handle node.data
+        // --- USE MAPPING FUNCTION FROM SCHEMA-MAPPER.TS ---
+        configPayload = mapCopyFileToCliOperator(node, currentWorkflowId);
       }
       // --- MOVE FILE ---
       else if (moveFileNodes.length > 0) {
@@ -296,25 +212,26 @@ export async function saveAndRunWorkflow(
             description: "Move: Source/Destination paths required.",
             variant: "destructive",
           });
-          return false; // Changed
+          return false;
         }
-        configPayload = mapMoveFileToCliOperator(node);
+        // --- USE MAPPING FUNCTION FROM SCHEMA-MAPPER.TS ---
+        configPayload = mapMoveFileToCliOperator(node, currentWorkflowId);
       }
       // --- RENAME FILE ---
       else if (renameFileNodes.length > 0) {
         console.log("Detected: Rename-File");
         operationTypeForDag = "cli_operator";
         const node = renameFileNodes[0];
-        // Ensure your mapRenameFileToCliOperator uses source_path for old and destination_path for new if that's the convention
         if (!node.data.source_path || !node.data.destination_path) {
           toast({
             title: "Error",
             description: "Rename: Old/New paths (source/destination) required.",
             variant: "destructive",
           });
-          return false; // Changed
+          return false;
         }
-        configPayload = mapRenameFileToCliOperator(node);
+        // --- USE MAPPING FUNCTION FROM SCHEMA-MAPPER.TS ---
+        configPayload = mapRenameFileToCliOperator(node, currentWorkflowId);
       }
       // --- DELETE FILE ---
       else if (deleteFileNodes.length > 0) {
@@ -327,9 +244,10 @@ export async function saveAndRunWorkflow(
             description: "Delete: Source path required.",
             variant: "destructive",
           });
-          return false; // Changed
+          return false;
         }
-        configPayload = mapDeleteFileToCliOperator(node);
+        // --- USE MAPPING FUNCTION FROM SCHEMA-MAPPER.TS ---
+        configPayload = mapDeleteFileToCliOperator(node, currentWorkflowId);
       }
       // --- NO MATCH ---
       else {
@@ -339,7 +257,7 @@ export async function saveAndRunWorkflow(
           description: "Unsupported workflow operation. Please connect appropriate source and target nodes (e.g., read-file to write-file, or a CLI operation node).",
           variant: "destructive",
         });
-        return false; // Changed
+        return false;
       }
 
       // Create configuration
@@ -362,8 +280,6 @@ export async function saveAndRunWorkflow(
           `Creating CLI operator config (${configPayload.operation}) with:`,
           JSON.stringify(configPayload, null, 2)
         );
-        // Add dag_id to CLI operator payload if your backend expects it for association
-        // configPayload.dag_id = currentWorkflowId; // Example if needed
         const response = await createCliOperatorConfig(clientId, configPayload);
         if (!response?.id)
           throw new Error(
@@ -378,43 +294,48 @@ export async function saveAndRunWorkflow(
           description: "Config creation failed or operation type missing.",
           variant: "destructive",
         });
-        return false; // Changed
+        return false;
       }
 
-      const taskNodeIdPrefix =
-        operationTypeForDag === "file_conversion" ? "fc_node_" : "cli_op_node_";
-      dagSequence = [
-        {
-          id: makePythonSafeId(startNodesList[0].id),
-          type: "start",
-          config_id: 1, // Default/placeholder config_id for start/end
-          next: [`${taskNodeIdPrefix}${createdConfigId}`],
-        },
-        {
-          id: `${taskNodeIdPrefix}${createdConfigId}`,
-          type: operationTypeForDag,
-          config_id: createdConfigId,
-          next: [makePythonSafeId(endNodesList[0].id)],
-        },
-        {
-          id: makePythonSafeId(endNodesList[0].id),
-          type: "end",
-          config_id: 1, // Default/placeholder config_id for start/end
-          next: [],
-        },
-      ];
+      // --- CRITICAL: Build DAG Sequence for single file_conversion_task ---
+      dagSequence = [];
+      const startNodeId = makePythonSafeId(startNodesList[0].id);
+      const endNodeId = makePythonSafeId(endNodesList[0].id);
+      const mainTaskId = `${operationTypeForDag}_${createdConfigId}`; // e.g., 'file_conversion_294'
+
+      dagSequence.push({
+        id: startNodeId,
+        type: "start",
+        config_id: 1, // Placeholder
+        next: [mainTaskId],
+      });
+
+      dagSequence.push({
+        id: mainTaskId,
+        type: operationTypeForDag, // e.g., 'file_conversion' or 'cli_operator'
+        config_id: createdConfigId, // The ID of the created configuration
+        next: [endNodeId],
+      });
+
+      dagSequence.push({
+        id: endNodeId,
+        type: "end",
+        config_id: 1, // Placeholder
+        next: [],
+      });
+      // --- END CRITICAL CHANGE ---
 
       console.log(
         "Updating DAG with sequence:",
         JSON.stringify(dagSequence, null, 2)
       );
       const dagUpdateData = { dag_sequence: dagSequence, active: true };
-      const updatedDag = await updateDag(currentWorkflowId, dagUpdateData); // Pass workflowId (dag_id)
+      const updatedDag = await updateDag(currentWorkflowId, dagUpdateData);
       if (!updatedDag) throw new Error("Failed to update DAG on backend.");
 
       try {
         console.log("Triggering DAG run for workflow:", currentWorkflowId);
-        const triggerResult = await triggerDagRun(currentWorkflowId); // Pass workflowId (dag_id)
+        const triggerResult = await triggerDagRun(currentWorkflowId);
         if (!triggerResult)
           console.warn(
             "DAG run trigger returned non-truthy value, but workflow saved."
@@ -427,16 +348,15 @@ export async function saveAndRunWorkflow(
         toast({
           title: "Partial Success",
           description: "Workflow saved; run trigger failed. You may need to run it manually.",
-          variant: "default", // Or "warning" if you have one
+          variant: "default",
         });
-        // Do not return false here, as saving was successful
       }
 
       toast({
         title: "Success",
         description: "Workflow saved and run triggered.",
       });
-      return true; // Indicate overall success
+      return true;
 
     } catch (error) {
       console.error("Error in saveAndRunWorkflow:", error);
@@ -448,13 +368,12 @@ export async function saveAndRunWorkflow(
             : "An unexpected error occurred while saving or running the workflow.",
         variant: "destructive",
       });
-      return false; // Indicate failure
+      return false;
     }
 }
 
 // Keep the existing findWriteNodesInPath function unchanged if it's still needed elsewhere
-// For this refactoring, it's not directly used by saveAndRunWorkflow
-export function findWriteNodesInPath( // Added export if it's used by other modules
+export function findWriteNodesInPath(
   startNodeId: string,
   nodes: WorkflowNode[],
   connections: NodeConnection[],

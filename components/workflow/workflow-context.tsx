@@ -36,6 +36,36 @@ export interface NodeSchema {
   outputSchema: SchemaItem[];
 }
 
+// --- NEW/UPDATED FILTER TYPES ---
+export interface FilterCondition {
+  // Represents a single leaf condition (e.g., field GT value)
+  field: string;
+  operation: string; // Changed from 'operator' to 'operation' to match your JSON example
+  value: any;
+}
+
+// A condition item can be a simple condition OR a nested filter group
+export type ConditionItem = FilterCondition | FilterGroup; // Recursive type definition!
+
+export interface FilterGroup {
+  // Represents a logical group of conditions (e.g., AND/OR)
+  operator: "AND" | "OR" | string; // Allow "AND", "OR", or other string if needed
+  conditions: ConditionItem[];
+}
+// --- END NEW/UPDATED FILTER TYPES ---
+
+// Backend format for order_by: Array of [field: string, direction: "asc" | "desc"]
+export type OrderByClauseBackend = [string, "asc" | "desc"];
+
+// Backend format for aggregation functions: Array of [field: string, func: string]
+export type AggregationFunctionBackend = [string, string];
+
+// Backend format for aggregation config
+export interface AggregationConfigBackend {
+  group_by: string[];
+  aggregations: AggregationFunctionBackend[];
+}
+
 export interface WorkflowNodeData {
   label?: string;
   displayName?: string;
