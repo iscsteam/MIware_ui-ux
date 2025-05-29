@@ -1,3 +1,4 @@
+//dagService.tsx
 import { buildUrl } from "./api";
 import { URLS } from "./url";
 import { DAGStatusResponse } from "./interface";
@@ -97,10 +98,6 @@ export async function getDAGById(dagId: string): Promise<DAG | null> {
 
 
 
-// import { buildUrl } from "./api";
-// import { URLS } from "./url";
-
-
 export async function getDAGStatus(dagId: string, triggerId: string): Promise<DAGStatusResponse | null> {
   try {
     const res = await fetch(buildUrl(URLS.getDAGStatus(dagId, triggerId)));
@@ -116,3 +113,4 @@ export async function getDAGStatus(dagId: string, triggerId: string): Promise<DA
     return null;
   }
 }
+
