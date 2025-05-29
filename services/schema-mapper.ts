@@ -1,9 +1,38 @@
-//schema-mapper.ts
-// Schema mapper service to map node properties to file conversion payload
+// //schema-mapper.ts
+// // Schema mapper service to map node properties to file conversion payload
 import type { WorkflowNode } from "@/components/workflow/workflow-context";
-import type { CliOperatorConfig } from "./cli-operator-service"; // Adjust path
+import type {
+  FilterCondition,
+  FilterGroup,
+  ConditionItem,
+  OrderByClauseBackend,
+  AggregationConfigBackend,
+} from "@/components/workflow/workflow-context";
 
-// Default spark config
+
+interface CliOperatorConfig {
+  operation: string;
+  source_path?: string;
+  destination_path?: string;
+  options?: Record<string, any>;
+  executed_by: string;
+  dag_id?: string;
+}
+
+function getDatabaseDriver(provider?: string): string {
+  const drivers: Record<string, string> = {
+    postgresql: "org.postgresql.Driver",
+    mysql: "com.mysql.cj.jdbc.Driver",
+    sqlserver: "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+    oracle: "oracle.jdbc.driver.OracleDriver",
+    sqlite: "org.sqlite.JDBC",
+    local: "org.postgresql.Driver",
+  };
+  return (
+    drivers[provider?.toLowerCase() || "postgresql"] || "org.postgresql.Driver"
+  );
+}
+
 export const DEFAULT_SPARK_CONFIG = {
   executor_instances: 1,
   executor_cores: 1,
@@ -12,127 +41,261 @@ export const DEFAULT_SPARK_CONFIG = {
   driver_cores: 1,
 };
 
-/**
- * Maps read file node properties to input configuration
- */
-export function mapReadFileToInput(readNode: WorkflowNode) {
-  if (!readNode || !readNode.data) {
+export function mapNodeToInputConfig(node: WorkflowNode) {
+  if (!node || !node.data) {
     return null;
   }
 
-  const input = {
-    provider: readNode.data.provider || "local",
-    format: readNode.data.format || "csv",
-    path: readNode.data.path || "",
-    options: readNode.data.options || {},
-  };
-
-  // Add schema if available
-  if (readNode.data.schema) {
+  if (node.type === "read-file") {
     return {
-      ...input,
-      schema: readNode.data.schema,
+      provider: node.data.provider || "local",
+      format: node.data.format || "csv",
+      path: node.data.path || "",
+      options: node.data.options || {},
+      schema: node.data.schema,
     };
   }
 
-  return input;
+  if (node.type === "source" || node.type === "database") {
+    return {
+      provider: node.data.provider || "postgresql",
+      format: "sql",
+      path: node.data.connectionString,
+      options: {
+        query: node.data.query,
+        table: node.data.table,
+        user: node.data.user || "",
+        password: node.data.password || "",
+        driver: getDatabaseDriver(node.data.provider),
+      },
+      schema: node.data.schema,
+    };
+  }
+
+  return null;
 }
 
-/**
- * Maps write file node properties to output configuration
- */
-export function mapWriteFileToOutput(writeNode: WorkflowNode) {
-  if (!writeNode || !writeNode.data) {
+export function mapNodeToOutputConfig(node: WorkflowNode) {
+  if (!node || !node.data) {
     return null;
   }
 
-  return {
-    provider: writeNode.data.provider || "local",
-    format: writeNode.data.format || "csv",
-    path: writeNode.data.path || "",
-    mode: writeNode.data.mode || "overwrite",
-    options: writeNode.data.options || {},
-  };
+  if (node.type === "write-file") {
+    return {
+      provider: node.data.provider || "local",
+      format: node.data.format || "parquet",
+      path: node.data.path || "",
+      mode: node.data.writeMode || "overwrite",
+      options: node.data.options || {},
+    };
+  }
+
+  if (node.type === "database") {
+    return {
+      provider: node.data.provider === "local" ? "local" : node.data.provider,
+      format: "sql",
+      path: node.data.connectionString,
+      mode: node.data.writeMode || "overwrite",
+      options: {
+        table: node.data.table,
+        user: node.data.user || "",
+        password: node.data.password || "",
+        batchSize: node.data.batchSize || "5000",
+        driver: getDatabaseDriver(node.data.provider),
+      },
+    };
+  }
+
+  return null;
 }
 
 /**
- * Maps filter node properties to filter, order_by, and aggregation configurations
+ * Maps filter node properties to transformation configurations (filter, order_by, aggregation).
  */
-export function mapFilterNodeToConfigs(filterNode: WorkflowNode) {
+export function mapFilterNodeToTransformationConfig(filterNode: WorkflowNode | null) {
+  const result: {
+    filter: FilterGroup | null;
+    order_by: OrderByClauseBackend[] | null;
+    aggregation: AggregationConfigBackend | null;
+  } = {
+    filter: null,
+    order_by: null,
+    aggregation: null,
+  };
+
   if (!filterNode || !filterNode.data) {
-    return {};
+    console.log("DEBUG(schema-mapper): mapFilterNodeToTransformationConfig - No filter node or data found. Returning:", JSON.stringify(result));
+    return result;
   }
 
-  const result: any = {};
-
-  // Add filter if available
-  if (filterNode.data.filter) {
-    result.filter = filterNode.data.filter;
+  // --- Filter Logic: Access filter.operator and filter.conditions from within filterNode.data.filter ---
+  const filterData = filterNode.data.filter as FilterGroup; // Cast to FilterGroup
+  if (
+    filterData && // Ensure filterData itself exists
+    typeof filterData.operator === 'string' && filterData.operator.trim() !== '' &&
+    filterData.conditions && Array.isArray(filterData.conditions) && filterData.conditions.length > 0
+  ) {
+    result.filter = {
+      operator: filterData.operator.toUpperCase(), // Ensure uppercase for backend
+      conditions: filterData.conditions as ConditionItem[], // Cast to ConditionItem[]
+    } as FilterGroup;
+    console.log("DEBUG(schema-mapper): mapFilterNodeToTransformationConfig - Filter conditions found:", JSON.stringify(result.filter));
+  } else {
+    result.filter = null; // Explicitly null if no valid filter group
+    console.log("DEBUG(schema-mapper): mapFilterNodeToTransformationConfig - No valid filter conditions. Setting filter to null.");
   }
 
-  // Add order_by if available
-  if (filterNode.data.order_by) {
+  // --- Order By Logic ---
+  if (filterNode.data.order_by && filterNode.data.order_by.length > 0) {
     result.order_by = filterNode.data.order_by;
+    console.log("DEBUG(schema-mapper): mapFilterNodeToTransformationConfig - Order by found:", JSON.stringify(result.order_by));
+  } else {
+    result.order_by = null;
+    console.log("DEBUG(schema-mapper): mapFilterNodeToTransformationConfig - No order by found. Setting order_by to null.");
   }
 
-  // Add aggregation if available
-  if (filterNode.data.aggregation) {
-    result.aggregation = filterNode.data.aggregation;
+  // --- Aggregation Logic ---
+  const agg = filterNode.data.aggregation;
+  if (agg && (agg.group_by?.length > 0 || agg.aggregations?.length > 0)) {
+    result.aggregation = agg;
+    console.log("DEBUG(schema-mapper): mapFilterNodeToTransformationConfig - Aggregation found:", JSON.stringify(result.aggregation));
+  } else {
+    result.aggregation = null;
+    console.log("DEBUG(schema-mapper): mapFilterNodeToTransformationConfig - No aggregation found. Setting aggregation to null.");
   }
 
+  console.log("DEBUG(schema-mapper): mapFilterNodeToTransformationConfig - Final return result:", JSON.stringify(result, null, 2));
   return result;
 }
 
-/**
- * Creates a complete file conversion configuration from node properties
- */
-export function createFileConversionConfigFromNodes(
+export function createFileToFileConfig(
   readNode: WorkflowNode,
   writeNode: WorkflowNode,
   filterNode: WorkflowNode | null,
   dagId: string
 ) {
-  const input = mapReadFileToInput(readNode);
-  const output = mapWriteFileToOutput(writeNode);
-  const filterConfigs = filterNode ? mapFilterNodeToConfigs(filterNode) : {};
+  const input = mapNodeToInputConfig(readNode);
+  const output = mapNodeToOutputConfig(writeNode);
+  const transformationConfig = mapFilterNodeToTransformationConfig(filterNode);
 
   if (!input || !output) {
-    throw new Error("Invalid read or write node configuration");
+    throw new Error("Invalid read or write node configuration for file-to-file.");
   }
 
   return {
     input,
     output,
-    ...filterConfigs,
+    ...transformationConfig,
     spark_config: DEFAULT_SPARK_CONFIG,
     dag_id: dagId,
   };
 }
 
+export function createFileToDatabaseConfig(
+  readNode: WorkflowNode,
+  databaseNode: WorkflowNode,
+  filterNode: WorkflowNode | null,
+  dagId: string
+) {
+  const input = mapNodeToInputConfig(readNode);
+  const output = mapNodeToOutputConfig(databaseNode);
+  const transformationConfig = mapFilterNodeToTransformationConfig(filterNode);
 
-export function mapMoveFileToCliOperator(moveNode: WorkflowNode): CliOperatorConfig {
-  if (!moveNode || !moveNode.data) {
-    throw new Error("Invalid move file node data");
-  }
-
-  // Assuming moveNode.data contains source_path, destination_path, and optionally overwrite
-  const { source_path, destination_path, overwrite } = moveNode.data;
-
-  if (!source_path) {
-    throw new Error("Move file node is missing a source path.");
-  }
-  if (!destination_path) {
-    throw new Error("Move file node is missing a destination path.");
+  if (!input || !output) {
+    throw new Error("Invalid file or database node configuration for file-to-database.");
   }
 
   return {
-    operation: "move",
-    source_path: source_path,
-    destination_path: destination_path,
+    input,
+    output,
+    ...transformationConfig,
+    spark_config: DEFAULT_SPARK_CONFIG,
+    dag_id: dagId,
+  };
+}
+
+export function createDatabaseToFileConfig(
+  dbSourceNode: WorkflowNode,
+  writeFileNode: WorkflowNode,
+  filterNode: WorkflowNode | null,
+  dagId: string
+) {
+  const input = mapNodeToInputConfig(dbSourceNode);
+  const output = mapNodeToOutputConfig(writeFileNode);
+  const transformationConfig = mapFilterNodeToTransformationConfig(filterNode);
+
+  if (!input || !output) {
+    throw new Error("Invalid database source or write file node configuration for database-to-file.");
+  }
+
+  return {
+    input,
+    output,
+    ...transformationConfig,
+    spark_config: DEFAULT_SPARK_CONFIG,
+    dag_id: dagId,
+  };
+}
+
+export function mapCopyFileToCliOperator(node: WorkflowNode, dagId: string): CliOperatorConfig {
+  if (!node || !node.data) {
+    throw new Error("Invalid copy file node data");
+  }
+  const { source_path, destination_path, overwrite } = node.data;
+  return {
+    operation: "copy",
+    source_path: source_path || "",
+    destination_path: destination_path || "",
     options: {
-      overwrite: overwrite || false, // Default to false if not provided
-      // Add any other move-specific options your backend might support
+      overwrite: overwrite || false,
     },
-    executed_by: "workflow_user", // Or "cli_user" or a dynamic value
+    executed_by: "workflow_user",
+    dag_id: dagId,
+  };
+}
+
+export function mapMoveFileToCliOperator(node: WorkflowNode, dagId: string): CliOperatorConfig {
+  if (!node || !node.data) {
+    throw new Error("Invalid move file node data");
+  }
+  const { source_path, destination_path, overwrite } = node.data;
+  return {
+    operation: "move",
+    source_path: source_path || "",
+    destination_path: destination_path || "",
+    options: {
+      overwrite: overwrite || false,
+    },
+    executed_by: "workflow_user",
+    dag_id: dagId,
+  };
+}
+
+export function mapRenameFileToCliOperator(node: WorkflowNode, dagId: string): CliOperatorConfig {
+  if (!node || !node.data) {
+    throw new Error("Invalid rename file node data");
+  }
+  const { source_path, destination_path } = node.data;
+  return {
+    operation: "rename",
+    source_path: source_path || "",
+    destination_path: destination_path || "",
+    options: {},
+    executed_by: "workflow_user",
+    dag_id: dagId,
+  };
+}
+
+export function mapDeleteFileToCliOperator(node: WorkflowNode, dagId: string): CliOperatorConfig {
+  if (!node || !node.data) {
+    throw new Error("Invalid delete file node data");
+  }
+  const { source_path } = node.data;
+  return {
+    operation: "delete",
+    source_path: source_path || "",
+    options: {},
+    executed_by: "workflow_user",
+    dag_id: dagId,
   };
 }

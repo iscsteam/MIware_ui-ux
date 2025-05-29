@@ -10,10 +10,14 @@ import {
 } from "react";
 import { v4 as uuidv4 } from "uuid";
 import type { NodeType, SchemaItem } from "@/services/interface";
-import { useToast as useUIToast } from "@/components/ui/use-toast";
-import { saveAndRunWorkflow as saveAndRunWorkflowUtil } from "@/services/workflow-utils";
 
-const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
+import { useToast as useUIToast } from "@/components/ui/use-toast"; // Aliased to avoid conflict with context's toast
+import { saveAndRunWorkflow as saveAndRunWorkflowUtil } from "@/services/workflow-utils"; // Import the utility
+import { buildUrl } from "@/services/api"; // Assuming this handles base URLs etc.
+import { URLS } from "@/services/url"; // Assuming this contains endpoint constants
+
+
+// const buildUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
 
 export type NodeStatus =
   | "idle"
@@ -32,6 +36,36 @@ export interface NodeSchema {
   description: string;
   inputSchema: SchemaItem[];
   outputSchema: SchemaItem[];
+}
+
+// --- NEW/UPDATED FILTER TYPES ---
+export interface FilterCondition {
+  // Represents a single leaf condition (e.g., field GT value)
+  field: string;
+  operation: string; // Changed from 'operator' to 'operation' to match your JSON example
+  value: any;
+}
+
+// A condition item can be a simple condition OR a nested filter group
+export type ConditionItem = FilterCondition | FilterGroup; // Recursive type definition!
+
+export interface FilterGroup {
+  // Represents a logical group of conditions (e.g., AND/OR)
+  operator: "AND" | "OR" | string; // Allow "AND", "OR", or other string if needed
+  conditions: ConditionItem[];
+}
+// --- END NEW/UPDATED FILTER TYPES ---
+
+// Backend format for order_by: Array of [field: string, direction: "asc" | "desc"]
+export type OrderByClauseBackend = [string, "asc" | "desc"];
+
+// Backend format for aggregation functions: Array of [field: string, func: string]
+export type AggregationFunctionBackend = [string, string];
+
+// Backend format for aggregation config
+export interface AggregationConfigBackend {
+  group_by: string[];
+  aggregations: AggregationFunctionBackend[];
 }
 
 export interface WorkflowNodeData {
@@ -683,8 +717,13 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
     setIsSaving(true);
     try {
-      const dagData = convertWorkflowToDAG();
-      const response = await fetch(`${baseurl}/dags/${workflowId}`, {
+
+      const dagData = convertWorkflowToDAG(); // This prepares a generic DAG structure
+      // Note: This saveWorkflowToBackend only updates the DAG structure (sequence of tasks).
+      // It does NOT create/update task configurations like saveAndRunWorkflow does.
+      // This is suitable for saving the visual layout and connections.
+      const response = await fetch(buildUrl(`/dags/${workflowId}`), {
+
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dagData),
