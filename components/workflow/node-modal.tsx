@@ -46,7 +46,10 @@ import FilterNodeProperties, { filterSchema } from "@/components/node-properties
 
 import DatabaseNodeProperties, { databaseSchema } from "@/components/node-properties/Database/database-node-properties"
 import SourceNodeProperties, { sourceSchema } from "@/components/node-properties/Database/sourcenodeproperties"
-import SalesforceCloudNodeProperties,{salesforceCloudSchema} from "@/components/node-properties/salesforce-cloud-node-properties"
+import SalesforceCloudNodeProperties,{salesforceCloudSchema} from "@/components/node-properties/Saleforce/salesforce-cloud-node-properties"
+// NEW: Import SalesforceWriteNodeProperties and its schema
+import SalesforceWriteNodeProperties, {salesforceCloudWriteSchema} from "@/components/node-properties/Saleforce/salesforce-write-node-properties"
+
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -69,7 +72,9 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "send-http-response": HTTPSendResponseNodeProperties,
   "send-http-request": HTTPSendRequestNodeProperties,
   "database": DatabaseNodeProperties,
-  "salesforce-cloud": SalesforceCloudNodeProperties,
+  "salesforce-cloud": SalesforceCloudNodeProperties, // This is for Salesforce Read (Query)
+  // NEW: Add Salesforce Write node to the components map
+  "write-salesforce": SalesforceWriteNodeProperties,
   "source": SourceNodeProperties,
   "file": FileNodeProperties,
   "parse-data": ParsedDataNodeProperties,
@@ -98,7 +103,9 @@ const componentSchemas: Record<string, any> = {
   "send-http-request": httpSendRequestSchema,
   "file": fileNodeSchema,
   "database": databaseSchema,
-  "salesforce-cloud":salesforceCloudSchema,
+  "salesforce-cloud":salesforceCloudSchema, // Schema for Salesforce Read (Query)
+  // NEW: Add Salesforce Write schema to the schemas map
+  "write-salesforce": salesforceCloudWriteSchema,
   "source": sourceSchema,
   "send-http-response": httpSendResponseSchema,
   "parse-data": parseDataSchema,
@@ -211,6 +218,11 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
   if (!node) return null
 
   const getNodeTitle = () => {
+    // For "write-salesforce", convert to "Salesforce Write"
+    if (node.type === "write-salesforce") {
+      return "Salesforce Write"
+    }
+    // Existing logic for other node types
     return (
       node.data?.label ||
       node.type
@@ -257,6 +269,9 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
         case "complex":
           defaultValue = {}
           break
+        case "array": // Handle array types
+          defaultValue = []
+          break;
         default:
           defaultValue = null
       }
@@ -302,7 +317,7 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
                                 </div>
                                 {value !== undefined && (
                                   <div className="text-xs text-gray-600 ml-1 pl-1 border-l border-gray-300">
-                                    {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                                    {typeof value === "object" && value !== null ? JSON.stringify(value) : String(value)}
                                   </div>
                                 )}
                               </div>
