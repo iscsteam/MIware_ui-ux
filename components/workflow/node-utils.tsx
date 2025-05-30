@@ -1,13 +1,22 @@
-//node-utils.tsx 
-"use client" 
-import { Play, Filter, FileText, FileInput, FileOutput, Copy, CheckCircle, Code, Trash2, Files, Clock, Server, Send, Globe, FileJson, FileCode, Database, FilePenLine } from "lucide-react"
+// //node-utils.tsx
+"use client";
+import {
+  Filter,
+  FileInput,
+  Code,
+  Server,
+  Send,
+  Globe,
+  FileJson,
+  FileCode,
+  Database,
+  FilePenLine,
+} from "lucide-react";
 
-import  { NodeType } from "@/services/interface"
-
-
+import type { NodeType } from "@/services/interface";
 
 export function getNodeIcon(type: NodeType) {
-  const iconClass = "h-10 w-10"
+  const iconClass = "h-10 w-10";
 
   // Define types using PNG icons
   const pngIconMap: Partial<Record<NodeType, string>> = {
@@ -16,45 +25,61 @@ export function getNodeIcon(type: NodeType) {
     "read-file": "/icons/reading.png",
     "write-file": "/icons/write.png",
     "copy-file": "/icons/copy.png",
-    "delete-file": "/icons/delete.png", 
+    "delete-file": "/icons/delete.png",
     "list-files": "/icons/copy.png",
-    "database":"/icons/copy.png",
+    database: "/icons/copy.png",
+    source: "/icons/source.png", // Added source icon
     "file-poller": "/icons/pollar.png",
-    "rename-file": "/icons/write.png", // Added rename-file icon
-    "end": "/icons/stop.png",
+    "rename-file": "/icons/write.png",
+    "salesforce-cloud": "/icons/source.png",
+    end: "/icons/stop.png",
+
     // add more PNG types if needed
-  }
+  };
 
   // If type is in pngIconMap, render <img>
   if (pngIconMap[type]) {
-    return <img src={pngIconMap[type]!} alt={type} className={iconClass} draggable={false} />
+    return (
+      <img
+        src={pngIconMap[type]! || "/placeholder.svg"}
+        alt={type}
+        className={iconClass}
+        draggable={false}
+      />
+    );
   }
 
   // Otherwise, use Lucide icons with black color to match the consistent styling
   switch (type) {
     case "http-receiver":
-      return <Server className="h-10 w-10 text-slate-800" />
+      return <Server className="h-10 w-10 text-slate-800" />;
     case "send-http-request":
-      return <Send className="h-10 w-10 text-slate-800" />
+      return <Send className="h-10 w-10 text-slate-800" />;
     case "send-http-response":
-      return <Globe className="h-10 w-10 text-slate-800" />
+      return <Globe className="h-10 w-10 text-slate-800" />;
     case "xml-parser":
-      return <FileCode className="h-10 w-10 text-slate-800" />
+      return <FileCode className="h-10 w-10 text-slate-800" />;
     case "xml-render":
-      return <FileJson className="h-10 w-10 text-slate-800" />
+      return <FileJson className="h-10 w-10 text-slate-800" />;
     case "parse-data":
-      return <Database className="h-10 w-10 text-blue-500" />
+      return <Database className="h-10 w-10 text-blue-500" />;
     case "render-data":
-      return <Database className="h-10 w-10 text-purple-500" />
+      return <Database className="h-10 w-10 text-purple-500" />;
     case "database":
-      return <Database className="h-10 w-10 text-green-500" />
+      return <Database className="h-10 w-10 text-green-500" />;
+
+    case "salesforce-cloud":
+      return <Database className="h-10 w-10 text-green-500" />;
+
+    case "source":
+      return <FileInput className="h-10 w-10 text-blue-500" />;
     case "code":
-      return <Code className="h-10 w-10 text-slate-800" />
+      return <Code className="h-10 w-10 text-slate-800" />;
     case "rename-file":
-      return <FilePenLine className="h-10 w-10 text-slate-800" />
-     case "filter":
-      return <Filter className="h-10 w-10 text-orange-500" />
+      return <FilePenLine className="h-10 w-10 text-slate-800" />;
+    case "filter":
+      return <Filter className="h-10 w-10 text-orange-500" />;
     default:
-      return <Filter className="h-10 w-10 text-slate-800" />
+      return <Filter className="h-10 w-10 text-slate-800" />;
   }
 }

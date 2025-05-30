@@ -1,8 +1,7 @@
-
+//file-conversion-service.ts
 import { toast } from "@/components/ui/use-toast"
-
-const baseUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT
-
+import { URLS } from "@/services/url"
+import { buildUrl } from "@/services/api"
 export interface FileConversionConfig {
   input: {
     provider: string
@@ -50,19 +49,43 @@ export interface FileConversionConfigResponse extends FileConversionConfig {
   updated_at: string
 }
 
+// Salesforce Configuration Types
+export interface SalesforceReadConfig {
+  object_name: string
+  query: string
+  fields?: string[]
+  where?: string
+  limit?: number
+  use_bulk_api: boolean
+  file_path: string
+}
+
+export interface SalesforceReadConfigResponse extends SalesforceReadConfig {
+  id: number
+  client_id: string
+  created_at: string
+  updated_at: string
+}
+
+export interface SalesforceReadConfigCreate {
+  object_name: string
+  query: string
+  fields?: string[]
+  where?: string
+  limit?: number
+  use_bulk_api: boolean
+  file_path: string
+}
+
+// API: Create File Conversion Config
 export async function createFileConversionConfig(
   clientId: number,
   config: FileConversionConfig,
 ): Promise<FileConversionConfigResponse | null> {
   try {
-    console.log("Creating file conversion config:", JSON.stringify(config, null, 2))
-
-    // Use the correct endpoint
-    const response = await fetch(`${baseUrl}/clients/${clientId}/file_conversion_configs`, {
+    const response = await fetch(buildUrl(URLS.listCreateFileConversionConfigs(clientId)), {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
     })
 
@@ -72,7 +95,6 @@ export async function createFileConversionConfig(
     }
 
     const data = await response.json()
-    console.log("File conversion config created successfully:", data)
     return data
   } catch (error) {
     console.error("Error creating file conversion config:", error)
@@ -85,6 +107,7 @@ export async function createFileConversionConfig(
   }
 }
 
+// API: Update DAG
 export async function updateDag(
   dagId: string,
   data: {
@@ -100,10 +123,102 @@ export async function updateDag(
   },
 ): Promise<any> {
   try {
-    console.log("Updating DAG:", JSON.stringify(data, null, 2))
+    const response = await fetch(buildUrl(URLS.manageDAG(dagId)), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
 
-    // Use the dynamic dagId instead of hardcoded value
-    const response = await fetch(`${baseUrl}/dags/${dagId}`, {
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+      throw new Error(errorData.detail || `Failed to update DAG: ${response.status}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error updating DAG:", error)
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to update DAG",
+      variant: "destructive",
+    })
+    return null
+  }
+}
+
+// API: Trigger DAG Run
+export async function triggerDagRun(dagId: string): Promise<any> {
+  try {
+    const response = await fetch(buildUrl(URLS.triggerrun(dagId)), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dag_id: dagId }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+      throw new Error(errorData.detail || `Failed to trigger DAG run: ${response.status}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error triggering DAG run:", error)
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to trigger DAG run",
+      variant: "destructive",
+    })
+    return null
+  }
+}
+
+// API: Stop DAG Run
+export async function stopDagRun(dagId: string): Promise<any> {
+  try {
+    const response = await fetch(buildUrl(URLS.forcestop(dagId)), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+      throw new Error(errorData.detail || `Failed to stop DAG run: ${response.status}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error stopping DAG run:", error)
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to stop DAG run",
+      variant: "destructive",
+    })
+    return null
+  }
+}
+
+// Helper: Make Python-safe ID
+export function makePythonSafeId(id: string): string {
+  let safeId = id.replace(/[^a-zA-Z0-9_]/g, "_")
+  if (!/^[a-zA-Z_]/.test(safeId)) {
+    safeId = "task_" + safeId
+  }
+  return safeId
+}
+
+// Update DAG name and schedule specifically
+export async function updateDagNameAndSchedule(
+  dagId: string,
+  data: {
+    name?: string
+    schedule?: string
+  },
+): Promise<any> {
+  try {
+    console.log("Updating DAG name and schedule:", JSON.stringify(data, null, 2))
+
+    const response = await fetch(buildUrl(URLS.manageDAG(dagId)), {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -130,47 +245,125 @@ export async function updateDag(
   }
 }
 
-export async function triggerDagRun(dagId: string): Promise<any> {
-  try {
-    console.log("Triggering DAG run for:", dagId)
+// Helper: Get JDBC Driver from provider
+export function getDatabaseDriver(provider: string): string {
+  const drivers: Record<string, string> = {
+    postgresql: "org.postgresql.Driver",
+    mysql: "com.mysql.cj.jdbc.Driver",
+    sqlserver: "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+    oracle: "oracle.jdbc.driver.OracleDriver",
+    local: "org.postgresql.Driver",
+  }
+  return drivers[provider] || drivers.local
+}
 
-    // Use the dynamic dagId instead of hardcoded value
-    const response = await fetch(`${baseUrl}/dag_runs/${dagId}/trigger_run`, {
+// API: Create Salesforce Read Config
+export async function createSalesforceReadConfig(
+  clientId: string,
+  config: SalesforceReadConfigCreate,
+): Promise<SalesforceReadConfigResponse | null> {
+  try {
+    const response = await fetch(buildUrl(`/clients/${clientId}/read_salesforce_configs/`), {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({}),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
     })
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
-      throw new Error(errorData.detail || `Failed to trigger DAG run: ${response.status}`)
+      throw new Error(errorData.detail || `Failed to create Salesforce config: ${response.status}`)
     }
 
-    const result = await response.json()
-    console.log("DAG run triggered successfully:", result)
-    return result
+    const data = await response.json()
+    return data
   } catch (error) {
-    console.error("Error triggering DAG run:", error)
+    console.error("Error creating Salesforce config:", error)
     toast({
       title: "Error",
-      description: error instanceof Error ? error.message : "Failed to trigger DAG run",
+      description: error instanceof Error ? error.message : "Failed to create Salesforce configuration",
       variant: "destructive",
     })
     return null
   }
 }
 
-// Helper function to ensure Python-compatible IDs
-export function makePythonSafeId(id: string): string {
-  // Remove any non-alphanumeric characters and replace with underscores
-  let safeId = id.replace(/[^a-zA-Z0-9_]/g, "_")
+// API: List Salesforce Read Configs
+export async function listSalesforceReadConfigs(clientId: string): Promise<SalesforceReadConfigResponse[]> {
+  try {
+    const response = await fetch(buildUrl(`/clients/${clientId}/read_salesforce_configs/`), {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    })
 
-  // Ensure it starts with a letter or underscore (Python variable naming rule)
-  if (!/^[a-zA-Z_]/.test(safeId)) {
-    safeId = "task_" + safeId
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+      throw new Error(errorData.detail || `Failed to list Salesforce configs: ${response.status}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error listing Salesforce configs:", error)
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to list Salesforce configurations",
+      variant: "destructive",
+    })
+    return []
   }
-
-  return safeId
 }
+
+// API: Update Salesforce Read Config
+export async function updateSalesforceReadConfig(
+  clientId: string,
+  configId: number,
+  config: Partial<SalesforceReadConfigCreate>,
+): Promise<SalesforceReadConfigResponse | null> {
+  try {
+    const response = await fetch(buildUrl(`/clients/${clientId}/read_salesforce_configs/${configId}`), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+      throw new Error(errorData.detail || `Failed to update Salesforce config: ${response.status}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error updating Salesforce config:", error)
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to update Salesforce configuration",
+      variant: "destructive",
+    })
+    return null
+  }
+}
+
+// API: Delete Salesforce Read Config
+export async function deleteSalesforceReadConfig(clientId: string, configId: number): Promise<boolean> {
+  try {
+    const response = await fetch(buildUrl(`/clients/${clientId}/read_salesforce_configs/${configId}`), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+      throw new Error(errorData.detail || `Failed to delete Salesforce config: ${response.status}`)
+    }
+
+    return true
+  } catch (error) {
+    console.error("Error deleting Salesforce config:", error)
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to delete Salesforce configuration",
+      variant: "destructive",
+    })
+    return false
+  }
+}
+

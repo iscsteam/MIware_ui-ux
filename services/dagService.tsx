@@ -190,3 +190,4 @@ export async function stopCurrentWorkflow(): Promise<StopDAGResponse | null> {
 
   return await stopActiveDAGRun(currentDagId)
 }
+

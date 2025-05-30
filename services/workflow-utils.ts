@@ -3,8 +3,11 @@ import type { WorkflowNode, NodeConnection } from "@/components/workflow/workflo
 import { createFileConversionConfig, updateDag, triggerDagRun } from "@/services/file-conversion-service"
 import { createFileConversionConfigFromNodes } from "@/services/schema-mapper"
 import {
-  createCliOperatorConfig,
+  createFileToFileConfig,
+  createFileToDatabaseConfig,
+  createDatabaseToFileConfig,
   mapCopyFileToCliOperator,
+  mapMoveFileToCliOperator,
   mapMoveFileToCliOperator,
   mapRenameFileToCliOperator,
   mapDeleteFileToCliOperator,
@@ -15,7 +18,9 @@ import { getCurrentClientId } from "@/components/workflow/workflow-context"
 // Helper function to ensure Python-compatible IDs
 function makePythonSafeId(id: string): string {
   let safeId = id.replace(/[^a-zA-Z0-9_]/g, "_")
+  let safeId = id.replace(/[^a-zA-Z0-9_]/g, "_")
   if (!/^[a-zA-Z_]/.test(safeId)) {
+    safeId = "task_" + safeId
     safeId = "task_" + safeId
   }
   return safeId
@@ -319,6 +324,8 @@ export async function saveAndRunWorkflow(
         variant: "destructive",
       })
       return false
+      })
+      return false
     }
 
     // Find all operations in the workflow
@@ -504,10 +511,14 @@ export async function saveAndRunWorkflow(
     return true
   } catch (error) {
     console.error("Error in saveAndRunWorkflow:", error)
+    console.error("Error in saveAndRunWorkflow:", error)
     toast({
-      title: "Workflow Error",
-      description: error instanceof Error ? error.message : "Failed to save and run workflow.",
+      title: "Workflow Operation Error",
+      description:
+        error instanceof Error ? error.message : "An unexpected error occurred while saving or running the workflow.",
       variant: "destructive",
+    })
+    return false
     })
     return false
   }

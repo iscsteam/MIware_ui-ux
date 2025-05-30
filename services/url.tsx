@@ -4,7 +4,6 @@ export const URLS = {
   // Clients
   listCreateClients: "clients/",
   manageClient: (clientId: number | string) => `clients/${clientId}`,
-
   // File Conversion Configs
   listCreateFileConversionConfigs: (clientId: number | string) =>
     `clients/${clientId}/file_conversion_configs`,
@@ -18,7 +17,10 @@ export const URLS = {
   manageDAG: (dagId: string) => `dags/${dagId}`,
   getDAGStatus: (dagId: string, triggerId: string) =>
     `dag_runs/${dagId}/triggers/${triggerId}`,
-  triggerrun: (dagId: string) => `dag_runs/${dagId}/triggers`,
+  triggerrun: (dagId: string) => `dag_runs/${dagId}/trigger_run`,
+
+  // DAG_runs
+  forcestop: (dagId: string) => `/dag_runs/${dagId}/force_stop_active_run`,
 
   // Uploads
   uploadSingleFile: "uploads/",

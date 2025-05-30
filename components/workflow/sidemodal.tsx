@@ -1,18 +1,55 @@
-//sidemodal.tsx 
-"use client"  
-import { useState, useEffect } from "react"
-import {Play, FileText, Filter, FileOutput, Copy, CheckCircle, X, Search, ChevronDown, ChevronRight, FolderPlus, File, FileEdit, FilePlus2, FolderOpen, Trash2, Files, Clock, Server, Send, Globe, FileCode, FileJson, ArrowLeft, Database,FilePenLine} from "lucide-react"
+// //sidemodal.tsx
 
-import  { NodeType } from "@/services/interface";
+"use client";
+import { useState, useEffect } from "react";
+import type React from "react";
 
-import { Button } from "@/components/ui/button"
+import {
+  Play,
+  FileText,
+  Filter,
+  Copy,
+  CheckCircle,
+  X,
+  Search,
+  ChevronRight,
+  File,
+  FileEdit,
+  FilePlus2,
+  FolderOpen,
+  Trash2,
+  Files,
+  Clock,
+  Server,
+  Send,
+  Globe,
+  FileCode,
+  FileJson,
+  ArrowLeft,
+  Database,
+  FilePenLine,
+  FileInput,
+} from "lucide-react";
+
+import type { NodeType } from "@/services/interface";
+
+import { Button } from "@/components/ui/button";
 
 interface NodeTypeDefinition {
-  type: NodeType
-  label: string
-  icon: React.ReactNode
-  description: string
-  category: "file" | "general" | "http" | "xml" | "json" | "filenode" | "data"| "databaseoperations"
+  type: NodeType;
+  label: string;
+  icon: React.ReactNode;
+  description: string;
+  category:
+    | "file"
+    | "general"
+    | "http"
+    | "xml"
+    | "json"
+    | "filenode"
+    | "data"
+    | "databaseoperations"
+    | "salesforceoperations";
 }
 
 const nodeTypes: NodeTypeDefinition[] = [
@@ -21,42 +58,42 @@ const nodeTypes: NodeTypeDefinition[] = [
     label: "File",
     icon: <File className="h-5 w-5 text-green-600" />,
     description: "this will convert file from one to another format",
-    category: "filenode"
+    category: "filenode",
   },
   {
     type: "start",
     label: "Start",
     icon: <Play className="h-5 w-5 text-green-600" />,
     description: "Starting point of the workflow",
-    category: "general"
+    category: "general",
   },
   {
     type: "create-file",
     label: "Create File",
     icon: <FilePlus2 className="h-5 w-5 text-blue-600" />,
     description: "Creates a new file or directory",
-    category: "file"
+    category: "file",
   },
   {
     type: "read-file",
     label: "Read File",
     icon: <FileText className="h-5 w-5 text-indigo-600" />,
     description: "Reads content from a file",
-    category: "file"
+    category: "file",
   },
   {
     type: "write-file",
     label: "Write File",
     icon: <FileEdit className="h-5 w-5 text-purple-600" />,
     description: "Writes content to a file",
-    category: "file"
+    category: "file",
   },
   {
     type: "copy-file",
     label: "Copy File",
     icon: <Copy className="h-5 w-5 text-amber-600" />,
     description: "Copies a file or directory",
-    category: "file"
+    category: "file",
   },
 
   {
@@ -64,62 +101,70 @@ const nodeTypes: NodeTypeDefinition[] = [
     label: "Rename File",
     icon: <FilePenLine className="h-5 w-5 text-orange-500" />, // Using FilePenLine icon
     description: "Renames a file or directory",
-    category: "file"
+    category: "file",
   },
   {
     type: "delete-file",
     label: "Delete File",
     icon: <Trash2 className="h-5 w-5 text-red-500" />,
     description: "Deletes a file or directory",
-    category: "file"
+    category: "file",
   },
-    {
+  {
     type: "move-file",
     label: "Move File",
     icon: <Files className="h-5 w-5 text-red-500" />,
     description: "Move a file or directory",
-    category: "file"
+    category: "file",
   },
   {
     type: "list-files",
     label: "List Files",
     icon: <Files className="h-5 w-5 text-teal-600" />,
     description: "Lists files in a directory",
-    category: "file"
+    category: "file",
   },
   {
     type: "file-poller",
     label: "File Poller",
     icon: <Clock className="h-5 w-5 text-cyan-600" />,
     description: "Monitors a file or directory for changes",
-    category: "file"
+    category: "file",
   },
   {
     type: "http-receiver",
     label: "HTTP Receiver",
     icon: <Server className="h-5 w-5 text-emerald-600" />,
     description: "Listens for incoming HTTP requests",
-    category: "http"
+    category: "http",
   },
   {
     type: "send-http-request",
     label: "Send HTTP Request",
     icon: <Send className="h-5 w-5 text-rose-600" />,
     description: "Sends an HTTP request to an external service",
-    category: "http"
+    category: "http",
   },
   {
     type: "send-http-response",
     label: "Send HTTP Response",
     icon: <Globe className="h-5 w-5 text-sky-600" />,
     description: "Sends an HTTP response back to the client",
-    category: "http"
+    category: "http",
   },
-   {
+  {
     type: "database",
     label: "Database",
     icon: <Database className="h-5 w-5 text-green-500" />,
-    description: "Import/export data to/from databases",
+    description: "Database operations with connection and write modes",
+    category: "databaseoperations",
+  },
+  {
+    type: "source",
+    label: "Source",
+    icon: <FileInput className="h-5 w-5 text-blue-500" />,
+    description:
+      "Load data from various source providers with schema definition",
     category: "databaseoperations",
   },
   {
@@ -127,72 +172,79 @@ const nodeTypes: NodeTypeDefinition[] = [
     label: "XML Parser",
     icon: <FileCode className="h-5 w-5 text-violet-600" />,
     description: "Parses XML content into structured data",
-    category: "xml"
+    category: "xml",
   },
   {
     type: "xml-render",
     label: "XML Render",
     icon: <FileJson className="h-5 w-5 text-fuchsia-600" />,
     description: "Renders data as XML format",
-    category: "xml"
+    category: "xml",
   },
   {
     type: "transform-xml",
     label: "Transform XML",
     icon: <Copy className="h-5 w-5 text-amber-600" />,
     description: "Transform",
-    category: "xml"
+    category: "xml",
   },
   {
     type: "json-parse",
     label: "JSON Parse",
     icon: <Copy className="h-5 w-5 text-amber-600" />,
     description: "Transform",
-    category: "json"
+    category: "json",
   },
   {
     type: "json-render",
     label: "JSON Render",
     icon: <Copy className="h-5 w-5 text-amber-600" />,
     description: "Transform",
-    category: "json"
+    category: "json",
   },
   {
     type: "transform-json",
     label: "Transform Json",
     icon: <Copy className="h-5 w-5 text-amber-600" />,
     description: "Transform",
-    category: "json"
+    category: "json",
   },
   {
     type: "parse-data",
     label: "Parse Data",
     icon: <Database className="h-5 w-5 text-blue-500" />,
     description: "Parses structured data into usable format",
-    category: "data"
+    category: "data",
   },
   {
     type: "render-data",
     label: "Render Data",
     icon: <Database className="h-5 w-5 text-purple-500" />,
     description: "Renders data in specified format",
-    category: "data"
+    category: "data",
+  },
+  {
+    type: "salesforce-cloud",
+    label: "Salesforce Cloud",
+    icon: <Database className="h-5 w-5 text-blue-500" />,
+    description: "Read data from Salesforce using SOQL queries",
+    category: "salesforceoperations",
   },
   {
     type: "end",
     label: "End",
     icon: <CheckCircle className="h-5 w-5 text-red-600" />,
     description: "End point of the workflow",
-    category: "general"
+    category: "general",
   },
   {
-  type: "filter",
-  label: "Filter",
-  icon: <Filter className="h-5 w-5 text-orange-500" />,
-  description: "Filters data based on specified conditions",
-  category: "data"
+    type: "filter",
+    label: "Filter",
+    icon: <Filter className="h-5 w-5 text-orange-500" />,
+    description: "Filters data based on specified conditions",
+    category: "data",
   },
-]
+];
 
 // Updated to use minimal styling for a plain look without borders
 const nodeTypeStyles = "hover:bg-slate-50";
@@ -203,9 +255,23 @@ interface SideModalProps {
   onSelectNodeType?: (nodeType: NodeType) => void;
 }
 
-type CategoryType = "main" | "file" | "general" | "http" | "xml" | "json" | "filenode" | "data"|"databaseoperations";
+type CategoryType =
+  | "main"
+  | "file"
+  | "general"
+  | "http"
+  | "xml"
+  | "json"
+  | "filenode"
+  | "data"
+  | "databaseoperations"
+  | "salesforceoperations";
 
-export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps) {
+export function SideModal({
+  isOpen,
+  onClose,
+  onSelectNodeType,
+}: SideModalProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentView, setCurrentView] = useState<CategoryType>("main");
@@ -234,28 +300,48 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
   const handleDragStart = (e: React.DragEvent, nodeType: NodeType) => {
     e.dataTransfer.setData("nodeType", nodeType);
     e.dataTransfer.effectAllowed = "move";
-  }
+  };
 
   const handleSelect = (nodeType: NodeType) => {
     onSelectNodeType?.(nodeType);
     onClose();
-  }
+  };
 
   // Filter nodes based on search term
-  const filteredNodeTypes = nodeTypes.filter(node =>
-    node.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    node.description.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredNodeTypes = nodeTypes.filter(
+    (node) =>
+      node.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      node.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Get nodes by category
-  const fileOperations = filteredNodeTypes.filter(node => node.category === "file");
-  const generalOperations = filteredNodeTypes.filter(node => node.category === "general");
-  const httpOperations = filteredNodeTypes.filter(node => node.category === "http");
-  const xmlOperations = filteredNodeTypes.filter(node => node.category === "xml");
-  const jsonOperations = filteredNodeTypes.filter(node => node.category === "json");
-  const fileOperation = filteredNodeTypes.filter(node => node.category === "filenode");
-  const dataOperations = filteredNodeTypes.filter(node => node.category === "data");
-  
+  const fileOperations = filteredNodeTypes.filter(
+    (node) => node.category === "file"
+  );
+  const generalOperations = filteredNodeTypes.filter(
+    (node) => node.category === "general"
+  );
+  const httpOperations = filteredNodeTypes.filter(
+    (node) => node.category === "http"
+  );
+  const xmlOperations = filteredNodeTypes.filter(
+    (node) => node.category === "xml"
+  );
+  const jsonOperations = filteredNodeTypes.filter(
+    (node) => node.category === "json"
+  );
+  const fileOperation = filteredNodeTypes.filter(
+    (node) => node.category === "filenode"
+  );
+  const dataOperations = filteredNodeTypes.filter(
+    (node) => node.category === "data"
+  );
+  const databaseOperations = filteredNodeTypes.filter(
+    (node) => node.category === "databaseoperations"
+  );
+  const salesforceOperations = filteredNodeTypes.filter(
+    (node) => node.category === "salesforceoperations"
+  );
 
   // Search input that appears on every view
   const searchInput = (
@@ -287,8 +373,12 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
               {nodeType.icon}
             </div>
             <div className="leading-tight">
-              <div className="font-medium text-sm text-slate-800">{nodeType.label}</div>
-              <div className="text-xs text-slate-500">{nodeType.description}</div>
+              <div className="font-medium text-sm text-slate-800">
+                {nodeType.label}
+              </div>
+              <div className="text-xs text-slate-500">
+                {nodeType.description}
+              </div>
             </div>
           </div>
         ))}
@@ -300,7 +390,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
     // Show search results directly on main view if there's a search term
     if (searchTerm.trim() !== "") {
       const allFilteredNodes = filteredNodeTypes;
-      
+
       if (allFilteredNodes.length === 0) {
         return (
           <>
@@ -311,22 +401,40 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </>
         );
       }
-      
+
       // Group search results by category
-      const fileResults = allFilteredNodes.filter(node => node.category === "file");
-      const httpResults = allFilteredNodes.filter(node => node.category === "http");
-      const xmlResults = allFilteredNodes.filter(node => node.category === "xml");
-      const jsonResults = allFilteredNodes.filter(node=>node.category==="json");
-      const generalResults = allFilteredNodes.filter(node => node.category === "general");
-      const fileOperation = allFilteredNodes.filter(node => node.category === "filenode");
-      const dataResults = allFilteredNodes.filter(node => node.category === "data");
-      const databaseResults = allFilteredNodes.filter((node) => node.category === "databaseoperations")
-      
+      const fileResults = allFilteredNodes.filter(
+        (node) => node.category === "file"
+      );
+      const httpResults = allFilteredNodes.filter(
+        (node) => node.category === "http"
+      );
+      const xmlResults = allFilteredNodes.filter(
+        (node) => node.category === "xml"
+      );
+      const jsonResults = allFilteredNodes.filter(
+        (node) => node.category === "json"
+      );
+      const generalResults = allFilteredNodes.filter(
+        (node) => node.category === "general"
+      );
+      const fileOperation = allFilteredNodes.filter(
+        (node) => node.category === "filenode"
+      );
+      const dataResults = allFilteredNodes.filter(
+        (node) => node.category === "data"
+      );
+      const databaseResults = allFilteredNodes.filter(
+        (node) => node.category === "databaseoperations"
+      );
+      const salesforceResults = allFilteredNodes.filter(
+        (node) => node.category === "salesforceoperations"
+      );
+
       return (
         <>
           {searchInput}
           <div className="space-y-4">
-
             {fileOperation.length > 0 && (
               <div className="space-y-2">
                 <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
@@ -356,7 +464,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
                 {renderNodeList(fileResults)}
               </div>
             )}
-            
+
             {httpResults.length > 0 && (
               <div className="space-y-2">
                 <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
@@ -366,7 +474,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
                 {renderNodeList(httpResults)}
               </div>
             )}
-            
+
             {xmlResults.length > 0 && (
               <div className="space-y-2">
                 <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
@@ -387,7 +495,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
               </div>
             )}
 
-             {databaseResults.length > 0 && (
+            {databaseResults.length > 0 && (
               <div className="space-y-2">
                 <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
                   <Database className="h-4 w-4 text-green-500" />
@@ -397,7 +505,6 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
               </div>
             )}
 
-            
             {dataResults.length > 0 && (
               <div className="space-y-2">
                 <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
@@ -407,20 +514,28 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
                 {renderNodeList(dataResults)}
               </div>
             )}
-            
+
+            {salesforceResults.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
+                  <Database className="h-4 w-4 text-blue-500" />
+                  Salesforce Operations
+                </h3>
+                {renderNodeList(salesforceResults)}
+              </div>
+            )}
           </div>
         </>
       );
     }
-    
+
     // Default main view with category cards - simplified with no borders or backgrounds
     return (
       <>
         {searchInput}
         <div className="grid gap-3">
-
           {/* General Operations Card */}
-          <div 
+          <div
             className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
             onClick={() => setCurrentView("general")}
           >
@@ -434,7 +549,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </div>
 
           {/* File Operations Card */}
-          <div 
+          <div
             className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
             onClick={() => setCurrentView("file")}
           >
@@ -448,7 +563,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </div>
 
           {/* HTTP Operations Card */}
-          <div 
+          <div
             className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
             onClick={() => setCurrentView("http")}
           >
@@ -462,7 +577,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </div>
 
           {/* XML Operations Card */}
-          <div 
+          <div
             className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
             onClick={() => setCurrentView("xml")}
           >
@@ -476,7 +591,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </div>
 
           {/* JSON Operations Card */}
-          <div 
+          <div
             className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
             onClick={() => setCurrentView("json")}
           >
@@ -489,7 +604,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
             </div>
           </div>
 
-            {/* Database Operations Card */}
+          {/* Database Operations Card */}
           <div
             className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
             onClick={() => setCurrentView("databaseoperations")}
@@ -504,7 +619,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </div>
 
           {/* Data Operations Card */}
-          <div 
+          <div
             className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
             onClick={() => setCurrentView("data")}
           >
@@ -518,7 +633,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           </div>
 
           {/* File Operation Card */}
-          <div 
+          <div
             className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
             onClick={() => setCurrentView("filenode")}
           >
@@ -530,20 +645,48 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
               <ChevronRight className="h-4 w-4 text-slate-500" />
             </div>
           </div>
+          {/* Salesforce Operations Card */}
+          <div
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
+            onClick={() => setCurrentView("salesforceoperations")}
+          >
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
+              <div className="flex items-center space-x-2">
+                <Database className="h-5 w-5 text-blue-500" />
+                <span className="font-semibold">Salesforce Operations</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
         </div>
       </>
     );
   };
 
-  const renderCategoryView = (category: "file" | "general" | "http" | "xml" | "json" | "filenode" | "data"|"databaseoperations", title: string, icon: React.ReactNode) => {
-    const operations = filteredNodeTypes.filter(node => node.category === category);
-    
+  const renderCategoryView = (
+    category:
+      | "file"
+      | "general"
+      | "http"
+      | "xml"
+      | "json"
+      | "filenode"
+      | "data"
+      | "databaseoperations"
+      | "salesforceoperations",
+    title: string,
+    icon: React.ReactNode
+  ) => {
+    const operations = filteredNodeTypes.filter(
+      (node) => node.category === category
+    );
+
     return (
       <>
         <div className="flex items-center mb-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setCurrentView("main")}
             className="mr-2 hover:bg-slate-200 rounded-full"
           >
@@ -554,9 +697,9 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
             <h3 className="font-semibold text-slate-800">{title}</h3>
           </div>
         </div>
-        
+
         {searchInput}
-        
+
         {operations.length > 0 ? (
           renderNodeList(operations)
         ) : (
@@ -572,24 +715,62 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
   const renderContent = () => {
     switch (currentView) {
       case "file":
-        return renderCategoryView("file", "File Operations", <FolderOpen className="h-5 w-5 text-blue-500" />);
+        return renderCategoryView(
+          "file",
+          "File Operations",
+          <FolderOpen className="h-5 w-5 text-blue-500" />
+        );
       case "http":
-        return renderCategoryView("http", "HTTP Operations", <Globe className="h-5 w-5 text-emerald-500" />);
+        return renderCategoryView(
+          "http",
+          "HTTP Operations",
+          <Globe className="h-5 w-5 text-emerald-500" />
+        );
       case "xml":
-        return renderCategoryView("xml", "XML Operations", <FileCode className="h-5 w-5 text-violet-500" />);
+        return renderCategoryView(
+          "xml",
+          "XML Operations",
+          <FileCode className="h-5 w-5 text-violet-500" />
+        );
       case "json":
-        return renderCategoryView("json","JSON Operations", <FileCode className="h-5 w-5 text-violet-500" />); 
+        return renderCategoryView(
+          "json",
+          "JSON Operations",
+          <FileCode className="h-5 w-5 text-violet-500" />
+        );
       case "data":
-        return renderCategoryView("data", "Data Operations", <Database className="h-5 w-5 text-blue-500" />);
+        return renderCategoryView(
+          "data",
+          "Data Operations",
+          <Database className="h-5 w-5 text-blue-500" />
+        );
 
       case "databaseoperations":
-      return renderCategoryView( "databaseoperations","Database Operations",<Database className="h-5 w-5 text-green-500" />);
+        return renderCategoryView(
+          "databaseoperations",
+          "Database Operations",
+          <Database className="h-5 w-5 text-green-500" />
+        );
 
+      case "salesforceoperations":
+        return renderCategoryView(
+          "salesforceoperations",
+          "Salesforce Operations",
+          <Database className="h-5 w-5 text-blue-500" />
+        );
 
       case "filenode":
-        return renderCategoryView("filenode","File Operation", <File className="h-5 w-5 text-violet-500" />); 
+        return renderCategoryView(
+          "filenode",
+          "File Operation",
+          <File className="h-5 w-5 text-violet-500" />
+        );
       case "general":
-        return renderCategoryView("general", "Workflow Controls", <Play className="h-5 w-5 text-green-500" />);
+        return renderCategoryView(
+          "general",
+          "Workflow Controls",
+          <Play className="h-5 w-5 text-green-500" />
+        );
       default:
         return renderMainView();
     }
@@ -601,19 +782,22 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       style={{
         width: "340px",
         transform: isOpen ? "translateX(0)" : "translateX(100%)",
-        transition: "transform 0.3s ease-in-out"
+        transition: "transform 0.3s ease-in-out",
       }}
     >
       <div className="p-4 border-b flex justify-between items-center bg-slate-50">
         <h2 className="text-lg font-semibold text-slate-800">Add Node</h2>
-        <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-slate-200 rounded-full">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          className="hover:bg-slate-200 rounded-full"
+        >
           <X className="h-4 w-4" />
         </Button>
       </div>
 
-      <div className="p-4 space-y-4">
-        {renderContent()}
-      </div>
+      <div className="p-4 space-y-4">{renderContent()}</div>
     </div>
   );
 }

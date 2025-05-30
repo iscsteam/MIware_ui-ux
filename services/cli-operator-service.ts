@@ -1,8 +1,10 @@
 
 import { toast } from "@/components/ui/use-toast";
 import type { WorkflowNode } from "@/components/workflow/workflow-context"; // Import WorkflowNode type
+import { buildUrl } from "./api"; // Assuming this handles base URLs etc.
+import { URLS } from "./url"; // Assuming this contains endpoint constants
 
-const baseUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
+// const buildUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
 
 // Updated CliOperatorConfig interface
 export interface CliOperatorConfig {
@@ -41,7 +43,7 @@ export async function createCliOperatorConfig(
   try {
     console.log("Creating CLI operator config:", JSON.stringify(config, null, 2));
 
-    const response = await fetch(`${baseUrl}/clients/${clientId}/cli_operators_configs`, {
+    const response = await fetch(`${buildUrl}/clients/${clientId}/cli_operators_configs`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -155,7 +157,7 @@ export function mapDeleteFileToCliOperator(deleteNode: WorkflowNode): CliOperato
   }
   // Ensure these property names match what's in your deleteFileNode's `data` object
   // (e.g., from its schema: recursive, skipTrash, onlyIfExists)
-  const { source_path, recursive, skipTrash, onlyIfExists } = deleteNode.data;
+  const { source_path, recursive } = deleteNode.data;
 
   if (!source_path) throw new Error("Delete file node is missing a source path (file to delete).");
 
@@ -165,8 +167,8 @@ export function mapDeleteFileToCliOperator(deleteNode: WorkflowNode): CliOperato
     // destination_path is not used for delete operation
     options: {
       recursive: recursive || false,
-      skipTrash: skipTrash || false,
-      onlyIfExists: onlyIfExists || false, // If true, no error if file doesn't exist
+      // skipTrash: skipTrash || false,
+      // onlyIfExists: onlyIfExists || false, // If true, no error if file doesn't exist
     },
     executed_by: "workflow_user",
   };
