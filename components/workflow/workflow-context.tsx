@@ -114,6 +114,9 @@ export interface WorkflowNodeData {
   filePath?: string
   csvOptions?: Record<string, any>
   // Salesforce specific fields
+    fields?: string[];
+  where?: string;
+  limit?: number;
   username?: string
   object_name?: string
   use_bulk_api?: boolean
