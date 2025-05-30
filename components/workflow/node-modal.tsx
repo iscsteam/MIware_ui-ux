@@ -46,6 +46,7 @@ import FilterNodeProperties, { filterSchema } from "@/components/node-properties
 
 import DatabaseNodeProperties, { databaseSchema } from "@/components/node-properties/Database/database-node-properties"
 import SourceNodeProperties, { sourceSchema } from "@/components/node-properties/Database/sourcenodeproperties"
+import SalesforceCloudNodeProperties,{salesforceCloudSchema} from "@/components/node-properties/salesforce-cloud-node-properties"
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -68,6 +69,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "send-http-response": HTTPSendResponseNodeProperties,
   "send-http-request": HTTPSendRequestNodeProperties,
   "database": DatabaseNodeProperties,
+  "salesforce-cloud": SalesforceCloudNodeProperties,
   "source": SourceNodeProperties,
   "file": FileNodeProperties,
   "parse-data": ParsedDataNodeProperties,
@@ -96,6 +98,7 @@ const componentSchemas: Record<string, any> = {
   "send-http-request": httpSendRequestSchema,
   "file": fileNodeSchema,
   "database": databaseSchema,
+  "salesforce-cloud":salesforceCloudSchema,
   "source": sourceSchema,
   "send-http-response": httpSendResponseSchema,
   "parse-data": parseDataSchema,

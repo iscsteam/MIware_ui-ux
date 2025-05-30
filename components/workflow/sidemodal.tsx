@@ -48,7 +48,8 @@ interface NodeTypeDefinition {
     | "json"
     | "filenode"
     | "data"
-    | "databaseoperations";
+    | "databaseoperations"
+    | "salesforceoperations";
 }
 
 const nodeTypes: NodeTypeDefinition[] = [
@@ -223,6 +224,13 @@ const nodeTypes: NodeTypeDefinition[] = [
     category: "data",
   },
   {
+    type: "salesforce-cloud",
+    label: "Salesforce Cloud",
+    icon: <Database className="h-5 w-5 text-blue-500" />,
+    description: "Read data from Salesforce using SOQL queries",
+    category: "salesforceoperations",
+  },
+  {
     type: "end",
     label: "End",
     icon: <CheckCircle className="h-5 w-5 text-red-600" />,
@@ -256,7 +264,8 @@ type CategoryType =
   | "json"
   | "filenode"
   | "data"
-  | "databaseoperations";
+  | "databaseoperations"
+  | "salesforceoperations";
 
 export function SideModal({
   isOpen,
@@ -329,6 +338,9 @@ export function SideModal({
   );
   const databaseOperations = filteredNodeTypes.filter(
     (node) => node.category === "databaseoperations"
+  );
+  const salesforceOperations = filteredNodeTypes.filter(
+    (node) => node.category === "salesforceoperations"
   );
 
   // Search input that appears on every view
@@ -415,6 +427,9 @@ export function SideModal({
       const databaseResults = allFilteredNodes.filter(
         (node) => node.category === "databaseoperations"
       );
+      const salesforceResults = allFilteredNodes.filter(
+        (node) => node.category === "salesforceoperations"
+      );
 
       return (
         <>
@@ -497,6 +512,16 @@ export function SideModal({
                   Data Operations
                 </h3>
                 {renderNodeList(dataResults)}
+              </div>
+            )}
+
+            {salesforceResults.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
+                  <Database className="h-4 w-4 text-blue-500" />
+                  Salesforce Operations
+                </h3>
+                {renderNodeList(salesforceResults)}
               </div>
             )}
           </div>
@@ -620,6 +645,19 @@ export function SideModal({
               <ChevronRight className="h-4 w-4 text-slate-500" />
             </div>
           </div>
+          {/* Salesforce Operations Card */}
+          <div
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
+            onClick={() => setCurrentView("salesforceoperations")}
+          >
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
+              <div className="flex items-center space-x-2">
+                <Database className="h-5 w-5 text-blue-500" />
+                <span className="font-semibold">Salesforce Operations</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
         </div>
       </>
     );
@@ -634,7 +672,8 @@ export function SideModal({
       | "json"
       | "filenode"
       | "data"
-      | "databaseoperations",
+      | "databaseoperations"
+      | "salesforceoperations",
     title: string,
     icon: React.ReactNode
   ) => {
@@ -711,6 +750,13 @@ export function SideModal({
           "databaseoperations",
           "Database Operations",
           <Database className="h-5 w-5 text-green-500" />
+        );
+
+      case "salesforceoperations":
+        return renderCategoryView(
+          "salesforceoperations",
+          "Salesforce Operations",
+          <Database className="h-5 w-5 text-blue-500" />
         );
 
       case "filenode":

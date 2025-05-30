@@ -1,5 +1,4 @@
-
-// src/components/workflow/nodeSchemas.ts
+//nodeSchemas.ts
 import type { NodeType, SchemaItem } from "@/services/interface" // Assuming SchemaItem is also in workflow-context
 
 export interface NodeSchema {
@@ -555,7 +554,7 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
   },
 
   // Database node schema
-   database: {
+  database: {
     label: "Database",
     description: "Database operations with connection and write modes, supports file input from read-file nodes.",
     inputSchema: [
@@ -650,110 +649,186 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
     ],
   },
 
-// Updated source node schema in nodeSchemas.ts
-source: {
-  label: "Source",
-  description: "Load data from various source providers including databases with schema definition.",
-  inputSchema: [
-    {
-      name: "provider",
-      datatype: "string",
-      description: "Source data provider (e.g., local, s3, hdfs, database).",
-      required: true,
-    },
-    {
-      name: "format",
-      datatype: "string",
-      description: "Source file format (e.g., csv, json, parquet) or sql for database.",
-      required: true,
-    },
-    {
-      name: "filePath",
-      datatype: "string",
-      description: "Path to the source file or data location (not required for database).",
-      required: false,
-    },
-    {
-      name: "connectionString",
-      datatype: "string",
-      description: "Database connection string (required when provider is database).",
-      required: false,
-    },
-    {
-      name: "tableName",
-      datatype: "string",
-      description: "Database table name (required when provider is database).",
-      required: false,
-    },
-    {
-      name: "username",
-      datatype: "string",
-      description: "Database username (required when provider is database).",
-      required: false,
-    },
-    {
-      name: "password",
-      datatype: "string",
-      description: "Database password (required when provider is database).",
-      required: false,
-    },
-    {
-      name: "batchSize",
-      datatype: "string",
-      description: "Batch size for database operations (optional for database provider).",
-      required: false,
-    },
-    {
-      name: "csvOptions",
-      datatype: "complex",
-      description: "CSV-specific options (header, inferSchema).",
-      required: false,
-    },
-    {
-      name: "schema",
-      datatype: "complex",
-      description: "Schema definition for the source data.",
-      required: false,
-    },
-  ],
-  outputSchema: [
-    {
-      name: "data",
-      datatype: "object",
-      description: "The loaded data from the source.",
-    },
-    {
-      name: "schema",
-      datatype: "object",
-      description: "The inferred or defined schema of the data.",
-    },
-    {
-      name: "rowCount",
-      datatype: "integer",
-      description: "Number of rows loaded from the source.",
-    },
-    {
-      name: "filePath",
-      datatype: "string",
-      description: "The source file path that was processed (for file sources).",
-    },
-    {
-      name: "tableName",
-      datatype: "string",
-      description: "The database table name that was processed (for database sources).",
-    },
-    {
-      name: "format",
-      datatype: "string",
-      description: "The format of the source data.",
-    },
-    {
-      name: "provider",
-      datatype: "string",
-      description: "The provider used for the source data.",
-    },
-  ],
-},
+  // Updated source node schema in nodeSchemas.ts
+  source: {
+    label: "Source",
+    description: "Load data from various source providers including databases with schema definition.",
+    inputSchema: [
+      {
+        name: "provider",
+        datatype: "string",
+        description: "Source data provider (e.g., local, s3, hdfs, database).",
+        required: true,
+      },
+      {
+        name: "format",
+        datatype: "string",
+        description: "Source file format (e.g., csv, json, parquet) or sql for database.",
+        required: true,
+      },
+      {
+        name: "filePath",
+        datatype: "string",
+        description: "Path to the source file or data location (not required for database).",
+        required: false,
+      },
+      {
+        name: "connectionString",
+        datatype: "string",
+        description: "Database connection string (required when provider is database).",
+        required: false,
+      },
+      {
+        name: "tableName",
+        datatype: "string",
+        description: "Database table name (required when provider is database).",
+        required: false,
+      },
+      {
+        name: "username",
+        datatype: "string",
+        description: "Database username (required when provider is database).",
+        required: false,
+      },
+      {
+        name: "password",
+        datatype: "string",
+        description: "Database password (required when provider is database).",
+        required: false,
+      },
+      {
+        name: "batchSize",
+        datatype: "string",
+        description: "Batch size for database operations (optional for database provider).",
+        required: false,
+      },
+      {
+        name: "csvOptions",
+        datatype: "complex",
+        description: "CSV-specific options (header, inferSchema).",
+        required: false,
+      },
+      {
+        name: "schema",
+        datatype: "complex",
+        description: "Schema definition for the source data.",
+        required: false,
+      },
+    ],
+    outputSchema: [
+      {
+        name: "data",
+        datatype: "object",
+        description: "The loaded data from the source.",
+      },
+      {
+        name: "schema",
+        datatype: "object",
+        description: "The inferred or defined schema of the data.",
+      },
+      {
+        name: "rowCount",
+        datatype: "integer",
+        description: "Number of rows loaded from the source.",
+      },
+      {
+        name: "filePath",
+        datatype: "string",
+        description: "The source file path that was processed (for file sources).",
+      },
+      {
+        name: "tableName",
+        datatype: "string",
+        description: "The database table name that was processed (for database sources).",
+      },
+      {
+        name: "format",
+        datatype: "string",
+        description: "The format of the source data.",
+      },
+      {
+        name: "provider",
+        datatype: "string",
+        description: "The provider used for the source data.",
+      },
+    ],
+  },
+
+  "salesforce-cloud": {
+    label: "Salesforce Cloud",
+    description: "Read data from Salesforce using SOQL queries and save to file.",
+    inputSchema: [
+      {
+        name: "object_name",
+        datatype: "string",
+        description: "Salesforce object name (e.g., Account, Contact, Opportunity).",
+        required: true,
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "query",
+        datatype: "string",
+        description: "SOQL query to execute against Salesforce.",
+        required: true,
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "use_bulk_api",
+        datatype: "boolean",
+        description: "Whether to use Salesforce Bulk API for large data sets.",
+        required: false,
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "file_path",
+        datatype: "string",
+        description: "Output file path to save the query results.",
+        required: true,
+        sourceNodeId: "",
+        originalName: "",
+      },
+    ],
+    outputSchema: [
+      {
+        name: "records",
+        datatype: "array",
+        description: "Array of records returned from Salesforce query.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "record_count",
+        datatype: "integer",
+        description: "Number of records retrieved.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "file_path",
+        datatype: "string",
+        description: "Path where the results were saved.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "success",
+        datatype: "boolean",
+        description: "Whether the Salesforce operation was successful.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "error",
+        datatype: "string",
+        description: "Error message if any.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+    ],
+  },
 
   // ----- MISSING SCHEMAS ADDED BELOW -----
   "xml-parser": {

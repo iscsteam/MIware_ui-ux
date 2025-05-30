@@ -30,6 +30,7 @@ export type NodeType =
   | "filter"
   | "database"
   | "source"
+  | "salesforce-cloud"
   | "move-file"
   | "code";
 
