@@ -24,7 +24,7 @@ export function TopMenu({
   activeView: string;
   setActiveView: (view: string) => void;
 }) {
-  const { runWorkflow, saveWorkflowToBackend, saveAndRunWorkflow } = useWorkflow()
+  const { runWorkflow, saveWorkflowToBackend, saveAndRunWorkflow, currentWorkflowName} = useWorkflow()
   const [activeTab, setActiveTab] = useState("File")
 
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false)
@@ -67,7 +67,7 @@ export function TopMenu({
       try {
         const clientDataToStore = {
           id: String(created.id),
-          id: String(created.id),
+         
           name: created.name,
         }
         localStorage.setItem("currentClient", JSON.stringify(clientDataToStore))
@@ -177,7 +177,7 @@ export function TopMenu({
               className={cn(
                 "relative pb-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors",
                 activeTab === tab && "text-foreground"
-                activeTab === tab && "text-foreground"
+                
               )}
             >
               {tab}
