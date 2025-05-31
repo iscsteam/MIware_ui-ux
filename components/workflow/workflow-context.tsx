@@ -129,7 +129,8 @@ export interface WorkflowNodeData {
   object_name?: string;
   use_bulk_api?: boolean;
   file_path?: string;
-  bulk_batch_size?:number
+  bulk_batch_size?: number;
+  config_id?: number;
 }
 
 export interface WorkflowNode {

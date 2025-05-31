@@ -20,8 +20,10 @@ export interface SalesforceWriteConfigResponse extends SalesforceWriteConfig {
 
 export interface SalesforceWriteConfigCreate {
   object_name: string;
-
-  bulk_batch_size: number;
+  query: string;
+  fields?: string[];
+  where?: string;
+  limit?: number;
   use_bulk_api: boolean;
   file_path: string;
 }
@@ -183,3 +185,5 @@ export async function deleteSalesforceWriteConfig(
     return false;
   }
 }
+
+
