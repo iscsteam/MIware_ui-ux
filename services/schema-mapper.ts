@@ -8,7 +8,7 @@ import type {
 } from "@/components/workflow/workflow-context"
 import { toast } from "@/components/ui/use-toast"
 
-const baseUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT
+const baseUrl = process.env.NEXT_PUBLIC_API_URL
 
 // File Conversion Config Interface
 export interface FileConversionConfig {

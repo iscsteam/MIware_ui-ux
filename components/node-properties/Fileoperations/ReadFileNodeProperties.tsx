@@ -314,6 +314,7 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
             <SelectItem value="csv">CSV</SelectItem>
             <SelectItem value="json">JSON</SelectItem>
             <SelectItem value="xml">XML</SelectItem>
+            <SelectItem value="parquet">Parquet</SelectItem>
             {/* ... other items ... */}
           </SelectContent>
         </Select>

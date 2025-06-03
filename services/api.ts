@@ -6,7 +6,7 @@ import axiosInstance from "./axiosInstance";
 
 
 export const buildUrl = (path: string): string => {
-  const baseUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
   if (!baseUrl) {
     throw new Error("Environment variable NEXT_PUBLIC_API_URL is not set");
