@@ -125,12 +125,18 @@ export interface WorkflowNodeData {
   filePath?: string;
   csvOptions?: Record<string, any>;
   // Salesforce specific fields
-  username?: string;
-  object_name?: string;
-  use_bulk_api?: boolean;
-  file_path?: string;
+
+
+    fields?: string[];
+  where?: string;
+  limit?: number;
+  username?: string
+  object_name?: string
+  use_bulk_api?: boolean
+  file_path?: string
   bulk_batch_size?: number;
   config_id?: number;
+
 }
 
 export interface WorkflowNode {

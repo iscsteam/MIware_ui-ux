@@ -42,16 +42,31 @@ import RenameFileNodeProperties, {
 import MoveFileNodeProperties, {
   moveFileSchema,
 } from "@/components/node-properties/Fileoperations/MoveFileNodeProperties"
-import FilterNodeProperties, { filterSchema } from "@/components/node-properties/Fileoperations/FilterNodeproperties"
 
-import DatabaseNodeProperties, { databaseSchema } from "@/components/node-properties/Database/database-node-properties"
-import SourceNodeProperties, { sourceSchema } from "@/components/node-properties/Database/sourcenodeproperties"
+// <<<<<<< feature/saleforce
+// import DatabaseNodeProperties, { databaseSchema } from "@/components/node-properties/Database/database-node-properties"
+// import SourceNodeProperties, { sourceSchema } from "@/components/node-properties/Database/sourcenodeproperties"
+// import SalesforceCloudNodeProperties,{salesforceCloudSchema} from "@/components/node-properties/Saleforce/salesforce-cloud-node-properties"
+// // NEW: Import SalesforceWriteNodeProperties and its schema
+// import SalesforceWriteNodeProperties, {salesforceCloudWriteSchema} from "@/components/node-properties/Saleforce/salesforce-write-node-properties"
+
+// =======
+// >>>>>>> new-workflow
+
+import DatabaseNodeProperties,{databaseSchema} from  "@/components/node-properties/Database/database-node-properties";
+import FilterNodeProperties,{filterSchema} from "../node-properties/Fileoperations/FilterNodeproperties";
+// import SalesforceCloudNodeProperties,{salesforceCloudSchema} from "../node-properties/salesforce-cloud-node-properties";
 import SalesforceCloudNodeProperties,{salesforceCloudSchema} from "@/components/node-properties/Saleforce/salesforce-cloud-node-properties"
 // NEW: Import SalesforceWriteNodeProperties and its schema
 import SalesforceWriteNodeProperties, {salesforceCloudWriteSchema} from "@/components/node-properties/Saleforce/salesforce-write-node-properties"
 
-
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import SourceNodeProperties,{sourceSchema} from "../node-properties/Database/sourcenodeproperties"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const NodePropertyComponents: Record<string, React.FC<any>> = {
   "create-file": CreateFileNodeProperties,
@@ -304,7 +319,6 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
                   <div className="mt-3 space-y-2">
                     {nodeSchema.inputSchema.map((param, index) => {
                       const value = formData[param.name]
-
                       return (
                         <TooltipProvider key={index}>
                           <Tooltip>

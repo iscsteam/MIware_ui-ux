@@ -1,5 +1,5 @@
 // Define types for API responses
-const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
+const baseurl = process.env.NEXT_PUBLIC_API_URL;
 export interface DAG {
     id: number
     name: string

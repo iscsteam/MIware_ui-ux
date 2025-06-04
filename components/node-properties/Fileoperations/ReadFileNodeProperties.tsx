@@ -74,6 +74,7 @@ const formatOptions = {
   csv: { header: true, inferSchema: true },
   json: { multiline: true },
   xml: { rowTag: "Record", rootTag: "Records" },
+  parquet: { compression: "snappy" }, 
 };
 
 const UPLOAD_ROOT_DISPLAY_PATH = "/app/data/mock_data/mm";
@@ -313,6 +314,7 @@ export default function ReadFileNodeProperties({ formData, onChange }: Props) {
             <SelectItem value="csv">CSV</SelectItem>
             <SelectItem value="json">JSON</SelectItem>
             <SelectItem value="xml">XML</SelectItem>
+            <SelectItem value="parquet">Parquet</SelectItem>
             {/* ... other items ... */}
           </SelectContent>
         </Select>
