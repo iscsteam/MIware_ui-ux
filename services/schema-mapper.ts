@@ -1,5 +1,5 @@
-// // Schema mapper service to map node properties to file conversion payload
-import type { WorkflowNode } from "@/components/workflow/workflow-context";
+// Enhanced schema mapper with database, file, and Salesforce support
+import type { WorkflowNode } from "@/components/workflow/workflow-context"
 import type {
   FilterGroup,
   ConditionItem,
@@ -89,18 +89,7 @@ interface CliOperatorConfig {
   dag_id?: string
 }
 
-
-// NEW: Interface for Salesforce Write Config Payload
-export interface SalesforceWriteConfigPayload {
-  object_name: string;
-  use_bulk_api: boolean;
-  bulk_batch_size?: number; // Optional based on use_bulk_api
-  file_path: string;
-}
-
-
 // Helper Functions
-
 function getDatabaseDriver(provider?: string): string {
   const drivers: Record<string, string> = {
     postgresql: "org.postgresql.Driver",
@@ -250,51 +239,8 @@ export function mapFilterNodeToTransformationConfig(filterNode: WorkflowNode | n
   return result
 }
 
-// <<<<<<< feature/saleforce
-// NEW: Function to map Salesforce Write node properties to its configuration payload
-export function mapNodeToSalesforceWriteConfig(node: WorkflowNode): SalesforceWriteConfigPayload {
-  if (!node || !node.data) {
-    throw new Error("Invalid Salesforce Write node data provided.");
-  }
-
-  const { object_name, use_bulk_api, bulk_batch_size, file_path } = node.data;
-
-  // Perform basic validation (more comprehensive validation exists in the component)
-  if (!object_name || typeof object_name !== 'string') {
-    throw new Error("Salesforce Write: 'object_name' is required and must be a string.");
-  }
-  if (!file_path || typeof file_path !== 'string') {
-    throw new Error("Salesforce Write: 'file_path' is required and must be a string.");
-  }
-  // Coerce use_bulk_api to boolean explicitly, as it might come as undefined or other falsy
-  const actualUseBulkApi = Boolean(use_bulk_api);
-
-  if (actualUseBulkApi && (typeof bulk_batch_size !== 'number' || bulk_batch_size <= 0 || bulk_batch_size > 10000)) {
-    throw new Error("Salesforce Write: 'bulk_batch_size' must be a number between 1 and 10000 when 'use_bulk_api' is true.");
-  }
-
-  const payload: SalesforceWriteConfigPayload = {
-    object_name,
-    use_bulk_api: actualUseBulkApi,
-    file_path,
-    bulk_batch_size,
-  };
-
-  // Only include bulk_batch_size if use_bulk_api is true
-  if (actualUseBulkApi) {
-    payload.bulk_batch_size = bulk_batch_size;
-  }
-
-  console.log("DEBUG(schema-mapper): Generated Salesforce Write config payload:", JSON.stringify(payload, null, 2));
-  return payload;
-}
-
-
-export function createFileToFileConfig(
-// =======
-// // Configuration Creation Functions
-// export function createFileConversionConfigFromNodes(
-// >>>>>>> new-workflow
+// Configuration Creation Functions
+export function createFileConversionConfigFromNodes(
   readNode: WorkflowNode,
   writeNode: WorkflowNode,
   filterNode: WorkflowNode | null,

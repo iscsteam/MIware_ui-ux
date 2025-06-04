@@ -231,13 +231,6 @@ const nodeTypes: NodeTypeDefinition[] = [
     category: "salesforceoperations",
   },
   {
-    type: "write-salesforce",
-    label: "write-salesforce",
-    icon: <Database className="h-5 w-5 text-blue-500" />,
-    description: "Read data from Salesforce using SOQL queries",
-    category: "salesforceoperations",
-  },
-  {
     type: "end",
     label: "End",
     icon: <CheckCircle className="h-5 w-5 text-red-600" />,

@@ -31,7 +31,6 @@ export type NodeType =
   | "database"
   | "source"
   | "salesforce-cloud"
-  | "write-salesforce"
   | "move-file"
   | "code";
 
