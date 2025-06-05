@@ -1,10 +1,10 @@
 
 import { toast } from "@/components/ui/use-toast";
 import type { WorkflowNode } from "@/components/workflow/workflow-context"; // Import WorkflowNode type
-//import { buildUrl } from "./api"; // Assuming this handles base URLs etc.
+//import { baseUrl } from "./api"; // Assuming this handles base URLs etc.
 import { URLS } from "./url"; // Assuming this contains endpoint constants
-
-const buildUrl = process.env.NEXT_PUBLIC_API_URL;
+import { baseUrl } from "@/services/api";
+// const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
 // Updated CliOperatorConfig interface
 export interface CliOperatorConfig {
@@ -43,7 +43,7 @@ export async function createCliOperatorConfig(
   try {
     console.log("Creating CLI operator config:", JSON.stringify(config, null, 2));
 
-    const response = await fetch(`${buildUrl}/clients/${clientId}/cli_operators_configs`, {
+    const response = await fetch(`${baseUrl}/clients/${clientId}/cli_operators_configs`, {
 
       method: "POST",
       headers: {

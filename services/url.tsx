@@ -32,8 +32,27 @@ export const URLS = {
   listuploadfile: (filename: string) => `uploads/readfile/${filename}`,
 
   mangeuploadfile: (filename: string) => `uploads/readfile/${filename}`,
+// <<<<<<< feature/saleforce
+
+  // Saleforce Read
+  listCreateSaleforceReadConfigs: (clientId: number | string) =>
+    `clients/${clientId}/read_salesforce_configs`,
+  manageSaleforceReadConfigs: (
+    clientId: number | string,
+    configId: number | string
+  ) => `clients/${clientId}/read_salesforce_configs/${configId}`,
+
+  // Saleforce Write
+  listCreateSaleforceWriteConfigs: (clientId: number | string) =>
+    `clients/${clientId}/write_salesforce_configs`,
+  manageSaleforceWriteConfigs: (
+    clientId: number | string,
+    configId: number | string
+  ) => `clients/${clientId}/write_salesforce_configs/${configId}`,
+// =======
   stopActiveDAGRun: (dagId: string) => `dag_runs/${dagId}/force_stop_active_run`,
   //cli-operator
   // listcreateCliOperatorConfig: (clientId: number | string) =>
   //   `/clients/${clientId}/cli_operators_configs`,
+// >>>>>>> new-workflow
 };

@@ -1,7 +1,7 @@
 //file-conversion-service.ts
 import { toast } from "@/components/ui/use-toast"
 import { URLS } from "@/services/url"
-import { buildUrl } from "@/services/api"
+import { baseUrl } from "@/services/api"
 export interface FileConversionConfig {
   input: {
     provider: string
@@ -83,7 +83,7 @@ export async function createFileConversionConfig(
   config: FileConversionConfig,
 ): Promise<FileConversionConfigResponse | null> {
   try {
-    const response = await fetch(buildUrl(URLS.listCreateFileConversionConfigs(clientId)), {
+    const response = await fetch(baseUrl(URLS.listCreateFileConversionConfigs(clientId)), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
@@ -123,7 +123,7 @@ export async function updateDag(
   },
 ): Promise<any> {
   try {
-    const response = await fetch(buildUrl(URLS.manageDAG(dagId)), {
+    const response = await fetch(baseUrl(URLS.manageDAG(dagId)), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -149,7 +149,7 @@ export async function updateDag(
 // API: Trigger DAG Run
 export async function triggerDagRun(dagId: string): Promise<any> {
   try {
-    const response = await fetch(buildUrl(URLS.triggerrun(dagId)), {
+    const response = await fetch(baseUrl(URLS.triggerrun(dagId)), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dag_id: dagId }),
@@ -175,7 +175,7 @@ export async function triggerDagRun(dagId: string): Promise<any> {
 // API: Stop DAG Run
 export async function stopDagRun(dagId: string): Promise<any> {
   try {
-    const response = await fetch(buildUrl(URLS.forcestop(dagId)), {
+    const response = await fetch(baseUrl(URLS.forcestop(dagId)), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -218,7 +218,7 @@ export async function updateDagNameAndSchedule(
   try {
     console.log("Updating DAG name and schedule:", JSON.stringify(data, null, 2))
 
-    const response = await fetch(buildUrl(URLS.manageDAG(dagId)), {
+    const response = await fetch(baseUrl(URLS.manageDAG(dagId)), {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -257,113 +257,113 @@ export function getDatabaseDriver(provider: string): string {
   return drivers[provider] || drivers.local
 }
 
-// API: Create Salesforce Read Config
-export async function createSalesforceReadConfig(
-  clientId: string,
-  config: SalesforceReadConfigCreate,
-): Promise<SalesforceReadConfigResponse | null> {
-  try {
-    const response = await fetch(buildUrl(`/clients/${clientId}/read_salesforce_configs/`), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(config),
-    })
+// // API: Create Salesforce Read Config
+// export async function createSalesforceReadConfig(
+//   clientId: string,
+//   config: SalesforceReadConfigCreate,
+// ): Promise<SalesforceReadConfigResponse | null> {
+//   try {
+//     const response = await fetch(baseUrl(URLS.listCreateSaleforceReadConfigs(clientId)), {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify(config),
+//     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
-      throw new Error(errorData.detail || `Failed to create Salesforce config: ${response.status}`)
-    }
+//     if (!response.ok) {
+//       const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+//       throw new Error(errorData.detail || `Failed to create Salesforce config: ${response.status}`)
+//     }
 
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error("Error creating Salesforce config:", error)
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to create Salesforce configuration",
-      variant: "destructive",
-    })
-    return null
-  }
-}
+//     const data = await response.json()
+//     return data
+//   } catch (error) {
+//     console.error("Error creating Salesforce config:", error)
+//     toast({
+//       title: "Error",
+//       description: error instanceof Error ? error.message : "Failed to create Salesforce configuration",
+//       variant: "destructive",
+//     })
+//     return null
+//   }
+// }
 
-// API: List Salesforce Read Configs
-export async function listSalesforceReadConfigs(clientId: string): Promise<SalesforceReadConfigResponse[]> {
-  try {
-    const response = await fetch(buildUrl(`/clients/${clientId}/read_salesforce_configs/`), {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    })
+// // API: List Salesforce Read Configs
+// export async function listSalesforceReadConfigs(clientId: string): Promise<SalesforceReadConfigResponse[]> {
+//   try {
+//     const response = await fetch(baseUrl(`/clients/${clientId}/read_salesforce_configs/`), {
+//       method: "GET",
+//       headers: { "Content-Type": "application/json" },
+//     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
-      throw new Error(errorData.detail || `Failed to list Salesforce configs: ${response.status}`)
-    }
+//     if (!response.ok) {
+//       const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+//       throw new Error(errorData.detail || `Failed to list Salesforce configs: ${response.status}`)
+//     }
 
-    return await response.json()
-  } catch (error) {
-    console.error("Error listing Salesforce configs:", error)
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to list Salesforce configurations",
-      variant: "destructive",
-    })
-    return []
-  }
-}
+//     return await response.json()
+//   } catch (error) {
+//     console.error("Error listing Salesforce configs:", error)
+//     toast({
+//       title: "Error",
+//       description: error instanceof Error ? error.message : "Failed to list Salesforce configurations",
+//       variant: "destructive",
+//     })
+//     return []
+//   }
+// }
 
-// API: Update Salesforce Read Config
-export async function updateSalesforceReadConfig(
-  clientId: string,
-  configId: number,
-  config: Partial<SalesforceReadConfigCreate>,
-): Promise<SalesforceReadConfigResponse | null> {
-  try {
-    const response = await fetch(buildUrl(`/clients/${clientId}/read_salesforce_configs/${configId}`), {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(config),
-    })
+// // API: Update Salesforce Read Config
+// export async function updateSalesforceReadConfig(
+//   clientId: string,
+//   configId: number,
+//   config: Partial<SalesforceReadConfigCreate>,
+// ): Promise<SalesforceReadConfigResponse | null> {
+//   try {
+//     const response = await fetch(baseUrl(`/clients/${clientId}/read_salesforce_configs/${configId}`), {
+//       method: "PUT",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify(config),
+//     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
-      throw new Error(errorData.detail || `Failed to update Salesforce config: ${response.status}`)
-    }
+//     if (!response.ok) {
+//       const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+//       throw new Error(errorData.detail || `Failed to update Salesforce config: ${response.status}`)
+//     }
 
-    return await response.json()
-  } catch (error) {
-    console.error("Error updating Salesforce config:", error)
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to update Salesforce configuration",
-      variant: "destructive",
-    })
-    return null
-  }
-}
+//     return await response.json()
+//   } catch (error) {
+//     console.error("Error updating Salesforce config:", error)
+//     toast({
+//       title: "Error",
+//       description: error instanceof Error ? error.message : "Failed to update Salesforce configuration",
+//       variant: "destructive",
+//     })
+//     return null
+//   }
+// }
 
-// API: Delete Salesforce Read Config
-export async function deleteSalesforceReadConfig(clientId: string, configId: number): Promise<boolean> {
-  try {
-    const response = await fetch(buildUrl(`/clients/${clientId}/read_salesforce_configs/${configId}`), {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-    })
+// // API: Delete Salesforce Read Config
+// export async function deleteSalesforceReadConfig(clientId: string, configId: number): Promise<boolean> {
+//   try {
+//     const response = await fetch(baseUrl(`/clients/${clientId}/read_salesforce_configs/${configId}`), {
+//       method: "DELETE",
+//       headers: { "Content-Type": "application/json" },
+//     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
-      throw new Error(errorData.detail || `Failed to delete Salesforce config: ${response.status}`)
-    }
+//     if (!response.ok) {
+//       const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+//       throw new Error(errorData.detail || `Failed to delete Salesforce config: ${response.status}`)
+//     }
 
-    return true
-  } catch (error) {
-    console.error("Error deleting Salesforce config:", error)
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to delete Salesforce configuration",
-      variant: "destructive",
-    })
-    return false
-  }
-}
+//     return true
+//   } catch (error) {
+//     console.error("Error deleting Salesforce config:", error)
+//     toast({
+//       title: "Error",
+//       description: error instanceof Error ? error.message : "Failed to delete Salesforce configuration",
+//       variant: "destructive",
+//     })
+//     return false
+//   }
+// }
 
