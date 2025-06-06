@@ -22,6 +22,11 @@ export const URLS = {
   // DAG_runs
   forcestop: (dagId: string) => `/dag_runs/${dagId}/force_stop_active_run`,
 
+
+  //cli operation 
+
+  listCreateCLIoperations :  (clientId: number | string) => `/clients/${clientId}/cli_operators_configs`,
+
   // Uploads
   uploadSingleFile: "uploads/",
   uploadMultipleFiles: "uploads/multiple",

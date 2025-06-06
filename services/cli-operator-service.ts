@@ -43,7 +43,7 @@ export async function createCliOperatorConfig(
   try {
     console.log("Creating CLI operator config:", JSON.stringify(config, null, 2));
 
-    const response = await fetch(`${baseUrl}/clients/${clientId}/cli_operators_configs`, {
+    const response = await fetch(baseUrl(URLS.listCreateCLIoperations(clientId)), {
 
       method: "POST",
       headers: {
