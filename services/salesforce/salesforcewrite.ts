@@ -20,7 +20,7 @@ export interface SalesforceWriteConfigResponse extends SalesforceWriteConfig {
 
 export interface SalesforceWriteConfigCreate {
   object_name: string;
-  query: string;
+  // query: string;
   fields?: string[];
   // where?: string;
   limit?: number;
