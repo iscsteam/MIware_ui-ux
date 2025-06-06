@@ -11,7 +11,7 @@
 // import { useToast } from "@/hooks/use-toast"
 // import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog"
 
-// const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
+// const baseUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
 
 // interface CreateWorkflowModalProps {
 //   isOpen: boolean
@@ -36,7 +36,7 @@
 //     setError(null)
 
 //     try {
-//       const response = await fetch(`${baseurl}/dags/`, {
+//       const response = await fetch(`${baseUrl}/dags/`, {
 //         method: "POST",
 //         headers: {
 //           "Content-Type": "application/json",

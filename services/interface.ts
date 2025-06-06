@@ -31,6 +31,7 @@ export type NodeType =
   | "database"
   | "source"
   | "salesforce-cloud"
+  | "write-salesforce"
   | "move-file"
   | "code";
 
@@ -295,4 +296,33 @@ export interface UploadedFileItem {
   original_filename?: string;
   size_bytes?: number;
   last_modified?: string;
+}
+
+
+
+export interface SalesforceReadConfig {
+  object_name: string;
+  query: string;
+  fields?: string[];
+  where?: string;
+  limit?: number;
+  use_bulk_api: boolean;
+  file_path: string;
+}
+
+export interface SalesforceReadConfigResponse extends SalesforceReadConfig {
+  id: number;
+  client_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SalesforceReadConfigCreate {
+  object_name: string;
+  query: string;
+  fields?: string[];
+  where?: string;
+  limit?: number;
+  use_bulk_api: boolean;
+  file_path: string;
 }

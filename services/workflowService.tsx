@@ -1,5 +1,5 @@
 // service/workflowService.ts
-import { buildUrl } from "./api";
+import { baseUrl } from "./api";
 import { URLS } from "./url";
 
 // Define Workflow interface (ensure to match backend schema)
@@ -12,7 +12,7 @@ export interface Workflow {
 // Create Workflow
 export async function createWorkflow(data: Workflow): Promise<Workflow | null> {
   try {
-    const res = await fetch(buildUrl("workflows/"), {
+    const res = await fetch(baseUrl("workflows/"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -30,7 +30,7 @@ export async function createWorkflow(data: Workflow): Promise<Workflow | null> {
 // Get Workflow by dag_id
 export async function getWorkflowByDagId(dagId: string): Promise<Workflow | null> {
   try {
-    const res = await fetch(buildUrl(`workflows/dag/${dagId}`));
+    const res = await fetch(baseUrl(`workflows/dag/${dagId}`));
     if (!res.ok) throw new Error("Workflow not found");
     return await res.json();
   } catch (error) {
@@ -42,7 +42,7 @@ export async function getWorkflowByDagId(dagId: string): Promise<Workflow | null
 // Update Workflow by dag_id
 export async function updateWorkflow(dagId: string, data: Partial<Workflow>): Promise<Workflow | null> {
   try {
-    const res = await fetch(buildUrl(`workflows/dag/${dagId}`), {
+    const res = await fetch(baseUrl(`workflows/dag/${dagId}`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -58,7 +58,7 @@ export async function updateWorkflow(dagId: string, data: Partial<Workflow>): Pr
 // Delete Workflow by dag_id
 export async function deleteWorkflow(dagId: string): Promise<boolean> {
   try {
-    const res = await fetch(buildUrl(`workflows/dag/${dagId}`), {
+    const res = await fetch(baseUrl(`workflows/dag/${dagId}`), {
       method: "DELETE",
     });
     if (!res.ok) throw new Error("Failed to delete workflow");

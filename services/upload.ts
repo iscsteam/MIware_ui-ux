@@ -1,6 +1,6 @@
 // general.ts upload endpoint
 import { toast } from "@/components/ui/use-toast";
-import { buildUrl } from "./api"; // Assuming api.ts is in the same directory or adjust path
+import { baseUrl } from "@/services/api"; // Assuming api.ts is in the same directory or adjust path
 import {UploadedFileItem} from "@/services/interface"
 
 interface ApiFileResponseItem {
@@ -16,7 +16,7 @@ const listItemsInSubfolderUrl = (subfolder?: string): string => {
   if (subfolder && subfolder.length > 0) {
     apiPath = `uploads?subfolder=${encodeURIComponent(subfolder)}`;
   }
-  return buildUrl(apiPath);
+  return baseUrl(apiPath);
 };
 
 /**
