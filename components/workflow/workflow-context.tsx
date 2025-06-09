@@ -1286,20 +1286,22 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   }, [nodes, executeNode, isRunning, addLog]);
 
   // Listen for workflow selection events from sidebar
-  useEffect(() => {
-    const handleWorkflowSelected = async (event: CustomEvent) => {
-      const dagData = event.detail;
-      if (dagData) {
-        await loadWorkflowFromDAG(dagData);
-      }
-    };
 
-    // window.addEventListener("workflowSelected", handleWorkflowSelected as EventListener)
+useEffect(() => {
+  const handleWorkflowSelected = async (event: Event) => {
+    const customEvent = event as CustomEvent;
+    const dagData = customEvent.detail;
+    if (dagData) {
+      await loadWorkflowFromDAG(dagData);
+    }
+  };
 
-    return () => {
-      // window.removeEventListener("workflowSelected", handleWorkflowSelected as EventListener)
-    };
-  }, [loadWorkflowFromDAG]);
+  window.addEventListener("workflowSelected", handleWorkflowSelected);
+
+  return () => {
+    window.removeEventListener("workflowSelected", handleWorkflowSelected);
+  };
+}, [loadWorkflowFromDAG]);
 
   // Load workflow from localStorage on mount
   useEffect(() => {
