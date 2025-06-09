@@ -1,4 +1,4 @@
-import { buildUrl } from "./api"
+import { baseUrl } from "./api"
 import { URLS } from "./url"
 import type { DAGStatusResponse } from "./interface"
 
@@ -25,7 +25,7 @@ export interface StopDAGResponse {
 
 export async function fetchDAGs(): Promise<DAG[] | null> {
   try {
-    const res = await fetch(buildUrl(URLS.listCreateDAGs))
+    const res = await fetch(baseUrl(URLS.listCreateDAGs))
     if (!res.ok) throw new Error("Failed to fetch DAGs")
     return await res.json()
   } catch (error) {
@@ -42,7 +42,7 @@ export async function createDAG(newDAG: DAG): Promise<DAG | null> {
     console.log("dagService: JSON string being sent to API:", requestBody)
     // --- End log ---
 
-    const res = await fetch(buildUrl(URLS.listCreateDAGs), {
+    const res = await fetch(baseUrl(URLS.listCreateDAGs), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: requestBody, // Use the logged string
@@ -57,7 +57,7 @@ export async function createDAG(newDAG: DAG): Promise<DAG | null> {
 
 export async function updateDAG(dagId: string, updatedDAG: DAG): Promise<DAG | null> {
   try {
-    const res = await fetch(buildUrl(URLS.manageDAG(dagId)), {
+    const res = await fetch(baseUrl(URLS.manageDAG(dagId)), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedDAG),
@@ -72,7 +72,7 @@ export async function updateDAG(dagId: string, updatedDAG: DAG): Promise<DAG | n
 
 export async function deleteDAG(dagId: string): Promise<boolean> {
   try {
-    const res = await fetch(buildUrl(URLS.manageDAG(dagId)), {
+    const res = await fetch(baseUrl(URLS.manageDAG(dagId)), {
       method: "DELETE",
     })
     if (!res.ok) throw new Error("Failed to delete DAG")
@@ -85,7 +85,7 @@ export async function deleteDAG(dagId: string): Promise<boolean> {
 
 export async function getDAGById(dagId: string): Promise<DAG | null> {
   try {
-    const res = await fetch(buildUrl(URLS.manageDAG(dagId)))
+    const res = await fetch(baseUrl(URLS.manageDAG(dagId)))
     if (!res.ok) {
       const errorText = await res.text()
       console.error(`Failed to fetch DAG with ID ${dagId}. Status: ${res.status}. Response: ${errorText}`)
@@ -100,7 +100,7 @@ export async function getDAGById(dagId: string): Promise<DAG | null> {
 
 export async function getDAGStatus(dagId: string, triggerId: string): Promise<DAGStatusResponse | null> {
   try {
-    const res = await fetch(buildUrl(URLS.getDAGStatus(dagId, triggerId)))
+    const res = await fetch(baseUrl(URLS.getDAGStatus(dagId, triggerId)))
 
     if (!res.ok) {
       const errorText = await res.text()
@@ -123,7 +123,7 @@ export async function stopActiveDAGRun(dagId: string): Promise<StopDAGResponse |
   try {
     console.log(`dagService: Attempting to stop active DAG run for dagId: ${dagId}`)
 
-    const res = await fetch(buildUrl(URLS.stopActiveDAGRun(dagId)), {
+    const res = await fetch(baseUrl(URLS.stopActiveDAGRun(dagId)), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     })

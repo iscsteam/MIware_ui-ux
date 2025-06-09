@@ -1,4 +1,4 @@
-// import { buildUrl } from "./api";
+// import { baseUrl } from "./api";
 // import { URLS } from "./url";
 // import {Client} from "@/services/interface";
 // import { ClientCreateResponse } from "@/services/interface";
@@ -8,7 +8,7 @@
 
 // export async function fetchClients(): Promise<Client[] | null> {
 //     try {
-//       const res = await fetch(buildUrl(URLS.listCreateClients));
+//       const res = await fetch(baseUrl(URLS.listCreateClients));
 //       if (!res.ok) throw new Error("Failed to fetch clients");
 //       return await res.json();
 //     } catch (error) {
@@ -23,7 +23,7 @@
 //     try {
 //       console.log("Creating client with payload:", newClient);
   
-//       const res = await fetch(buildUrl(URLS.listCreateClients), {
+//       const res = await fetch(baseUrl(URLS.listCreateClients), {
 //         method: "POST",
 //         headers: { "Content-Type": "application/json" },
 //         body: JSON.stringify(newClient),
@@ -48,7 +48,7 @@
 
 //   export async function deleteClient(clientId: string | number): Promise<boolean> {
 //     try {
-//       const res = await fetch(buildUrl(URLS.manageClient(clientId)), {
+//       const res = await fetch(baseUrl(URLS.manageClient(clientId)), {
 //         method: "DELETE",
 //       });
   
@@ -61,7 +61,7 @@
 //   }
   
  
-import { buildUrl } from "./api"; // Assuming this handles base URLs etc.
+import { baseUrl } from "@/services/api"; // Assuming this handles base URLs etc.
 import { URLS } from "./url"; // Assuming this contains endpoint constants
 import { Client, ClientCreateResponse , DAG} from "@/services/interface"; // Ensure Client type is defined
 
@@ -72,7 +72,7 @@ import { Client, ClientCreateResponse , DAG} from "@/services/interface"; // Ens
  */
 export async function fetchClients(): Promise<Client[] | null> {
   try {
-    const res = await fetch(buildUrl(URLS.listCreateClients));
+    const res = await fetch(baseUrl(URLS.listCreateClients));
     if (!res.ok) {
       let errorDetails = "Failed to fetch clients";
       try {
@@ -102,7 +102,7 @@ export async function createClient(newClient: Client): Promise<ClientCreateRespo
   try {
     console.log("Creating client with payload:", newClient);
 
-    const res = await fetch(buildUrl(URLS.listCreateClients), {
+    const res = await fetch(baseUrl(URLS.listCreateClients), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newClient),
@@ -135,7 +135,7 @@ export async function createClient(newClient: Client): Promise<ClientCreateRespo
  */
 export async function getClientById(clientId: string | number): Promise<Client | null> {
   try {
-    const res = await fetch(buildUrl(URLS.manageClient(clientId))); // Assuming manageClient(id) gives GET /clients/:id
+    const res = await fetch(baseUrl(URLS.manageClient(clientId))); // Assuming manageClient(id) gives GET /clients/:id
     if (!res.ok) {
       let errorDetails = "Failed to fetch client by ID";
       if (res.status === 404) {
@@ -169,7 +169,7 @@ export async function updateClient(
   updatedClientData: Partial<Client> // Use Partial if you allow partial updates
 ): Promise<Client | null> { // Assuming the API returns the updated client
   try {
-    const res = await fetch(buildUrl(URLS.manageClient(clientId)), { // Assuming PUT /clients/:id
+    const res = await fetch(baseUrl(URLS.manageClient(clientId)), { // Assuming PUT /clients/:id
       method: "PUT", // Or "PATCH" for partial updates
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedClientData),
@@ -201,7 +201,7 @@ export async function updateClient(
  */
 export async function deleteClient(clientId: string | number): Promise<boolean> {
   try {
-    const res = await fetch(buildUrl(URLS.manageClient(clientId)), { // Assuming DELETE /clients/:id
+    const res = await fetch(baseUrl(URLS.manageClient(clientId)), { // Assuming DELETE /clients/:id
       method: "DELETE",
     });
 
@@ -232,7 +232,7 @@ export async function deleteClient(clientId: string | number): Promise<boolean> 
   }
 }
 
-// Make sure your URLS and buildUrl are correctly defined, e.g.:
+// Make sure your URLS and baseUrl are correctly defined, e.g.:
 // ./url.ts
 // export const URLS = {
 //   listCreateClients: "/api/v1/clients",
@@ -241,7 +241,7 @@ export async function deleteClient(clientId: string | number): Promise<boolean> 
 
 // ./api.ts
 // const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
-// export function buildUrl(path: string): string {
+// export function baseUrl(path: string): string {
 //   // Ensure path doesn't start with a slash if API_BASE_URL ends with one, or vice-versa
 //   return `${API_BASE_URL}${path.startsWith('/') ? path : '/' + path}`;
 // }
@@ -263,7 +263,7 @@ export async function deleteClient(clientId: string | number): Promise<boolean> 
 // }
 
 
-// import { buildUrl } from "./api";
+// import { baseUrl } from "./api";
 // import { URLS } from "./url";
 
 /**
@@ -273,7 +273,7 @@ export async function deleteClient(clientId: string | number): Promise<boolean> 
  */
 export async function fetchFileConversionConfigsByClient(clientId: string | number) {
   try {
-    const url = buildUrl(URLS.listCreateFileConversionConfigs(clientId));
+    const url = baseUrl(URLS.listCreateFileConversionConfigs(clientId));
     const res = await fetch(url);
     if (!res.ok) {
       const errorText = await res.text();
@@ -294,7 +294,7 @@ export async function fetchFileConversionConfigsByClient(clientId: string | numb
  */
 export async function fetchDagTriggerHistory(dagId: string, triggerId: string) {
   try {
-    const url = buildUrl(URLS.getDAGStatus(dagId, triggerId));
+    const url = baseUrl(URLS.getDAGStatus(dagId, triggerId));
     const res = await fetch(url);
     if (!res.ok) {
       const errorText = await res.text();
@@ -314,7 +314,7 @@ export async function fetchDagTriggerHistory(dagId: string, triggerId: string) {
 export async function fetchDagByClient(clientId: number): Promise<DAG | null> {
   try {
     // Adjust the URL based on your API route
-    const res = await fetch(buildUrl(URLS.listCreateFileConversionConfigs(clientId)));
+    const res = await fetch(baseUrl(URLS.listCreateFileConversionConfigs(clientId)));
     if (!res.ok) {
       // No DAG found or error
       return null;
