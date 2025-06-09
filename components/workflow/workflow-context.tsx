@@ -1,15 +1,9 @@
-// // workflow-context.tsx
-"use client";
-import type React from "react";
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-} from "react";
-import { v4 as uuidv4 } from "uuid";
-import type { NodeType, SchemaItem } from "@/services/interface";
+// workflow-context.tsx
+"use client"
+import type React from "react"
+import { createContext, useContext, useState, useCallback, useEffect } from "react"
+import { v4 as uuidv4 } from "uuid"
+import type { NodeType, SchemaItem } from "@/services/interface"
 
 import { useToast as useUIToast } from "@/components/ui/use-toast"; // Aliased to avoid conflict with context's toast
 import { saveAndRunWorkflow as saveAndRunWorkflowUtil } from "@/services/workflow-utils"; // Import the utility
@@ -164,6 +158,7 @@ export interface LogEntry {
   details?: any;
 }
 
+// Enhanced DAG interface to include config data
 export interface DAG {
   id: number;
   name: string;
@@ -171,14 +166,15 @@ export interface DAG {
   schedule: string | null;
   active: boolean;
   dag_sequence: Array<{
-    id: string;
-    type: string;
-    config_id: number;
-    next: string[];
-  }>;
-  active_dag_run: number | null;
-  created_at: string;
-  updated_at: string;
+    id: string
+    type: string
+    config_id: number
+    next: string[]
+    config?: any // Added config field for enhanced parsing
+  }>
+  active_dag_run: number | null
+  created_at: string
+  updated_at: string
 }
 
 interface WorkflowContextType {
@@ -302,143 +298,454 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     return safeId;
   };
 
-  // Convert DAG sequence to visual nodes and connections
-  const convertDAGToWorkflow = useCallback((dagData: DAG) => {
-    const newNodes: WorkflowNode[] = [];
-    const newConnections: NodeConnection[] = [];
-    const nodePositions = new Map<string, NodePosition>();
+  // Enhanced function to parse file_conversion config and create individual nodes
+  const parseFileConversionConfig = useCallback((dagNode: any, basePosition: NodePosition) => {
+    console.log("Parsing file_conversion config for node:", dagNode.id, dagNode.config)
 
-    // Calculate positions for nodes in a flow layout
-    const calculateNodePositions = (dagSequence: any[]) => {
-      const levels: string[][] = [];
-      const visited = new Set<string>();
-      const inDegree = new Map<string, number>();
+    const config = dagNode.config
+    if (!config) {
+      console.warn("No config found for file_conversion node:", dagNode.id)
+      return { nodes: [], connections: [], firstNodeId: null, lastNodeId: null }
+    }
 
-      // Calculate in-degrees
-      dagSequence.forEach((node) => {
-        inDegree.set(node.id, 0);
-      });
+    const nodes: WorkflowNode[] = []
+    const connections: NodeConnection[] = []
+    let currentX = basePosition.x
+    const y = basePosition.y
 
-      dagSequence.forEach((node) => {
-        node.next.forEach((nextId: string) => {
-          inDegree.set(nextId, (inDegree.get(nextId) || 0) + 1);
-        });
-      });
+    // Create read-file node from input config
+    if (config.input) {
+      const readNodeId = `read_file_${dagNode.config_id}`
+      console.log("Creating read-file node:", readNodeId, config.input)
 
-      // Topological sort to determine levels
-      const queue: string[] = [];
-      dagSequence.forEach((node) => {
-        if (inDegree.get(node.id) === 0) {
-          queue.push(node.id);
-        }
-      });
+      const readNode: WorkflowNode = {
+        id: readNodeId,
+        type: "read-file",
+        position: { x: currentX, y },
+        data: {
+          label: "read-file",
+          displayName: "Read File",
+          path: config.input.path,
+          provider: config.input.provider,
+          format: config.input.format,
+          options: config.input.options || {},
+          schema: config.input.schema,
+          active: true,
+        },
+        status: "configured",
+      }
+      nodes.push(readNode)
+      currentX += 200
+    }
 
-      while (queue.length > 0) {
-        const levelSize = queue.length;
-        const currentLevel: string[] = [];
+    // Create filter node if filter config exists
+    let filterNodeId: string | null = null
+    if (config.filter || config.order_by || config.aggregation) {
+      filterNodeId = `filter_${dagNode.config_id}`
+      console.log("Creating filter node:", filterNodeId, {
+        filter: config.filter,
+        order_by: config.order_by,
+        aggregation: config.aggregation,
+      })
 
-        for (let i = 0; i < levelSize; i++) {
-          const nodeId = queue.shift()!;
-          currentLevel.push(nodeId);
-          visited.add(nodeId);
+      const filterNode: WorkflowNode = {
+        id: filterNodeId,
+        type: "filter",
+        position: { x: currentX, y },
+        data: {
+          label: "filter",
+          displayName: "Filter",
+          filter: config.filter,
+          order_by: config.order_by,
+          aggregation: config.aggregation,
+          active: true,
+        },
+        status: "configured",
+      }
+      nodes.push(filterNode)
+      currentX += 200
+    }
 
-          const node = dagSequence.find((n) => n.id === nodeId);
-          if (node) {
-            node.next.forEach((nextId: string) => {
-              const newInDegree = (inDegree.get(nextId) || 0) - 1;
-              inDegree.set(nextId, newInDegree);
-              if (newInDegree === 0 && !visited.has(nextId)) {
-                queue.push(nextId);
-              }
-            });
+    // Create write-file node from output config
+    if (config.output) {
+      const writeNodeId = `write_file_${dagNode.config_id}`
+      console.log("Creating write-file node:", writeNodeId, config.output)
+
+      const writeNode: WorkflowNode = {
+        id: writeNodeId,
+        type: "write-file",
+        position: { x: currentX, y },
+        data: {
+          label: "write-file",
+          displayName: "Write File",
+          path: config.output.path,
+          provider: config.output.provider,
+          format: config.output.format,
+          mode: config.output.mode,
+          options: config.output.options || {},
+          active: true,
+        },
+        status: "configured",
+      }
+      nodes.push(writeNode)
+    }
+
+    // Create connections between the nodes
+    if (nodes.length > 1) {
+      for (let i = 0; i < nodes.length - 1; i++) {
+        const connectionId = uuidv4()
+        console.log("Creating connection:", nodes[i].id, "->", nodes[i + 1].id)
+        connections.push({
+          id: connectionId,
+          sourceId: nodes[i].id,
+          targetId: nodes[i + 1].id,
+        })
+      }
+    }
+
+    console.log("Parsed file_conversion - nodes:", nodes.length, "connections:", connections.length)
+    return { nodes, connections, firstNodeId: nodes[0]?.id, lastNodeId: nodes[nodes.length - 1]?.id }
+  }, [])
+
+  // Enhanced function to parse cli_operator config and create specific operation nodes
+  const parseCliOperatorConfig = useCallback((dagNode: any, basePosition: NodePosition) => {
+    console.log("Parsing cli_operator config for node:", dagNode.id, dagNode.config)
+
+    const config = dagNode.config
+    if (!config || !config.operation) {
+      console.warn("No config or operation found for cli_operator node:", dagNode.id)
+      return { nodes: [], connections: [], firstNodeId: null, lastNodeId: null }
+    }
+
+    let nodeType: NodeType
+    let displayName: string
+
+    // Map operation to node type
+    switch (config.operation) {
+      case "copy":
+        nodeType = "copy-file"
+        displayName = "Copy File"
+        break
+      case "move":
+        nodeType = "move-file"
+        displayName = "Move File"
+        break
+      case "rename":
+        nodeType = "rename-file"
+        displayName = "Rename File"
+        break
+      case "delete":
+        nodeType = "delete-file"
+        displayName = "Delete File"
+        break
+      default:
+        console.warn("Unknown CLI operation:", config.operation)
+        nodeType = "copy-file" // fallback
+        displayName = "File Operation"
+    }
+
+    const operationNodeId = `${config.operation}_${dagNode.config_id}`
+    console.log("Creating CLI operation node:", operationNodeId, nodeType, config)
+
+    const operationNode: WorkflowNode = {
+      id: operationNodeId,
+      type: nodeType,
+      position: basePosition,
+      data: {
+        label: nodeType,
+        displayName,
+        source_path: config.source_path,
+        destination_path: config.destination_path,
+        options: config.options || {},
+        overwrite: config.options?.overwrite || false,
+        includeSubDirectories: config.options?.includeSubDirectories || false,
+        createNonExistingDirs: config.options?.createNonExistingDirs || false,
+        recursive: config.options?.recursive || false,
+        active: true,
+      },
+      status: "configured",
+    }
+
+    return {
+      nodes: [operationNode],
+      connections: [],
+      firstNodeId: operationNodeId,
+      lastNodeId: operationNodeId,
+    }
+  }, [])
+
+  // Enhanced convertDAGToWorkflow function with config parsing
+  const convertDAGToWorkflow = useCallback(
+    (dagData: DAG) => {
+      console.log("=== Converting DAG to workflow ===")
+      console.log("DAG ID:", dagData.dag_id, "Sequence length:", dagData.dag_sequence.length)
+
+      const newNodes: WorkflowNode[] = []
+      const newConnections: NodeConnection[] = []
+      const nodePositions = new Map<string, NodePosition>()
+
+      // Calculate positions for nodes in a flow layout
+      const calculateNodePositions = (dagSequence: any[]) => {
+        const levels: string[][] = []
+        const visited = new Set<string>()
+        const inDegree = new Map<string, number>()
+
+        // Calculate in-degrees
+        dagSequence.forEach((node) => {
+          inDegree.set(node.id, 0)
+        })
+
+        dagSequence.forEach((node) => {
+          node.next.forEach((nextId: string) => {
+            inDegree.set(nextId, (inDegree.get(nextId) || 0) + 1)
+          })
+        })
+
+        // Topological sort to determine levels
+        const queue: string[] = []
+        dagSequence.forEach((node) => {
+          if (inDegree.get(node.id) === 0) {
+            queue.push(node.id)
+          }
+        })
+
+        while (queue.length > 0) {
+          const levelSize = queue.length
+          const currentLevel: string[] = []
+
+          for (let i = 0; i < levelSize; i++) {
+            const nodeId = queue.shift()!
+            currentLevel.push(nodeId)
+            visited.add(nodeId)
+
+            const node = dagSequence.find((n) => n.id === nodeId)
+            if (node) {
+              node.next.forEach((nextId: string) => {
+                const newInDegree = (inDegree.get(nextId) || 0) - 1
+                inDegree.set(nextId, newInDegree)
+                if (newInDegree === 0 && !visited.has(nextId)) {
+                  queue.push(nextId)
+                }
+              })
+            }
+          }
+
+          if (currentLevel.length > 0) {
+            levels.push(currentLevel)
           }
         }
 
-        if (currentLevel.length > 0) {
-          levels.push(currentLevel);
-        }
+        // Position nodes based on levels
+        levels.forEach((level, levelIndex) => {
+          level.forEach((nodeId, nodeIndex) => {
+            const x = levelIndex * 300 + 100
+            const y = nodeIndex * 150 + 100
+            nodePositions.set(nodeId, { x, y })
+          })
+        })
       }
 
-      // Position nodes based on levels
-      levels.forEach((level, levelIndex) => {
-        level.forEach((nodeId, nodeIndex) => {
-          const x = levelIndex * 300 + 100;
-          const y = nodeIndex * 150 + 100;
-          nodePositions.set(nodeId, { x, y });
-        });
-      });
-    };
+      calculateNodePositions(dagData.dag_sequence)
 
-    calculateNodePositions(dagData.dag_sequence);
+      // Track connections between DAG nodes and their expanded nodes
+      const dagNodeMapping = new Map<string, { firstNodeId: string; lastNodeId: string }>()
 
-    // Create nodes from DAG sequence
-    dagData.dag_sequence.forEach((dagNode) => {
-      const position = nodePositions.get(dagNode.id) || { x: 100, y: 100 };
+      // Process each DAG node
+      dagData.dag_sequence.forEach((dagNode) => {
+        console.log("Processing DAG node:", dagNode.id, dagNode.type, "has config:", !!dagNode.config)
 
-      // Map DAG node types to workflow node types
-      let nodeType: NodeType = "start";
-      switch (dagNode.type) {
-        case "start":
-          nodeType = "start";
-          break;
-        case "end":
-          nodeType = "end";
-          break;
-        case "file_conversion":
-          nodeType = "file";
-          break;
-        case "cli_operator":
-          nodeType = "copy-file"; // Default to copy-file, could be enhanced
-          break;
-        case "read-file":
-          nodeType = "read-file";
-          break;
-        case "write-file":
-          nodeType = "write-file";
-          break;
-        case "database":
-          nodeType = "database";
-          break;
-        case "source":
-          nodeType = "source";
-          break;
-        case "salesforce-cloud":
-          nodeType = "salesforce-cloud";
+        const position = nodePositions.get(dagNode.id) || { x: 100, y: 100 }
+
+        if (dagNode.type === "start" || dagNode.type === "end") {
+          // Handle start and end nodes normally
+          console.log("Creating start/end node:", dagNode.id, dagNode.type)
+          const workflowNode: WorkflowNode = {
+            id: dagNode.id,
+            type: dagNode.type as NodeType,
+            position,
+            data: {
+              label: dagNode.type,
+              displayName: dagNode.id,
+              active: true,
+            },
+            status: "idle",
+          }
+          newNodes.push(workflowNode)
+          dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id })
+        } else if (dagNode.type === "file_conversion" && dagNode.config) {
+          // Parse file_conversion config to create individual nodes
+          console.log("Processing file_conversion node:", dagNode.id)
+          const parsed = parseFileConversionConfig(dagNode, position)
+
+          if (parsed.nodes.length > 0) {
+            newNodes.push(...parsed.nodes)
+            newConnections.push(...parsed.connections)
+
+            if (parsed.firstNodeId && parsed.lastNodeId) {
+              dagNodeMapping.set(dagNode.id, {
+                firstNodeId: parsed.firstNodeId,
+                lastNodeId: parsed.lastNodeId,
+              })
+            }
+          } else {
+            console.warn("Failed to parse file_conversion config for node:", dagNode.id)
+            // Fallback to creating a generic node
+            const fallbackNode: WorkflowNode = {
+              id: dagNode.id,
+              type: "start",
+              position,
+              data: {
+                label: "file_conversion",
+                displayName: dagNode.id,
+                active: true,
+              },
+              status: "idle",
+            }
+            newNodes.push(fallbackNode)
+            dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id })
+          }
+        } else if (dagNode.type === "cli_operator" && dagNode.config) {
+          // Parse cli_operator config to create specific operation nodes
+          console.log("Processing cli_operator node:", dagNode.id)
+          const parsed = parseCliOperatorConfig(dagNode, position)
+
+          if (parsed.nodes.length > 0) {
+            newNodes.push(...parsed.nodes)
+            newConnections.push(...parsed.connections)
+
+            if (parsed.firstNodeId && parsed.lastNodeId) {
+              dagNodeMapping.set(dagNode.id, {
+                firstNodeId: parsed.firstNodeId,
+                lastNodeId: parsed.lastNodeId,
+              })
+            }
+          } else {
+            console.warn("Failed to parse cli_operator config for node:", dagNode.id)
+            // Fallback to creating a generic node
+            const fallbackNode: WorkflowNode = {
+              id: dagNode.id,
+              type: "start",
+              position,
+              data: {
+                label: "cli_operator",
+                displayName: dagNode.id,
+                active: true,
+              },
+              status: "idle",
+            }
+            newNodes.push(fallbackNode)
+            dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id })
+          }
+        } else if (dagNode.type === "read_salesforce" && dagNode.config) {
+          // Handle Salesforce nodes
+          console.log("Processing read_salesforce node:", dagNode.id)
+          const salesforceNode: WorkflowNode = {
+            id: dagNode.id,
+            type: "salesforce-cloud",
+            position,
+            data: {
+              label: "salesforce-cloud",
+              displayName: "Salesforce Cloud",
+              object_name: dagNode.config.object_name,
+              query: dagNode.config.query,
+              fields: dagNode.config.fields || [],
+              where: dagNode.config.where || "",
+              limit: dagNode.config.limit,
+              use_bulk_api: dagNode.config.use_bulk_api || false,
+              file_path: dagNode.config.file_path,
+              active: true,
+            },
+            status: "configured",
+          }
+          newNodes.push(salesforceNode)
+          dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id })
+        } else {
+          // Fallback for unknown types or missing config - use original logic
+          console.warn("Unknown node type or missing config:", dagNode.type, dagNode.id, "config:", !!dagNode.config)
+
+          // Map DAG node types to workflow node types (original logic)
+          let nodeType: NodeType = "start";
+          switch (dagNode.type) {
+            case "start":
+              nodeType = "start";
+              break;
+            case "end":
+              nodeType = "end";
+              break;
+            case "file_conversion":
+              nodeType = "file";
+              break;
+            case "cli_operator":
+              nodeType = "copy-file"; // Default to copy-file, could be enhanced
+              break;
+            case "read-file":
+              nodeType = "read-file";
+              break;
+            case "write-file":
+              nodeType = "write-file";
+              break;
+            case "database":
+              nodeType = "database";
+              break;
+            case "source":
+              nodeType = "source";
+              break;
+            case "salesforce-cloud":
+              nodeType = "salesforce-cloud";
           break;
         case "write-salesforce":
           nodeType = "write-salesforce";
-          break;
-        default:
-          nodeType = "start";
-      }
+              break;
+            default:
+              nodeType = "start";
+          }
 
-      const workflowNode: WorkflowNode = {
-        id: dagNode.id,
-        type: nodeType,
-        position,
-        data: {
-          label: dagNode.type,
-          displayName: dagNode.id,
-          active: true,
-        },
-        status: "idle",
-      };
+          const workflowNode: WorkflowNode = {
+            id: dagNode.id,
+            type: nodeType,
+            position,
+            data: {
+              label: dagNode.type,
+              displayName: dagNode.id,
+              active: true,
+            },
+            status: "idle",
+          }
+          newNodes.push(workflowNode)
+          dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id })
+        }
+      })
 
-      newNodes.push(workflowNode);
+      // Create connections between DAG nodes using the mapping
+      dagData.dag_sequence.forEach((dagNode) => {
+        const sourceMapping = dagNodeMapping.get(dagNode.id)
+        if (!sourceMapping) return
 
-      // Create connections based on 'next' relationships
-      dagNode.next.forEach((nextNodeId) => {
-        const connection: NodeConnection = {
-          id: uuidv4(),
-          sourceId: dagNode.id,
-          targetId: nextNodeId,
-        };
-        newConnections.push(connection);
-      });
-    });
+        dagNode.next.forEach((nextNodeId) => {
+          const targetMapping = dagNodeMapping.get(nextNodeId)
+          if (!targetMapping) return
 
-    return { nodes: newNodes, connections: newConnections };
-  }, []);
+          const connection: NodeConnection = {
+            id: uuidv4(),
+            sourceId: sourceMapping.lastNodeId,
+            targetId: targetMapping.firstNodeId,
+          }
+          console.log("Creating DAG connection:", sourceMapping.lastNodeId, "->", targetMapping.firstNodeId)
+          newConnections.push(connection)
+        })
+      })
+
+      console.log("=== Conversion complete ===")
+      console.log("Total nodes:", newNodes.length, "Total connections:", newConnections.length)
+      console.log(
+        "Created nodes:",
+        newNodes.map((n) => ({ id: n.id, type: n.type, label: n.data.label })),
+      )
+
+      return { nodes: newNodes, connections: newConnections }
+    },
+    [parseFileConversionConfig, parseCliOperatorConfig],
+  )
 
   // Load file conversion configs for a client
   const loadFileConversionConfigs = useCallback(
@@ -478,19 +785,26 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  // Load workflow from DAG data
+  // Enhanced load workflow from DAG data
   const loadWorkflowFromDAG = useCallback(
     async (dagData: DAG) => {
       try {
-        console.log("Loading workflow from DAG:", dagData);
+        console.log("=== Loading workflow from DAG ===")
+        console.log("DAG Data:", JSON.stringify(dagData, null, 2))
 
         // Set workflow metadata including schedule
         setCurrentWorkflowName(dagData.name);
         setCurrentWorkflowId(dagData.dag_id);
 
-        // Convert DAG to visual workflow
-        const { nodes: newNodes, connections: newConnections } =
-          convertDAGToWorkflow(dagData);
+        // Convert DAG to visual workflow with enhanced parsing
+        const { nodes: newNodes, connections: newConnections } = convertDAGToWorkflow(dagData)
+
+        console.log("=== Conversion Results ===")
+        console.log("New nodes:", newNodes.length)
+        console.log("New connections:", newConnections.length)
+        newNodes.forEach((node) => {
+          console.log(`Node: ${node.id} (${node.type}) - ${node.data.displayName}`, node.data)
+        })
 
         // Update state
         setNodes(newNodes);
@@ -527,10 +841,8 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           nodeId: "system",
           nodeName: "System",
           status: "info",
-          message: `Workflow "${dagData.name}" loaded successfully.${
-            dagData.schedule
-              ? ` Schedule: ${dagData.schedule}`
-              : " (Manual execution)"
+          message: `Workflow "${dagData.name}" loaded successfully with ${newNodes.length} nodes.${
+            dagData.schedule ? ` Schedule: ${dagData.schedule}` : " (Manual execution)"
           }`,
         });
       } catch (error) {
