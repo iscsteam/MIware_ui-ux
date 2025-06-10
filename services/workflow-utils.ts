@@ -746,68 +746,136 @@ export async function saveAndRunWorkflow(
       );
     }
 
+    // // Process Salesforce read sequences
+    // for (const sequence of salesforceReadSequences) {
+    //   const { salesforceNode } = sequence;
+
+    //   // Validate required Salesforce read fields
+    //   if (
+    //     !salesforceNode.data.object_name ||
+    //     !salesforceNode.data.query ||
+    //     !salesforceNode.data.file_path
+    //   ) {
+    //     toast({
+    //       title: "Error",
+    //       description:
+    //         "Salesforce read workflow requires object_name, query, and file_path. Please configure the Salesforce read node first.",
+    //       variant: "destructive",
+    //     });
+    //     return false;
+    //   }
+
+    //   // Create Salesforce read configuration payload
+    //   const configPayload = {
+    //     object_name: salesforceNode.data.object_name,
+    //     query: salesforceNode.data.query,
+    //     fields: salesforceNode.data.fields || [],
+    //     where: salesforceNode.data.where || "",
+    //     limit: salesforceNode.data.limit || undefined,
+    //     use_bulk_api: salesforceNode.data.use_bulk_api || false,
+    //     file_path: salesforceNode.data.file_path,
+    //   };
+
+    //   console.log(
+    //     `Creating Salesforce read config ${sequence.sequenceIndex + 1}:`,
+    //     configPayload
+    //   );
+
+    //   // Create the config
+    //   const configResponse = await createSalesforceReadConfig(
+    //     dynamicClientIdString,
+    //     configPayload
+    //   );
+    //   if (!configResponse) {
+    //     throw new Error(
+    //       `Failed to create Salesforce read config for sequence ${
+    //         sequence.sequenceIndex + 1
+    //       }`
+    //     );
+    //   }
+
+    //   // Find the corresponding operation in allOperations and update it
+    //   const operationIndex = allOperations.findIndex(
+    //     (op) => op.nodeId === salesforceNode.id && op.type === "read_salesforce"
+    //   );
+    //   if (operationIndex !== -1) {
+    //     allOperations[operationIndex].configId = configResponse.id;
+    //   }
+
+    //   console.log(
+    //     `Created Salesforce read config ${configResponse.id} for sequence ${
+    //       sequence.sequenceIndex + 1
+    //     }`
+    //   );
+    // }
     // Process Salesforce read sequences
-    for (const sequence of salesforceReadSequences) {
-      const { salesforceNode } = sequence;
+for (const sequence of salesforceReadSequences) {
+  const { salesforceNode } = sequence;
 
-      // Validate required Salesforce read fields
-      if (
-        !salesforceNode.data.object_name ||
-        !salesforceNode.data.query ||
-        !salesforceNode.data.file_path
-      ) {
-        toast({
-          title: "Error",
-          description:
-            "Salesforce read workflow requires object_name, query, and file_path. Please configure the Salesforce read node first.",
-          variant: "destructive",
-        });
-        return false;
-      }
+  // Validate required Salesforce read fields
+  if (
+    !salesforceNode.data.object_name ||
+    !salesforceNode.data.query ||
+    !salesforceNode.data.file_path
+  ) {
+    toast({
+      title: "Error",
+      description:
+        "Salesforce read workflow requires object_name, query, and file_path. Please configure the Salesforce read node first.",
+      variant: "destructive",
+    });
+    return false;
+  }
 
-      // Create Salesforce read configuration payload
-      const configPayload = {
-        object_name: salesforceNode.data.object_name,
-        query: salesforceNode.data.query,
-        fields: salesforceNode.data.fields || [],
-        where: salesforceNode.data.where || "",
-        limit: salesforceNode.data.limit || undefined,
-        use_bulk_api: salesforceNode.data.use_bulk_api || false,
-        file_path: salesforceNode.data.file_path,
-      };
+  // Get fields from either fields or selectedFields property
+  const fields = salesforceNode.data.fields || salesforceNode.data.selectedFields || [];
+  
+  console.log("Salesforce node data:", salesforceNode.data); // Debug log
+  console.log("Fields being sent to API:", fields); // Debug log
 
-      console.log(
-        `Creating Salesforce read config ${sequence.sequenceIndex + 1}:`,
-        configPayload
-      );
+  // Create Salesforce read configuration payload
+  const configPayload = {
+    object_name: salesforceNode.data.object_name,
+    query: salesforceNode.data.query,
+    fields: fields, // Use the extracted fields
+    where: salesforceNode.data.where || "",
+    limit: salesforceNode.data.limit || undefined,
+    use_bulk_api: salesforceNode.data.use_bulk_api || false,
+    file_path: salesforceNode.data.file_path,
+  };
 
-      // Create the config
-      const configResponse = await createSalesforceReadConfig(
-        dynamicClientIdString,
-        configPayload
-      );
-      if (!configResponse) {
-        throw new Error(
-          `Failed to create Salesforce read config for sequence ${
-            sequence.sequenceIndex + 1
-          }`
-        );
-      }
+  console.log(
+    `Creating Salesforce read config ${sequence.sequenceIndex + 1}:`,
+    configPayload
+  );
 
-      // Find the corresponding operation in allOperations and update it
-      const operationIndex = allOperations.findIndex(
-        (op) => op.nodeId === salesforceNode.id && op.type === "read_salesforce"
-      );
-      if (operationIndex !== -1) {
-        allOperations[operationIndex].configId = configResponse.id;
-      }
+  // Create the config
+  const configResponse = await createSalesforceReadConfig(
+    dynamicClientIdString,
+    configPayload
+  );
+  if (!configResponse) {
+    throw new Error(
+      `Failed to create Salesforce read config for sequence ${
+        sequence.sequenceIndex + 1
+      }`
+    );
+  }
 
-      console.log(
-        `Created Salesforce read config ${configResponse.id} for sequence ${
-          sequence.sequenceIndex + 1
-        }`
-      );
-    }
+  // Find the corresponding operation in allOperations and update it
+  const operationIndex = allOperations.findIndex(
+    (op) => op.nodeId === salesforceNode.id && op.type === "read_salesforce"
+  );
+  if (operationIndex !== -1) {
+    allOperations[operationIndex].configId = configResponse.id;
+  }
+
+  console.log(
+    `Created Salesforce read config ${configResponse.id} for sequence ${
+      sequence.sequenceIndex + 1
+    }`
+  );
+}
 
     // Process Salesforce write sequences
     for (const sequence of salesforceWriteSequences) {

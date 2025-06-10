@@ -1,3 +1,4 @@
+
 // workflow-context.tsx
 "use client"
 import type React from "react"
@@ -474,6 +475,50 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Enhanced function to parse salesforce_read config and create salesforce node
+const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodePosition) => {
+  console.log("Parsing salesforce_read config for node:", dagNode.id, dagNode.config)
+
+  const config = dagNode.config
+  if (!config) {
+    console.warn("No config found for salesforce_read node:", dagNode.id)
+    return { nodes: [], connections: [], firstNodeId: null, lastNodeId: null }
+  }
+
+  const salesforceNodeId = `salesforce_read_${dagNode.config_id}`
+  console.log("Creating salesforce-cloud node:", salesforceNodeId, config)
+
+  // Map the DAG config to the expected node data format
+  const salesforceNode: WorkflowNode = {
+    id: salesforceNodeId,
+    type: "salesforce-cloud",
+    position: basePosition,
+    data: {
+      label: "salesforce-cloud",
+      displayName: "Salesforce Cloud",
+      object_name: config.object_name,
+      query: config.query,
+      fields: config.fields || [],
+      where: config.where || "",
+      limit: config.limit,
+      use_bulk_api: config.use_bulk_api || false,
+      file_path: config.file_path,
+      active: true,
+      config_id: dagNode.config_id, 
+    },
+    status: "configured",
+  }
+
+  console.log("Parsed salesforce_read - created node:", salesforceNode.id, salesforceNode.type)
+  
+  return {
+    nodes: [salesforceNode],
+    connections: [],
+    firstNodeId: salesforceNodeId,
+    lastNodeId: salesforceNodeId,
+  }
+}, [])
+
   // Enhanced convertDAGToWorkflow function with config parsing
   const convertDAGToWorkflow = useCallback(
     (dagData: DAG) => {
@@ -744,7 +789,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
       return { nodes: newNodes, connections: newConnections }
     },
-    [parseFileConversionConfig, parseCliOperatorConfig],
+    [parseFileConversionConfig, parseCliOperatorConfig,parseSalesforceReadConfig],
   )
 
   // Load file conversion configs for a client
