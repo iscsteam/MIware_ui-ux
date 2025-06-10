@@ -1,4 +1,3 @@
-
 // workflow-context.tsx
 "use client"
 import type React from "react"
@@ -475,50 +474,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Enhanced function to parse salesforce_read config and create salesforce node
-const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodePosition) => {
-  console.log("Parsing salesforce_read config for node:", dagNode.id, dagNode.config)
-
-  const config = dagNode.config
-  if (!config) {
-    console.warn("No config found for salesforce_read node:", dagNode.id)
-    return { nodes: [], connections: [], firstNodeId: null, lastNodeId: null }
-  }
-
-  const salesforceNodeId = `salesforce_read_${dagNode.config_id}`
-  console.log("Creating salesforce-cloud node:", salesforceNodeId, config)
-
-  // Map the DAG config to the expected node data format
-  const salesforceNode: WorkflowNode = {
-    id: salesforceNodeId,
-    type: "salesforce-cloud",
-    position: basePosition,
-    data: {
-      label: "salesforce-cloud",
-      displayName: "Salesforce Cloud",
-      object_name: config.object_name,
-      query: config.query,
-      fields: config.fields || [],
-      where: config.where || "",
-      limit: config.limit,
-      use_bulk_api: config.use_bulk_api || false,
-      file_path: config.file_path,
-      active: true,
-      config_id: dagNode.config_id, 
-    },
-    status: "configured",
-  }
-
-  console.log("Parsed salesforce_read - created node:", salesforceNode.id, salesforceNode.type)
-  
-  return {
-    nodes: [salesforceNode],
-    connections: [],
-    firstNodeId: salesforceNodeId,
-    lastNodeId: salesforceNodeId,
-  }
-}, [])
-
   // Enhanced convertDAGToWorkflow function with config parsing
   const convertDAGToWorkflow = useCallback(
     (dagData: DAG) => {
@@ -597,7 +552,10 @@ const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodeP
 
       // Process each DAG node
       dagData.dag_sequence.forEach((dagNode) => {
-        console.log("Processing DAG node:", dagNode.id, dagNode.type, "has config:", !!dagNode.config)
+        console.log(`Processing DAG node: ID=${dagNode.id}, Type=${dagNode.type}, ConfigID=${dagNode.config_id}, HasConfig=${!!dagNode.config}`)
+        if (dagNode.config) {
+          console.log("  Config content:", dagNode.config);
+        }
 
         const position = nodePositions.get(dagNode.id) || { x: 100, y: 100 }
 
@@ -637,7 +595,7 @@ const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodeP
             // Fallback to creating a generic node
             const fallbackNode: WorkflowNode = {
               id: dagNode.id,
-              type: "start",
+              type: "start", // Fallback type
               position,
               data: {
                 label: "file_conversion",
@@ -669,7 +627,7 @@ const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodeP
             // Fallback to creating a generic node
             const fallbackNode: WorkflowNode = {
               id: dagNode.id,
-              type: "start",
+              type: "start", // Fallback type
               position,
               data: {
                 label: "cli_operator",
@@ -682,11 +640,11 @@ const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodeP
             dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id })
           }
         } else if (dagNode.type === "read_salesforce" && dagNode.config) {
-          // Handle Salesforce nodes
-          console.log("Processing read_salesforce node:", dagNode.id)
+          // Handle Salesforce read nodes
+          console.log("Processing read_salesforce node:", dagNode.id);
           const salesforceNode: WorkflowNode = {
             id: dagNode.id,
-            type: "salesforce-cloud",
+            type: "salesforce-cloud", // Frontend node type for Salesforce Read
             position,
             data: {
               label: "salesforce-cloud",
@@ -698,18 +656,41 @@ const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodeP
               limit: dagNode.config.limit,
               use_bulk_api: dagNode.config.use_bulk_api || false,
               file_path: dagNode.config.file_path,
+              config_id: dagNode.config_id, // Store config_id from DAG sequence
               active: true,
             },
             status: "configured",
-          }
-          newNodes.push(salesforceNode)
-          dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id })
-        } else {
+          };
+          newNodes.push(salesforceNode);
+          dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id });
+        } else if (dagNode.type === "write_salesforce" && dagNode.config) {
+          // Add this new block to handle Salesforce write nodes
+          console.log("Processing write_salesforce node:", dagNode.id);
+          const salesforceWriteNode: WorkflowNode = {
+            id: dagNode.id,
+            type: "write-salesforce", // Frontend node type for Salesforce Write
+            position,
+            data: {
+              label: "write-salesforce",
+              displayName: "Salesforce Write",
+              object_name: dagNode.config.object_name,
+              use_bulk_api: dagNode.config.use_bulk_api || false,
+              file_path: dagNode.config.file_path,
+              bulk_batch_size: dagNode.config.bulk_batch_size,
+              config_id: dagNode.config_id, // Store config_id from DAG sequence
+              active: true,
+            },
+            status: "configured",
+          };
+          newNodes.push(salesforceWriteNode);
+          dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id });
+        }
+        else {
           // Fallback for unknown types or missing config - use original logic
-          console.warn("Unknown node type or missing config:", dagNode.type, dagNode.id, "config:", !!dagNode.config)
+          console.warn("Unknown node type or missing config for DAG node:", dagNode.type, dagNode.id, "config:", !!dagNode.config)
 
           // Map DAG node types to workflow node types (original logic)
-          let nodeType: NodeType = "start";
+          let nodeType: NodeType = "start"; // Default fallback
           switch (dagNode.type) {
             case "start":
               nodeType = "start";
@@ -717,11 +698,11 @@ const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodeP
             case "end":
               nodeType = "end";
               break;
-            case "file_conversion":
+            case "file_conversion": // This case is actually handled above
               nodeType = "file";
               break;
-            case "cli_operator":
-              nodeType = "copy-file"; // Default to copy-file, could be enhanced
+            case "cli_operator": // This case is actually handled above
+              nodeType = "copy-file";
               break;
             case "read-file":
               nodeType = "read-file";
@@ -735,14 +716,17 @@ const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodeP
             case "source":
               nodeType = "source";
               break;
+            // These cases were part of the fallback, but now explicit blocks handle them better
+            // If the backend sends "salesforce-cloud" directly as type, this would catch it.
+            // However, the explicit "read_salesforce" and "write_salesforce" blocks are preferred.
             case "salesforce-cloud":
               nodeType = "salesforce-cloud";
-          break;
-        case "write-salesforce":
-          nodeType = "write-salesforce";
+              break;
+            case "write-salesforce":
+              nodeType = "write-salesforce";
               break;
             default:
-              nodeType = "start";
+              nodeType = "start"; // Truly unknown types fall here
           }
 
           const workflowNode: WorkflowNode = {
@@ -753,6 +737,8 @@ const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodeP
               label: dagNode.type,
               displayName: dagNode.id,
               active: true,
+              // Only basic data if config was missing or type not specifically handled
+              ...(dagNode.config ? dagNode.config : {}) // Try to spread config if present, but this is a fallback
             },
             status: "idle",
           }
@@ -784,12 +770,12 @@ const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodeP
       console.log("Total nodes:", newNodes.length, "Total connections:", newConnections.length)
       console.log(
         "Created nodes:",
-        newNodes.map((n) => ({ id: n.id, type: n.type, label: n.data.label })),
+        newNodes.map((n) => ({ id: n.id, type: n.type, label: n.data.label, displayName: n.data.displayName, config_id: n.data.config_id, data: n.data })),
       )
 
       return { nodes: newNodes, connections: newConnections }
     },
-    [parseFileConversionConfig, parseCliOperatorConfig,parseSalesforceReadConfig],
+    [parseFileConversionConfig, parseCliOperatorConfig],
   )
 
   // Load file conversion configs for a client
@@ -1045,7 +1031,7 @@ const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodeP
     const dagSequence = nodes.map((node) => ({
       id: sanitizeNodeIdForDag(node.id),
       type: node.type,
-      config_id: 1,
+      config_id: 1, // This '1' might need to be dynamic or omitted if not relevant for DAG structure
       next: (nodeConnectionMap[node.id] || []).map(sanitizeNodeIdForDag),
     }));
 
@@ -1234,6 +1220,17 @@ const parseSalesforceReadConfig = useCallback((dagNode: any, basePosition: NodeP
               query: nodeData.query,
               use_bulk_api: nodeData.use_bulk_api || false,
               message: "Salesforce configuration ready for execution",
+              success: true,
+            };
+            break;
+          case "write-salesforce": // Added this case for write node
+            output = {
+              config_ready: true,
+              object_name: nodeData.object_name,
+              file_path: nodeData.file_path,
+              use_bulk_api: nodeData.use_bulk_api || false,
+              bulk_batch_size: nodeData.bulk_batch_size,
+              message: "Salesforce write configuration ready for execution",
               success: true,
             };
             break;
