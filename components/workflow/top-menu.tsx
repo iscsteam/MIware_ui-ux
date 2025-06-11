@@ -1,7 +1,8 @@
+//top-menu.tsx
 "use client"
 
-import { useState, useEffect } from "react"
-import { Share2, UserPlus, Save, Play, Loader2, Square } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Share2, UserPlus, Save, Play, Loader2, Square, Download, Upload } from "lucide-react"
 
 import { useWorkflow } from "./workflow-context";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/services/client"
 import type { ClientCreateResponse } from "@/services/interface"
-import { stopCurrentWorkflow, getCurrentWorkflowId } from "@/services/dagService"
+import { stopCurrentWorkflow } from "@/services/dagService" // Removed `getCurrentWorkflowId` as we use context's now
 
 const topTabs = ["File", "Edit", "Project", "Run"];
 
@@ -24,7 +25,7 @@ export function TopMenu({
   activeView: string;
   setActiveView: (view: string) => void;
 }) {
-  const { runWorkflow, saveWorkflowToBackend, saveAndRunWorkflow, currentWorkflowName} = useWorkflow()
+  const { runWorkflow, saveWorkflowToBackend, saveAndRunWorkflow, currentWorkflowName, getCurrentWorkflowId, getWorkflowExportData, loadWorkflow } = useWorkflow()
   const [activeTab, setActiveTab] = useState("File")
 
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false)
@@ -39,10 +40,13 @@ export function TopMenu({
 
   const [workflowIdAvailable, setWorkflowIdAvailable] = useState(false)
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
+    // Use the getCurrentWorkflowId from the workflow context
     const workflowId = getCurrentWorkflowId()
     setWorkflowIdAvailable(!!workflowId)
-  }, [])
+  }, [getCurrentWorkflowId]) // Depend on getCurrentWorkflowId from context
 
   const handleCreateClient = async () => {
     if (!clientName.trim()) {
@@ -67,7 +71,6 @@ export function TopMenu({
       try {
         const clientDataToStore = {
           id: String(created.id),
-         
           name: created.name,
         }
         localStorage.setItem("currentClient", JSON.stringify(clientDataToStore))
@@ -143,9 +146,10 @@ export function TopMenu({
   }
 
   const handleStop = async () => {
-    const currentWorkflowId = getCurrentWorkflowId()
+    // Use the current workflow ID from the context for stopping
+    const currentWorkflowIdFromContext = getCurrentWorkflowId() 
 
-    if (!currentWorkflowId) {
+    if (!currentWorkflowIdFromContext) {
       setErrorMessage("No active workflow found to stop")
       return
     }
@@ -154,6 +158,8 @@ export function TopMenu({
     setErrorMessage("")
 
     try {
+      // The `stopCurrentWorkflow` service internally uses localStorage.
+      // Ensure `currentWorkflow` in localStorage is correctly set by context.
       const result = await stopCurrentWorkflow()
       if (!result?.success) {
         setErrorMessage(result?.message || "Failed to stop workflow")
@@ -165,6 +171,51 @@ export function TopMenu({
       setIsStopping(false)
     }
   }
+
+  const handleDownloadWorkflow = () => {
+    try {
+      const exportData = getWorkflowExportData();
+      const filename = `${(exportData.metadata?.name || 'workflow').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setErrorMessage(""); // Clear any previous errors
+    } catch (error) {
+      console.error("Error downloading workflow:", error);
+      setErrorMessage("Failed to download workflow. Please try again.");
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result as string;
+          const parsedData = JSON.parse(content);
+          // Assuming parsedData matches WorkflowExportData interface
+          loadWorkflow(parsedData);
+          setErrorMessage(""); // Clear any previous errors
+        } catch (error) {
+          console.error("Failed to parse or load workflow file:", error);
+          setErrorMessage("Failed to load workflow. Please ensure it's a valid JSON file.");
+        }
+      };
+      reader.readAsText(file);
+    }
+    // Reset file input to allow selecting the same file again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   return (
     <div className="w-full">
@@ -210,6 +261,25 @@ export function TopMenu({
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Download Workflow Button */}
+          <Button variant="outline" size="sm" onClick={handleDownloadWorkflow}>
+            <Download className="h-4 w-4 mr-1" />
+            Download
+          </Button>
+
+          {/* Load Workflow Button */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".json"
+            className="hidden"
+          />
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+            <Upload className="h-4 w-4 mr-1" />
+            Load
+          </Button>
+
           <Button variant="outline" size="sm" onClick={handleSave} {...(isSaving ? { disabled: true } : {})}>
             {isSaving ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Saving...</> : <><Save className="h-4 w-4 mr-1" />Save</>}
           </Button>
