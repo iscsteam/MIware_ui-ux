@@ -8,6 +8,7 @@ import { TopMenu } from "@/components/workflow/top-menu"
 import { BottomPanel } from "@/components/workflow/bottom-panel"
 import { WorkflowProvider } from "@/components/workflow/workflow-context"
 import { ThemeProvider } from "@/components/theme-provider"
+import '@/services/consolelog';
 
 export default function WorkflowAutomationDashboard() {
   // State to track active view: 'editor' for Studio, 'executions' for History

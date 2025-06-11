@@ -98,7 +98,7 @@ export async function getDAGById(dagId: string): Promise<DAG | null> {
   }
 }
 
-export async function getDAGStatus(dagId: string, triggerId: string): Promise<DAGStatusResponse | null> {
+export async function checkDAGRunStatus(dagId: string, triggerId: string): Promise<DAGStatusResponse | null> {
   try {
     const res = await fetch(baseUrl(URLS.getDAGStatus(dagId, triggerId)))
 

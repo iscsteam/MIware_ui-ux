@@ -20,14 +20,12 @@ export const URLS = {
   triggerrun: (dagId: string) => `dag_runs/${dagId}/trigger_run`,
 
   // DAG_runs
-  ActiveDAGRuns: (dagId: string, triggerId: string) =>
-    `dag_runs/${dagId}/triggers/${triggerId}`,
   forcestop: (dagId: string) => `/dag_runs/${dagId}/force_stop_active_run`,
 
-  //cli operation
 
-  listCreateCLIoperations: (clientId: number | string) =>
-    `/clients/${clientId}/cli_operators_configs`,
+  //cli operation 
+
+  listCreateCLIoperations :  (clientId: number | string) => `/clients/${clientId}/cli_operators_configs`,
 
   // Uploads
   uploadSingleFile: "uploads/",
@@ -39,7 +37,6 @@ export const URLS = {
   listuploadfile: (filename: string) => `uploads/readfile/${filename}`,
 
   mangeuploadfile: (filename: string) => `uploads/readfile/${filename}`,
-  // <<<<<<< feature/saleforce
 
   // Saleforce Read
   listCreateSaleforceReadConfigs: (clientId: number | string) =>
@@ -56,11 +53,10 @@ export const URLS = {
     clientId: number | string,
     configId: number | string
   ) => `clients/${clientId}/write_salesforce_configs/${configId}`,
-  // =======
-  stopActiveDAGRun: (dagId: string) =>
-    `dag_runs/${dagId}/force_stop_active_run`,
+// =======
+  stopActiveDAGRun: (dagId: string) => `dag_runs/${dagId}/force_stop_active_run`,
   //cli-operator
   // listcreateCliOperatorConfig: (clientId: number | string) =>
   //   `/clients/${clientId}/cli_operators_configs`,
-  // >>>>>>> new-workflow
+// >>>>>>> new-workflow
 };
