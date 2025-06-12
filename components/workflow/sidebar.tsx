@@ -196,7 +196,12 @@ export function Sidebar({
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-200/60 bg-gradient-to-r from-indigo-600 via-purple-600 to-teal-600 flex-shrink-0 relative overflow-hidden">
+        {/* <div className="flex items-center justify-between p-5 border-b border-slate-200/60 bg-gradient-to-r from-indigo-600 via-purple-600 to-teal-600 flex-shrink-0 relative overflow-hidden"> */}
+      <div className="flex items-center justify-between p-5 border-b border-slate-200/60 bg-white flex-shrink-0 relative overflow-hidden">
+
+
+
+         
           {/* Background glow effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-teal-600/20 blur-xl"></div>
           
@@ -218,7 +223,7 @@ export function Sidebar({
                       className="relative z-10 drop-shadow-lg"
                     >
                       <path
-                        fill="white"
+                        fill="purple"
                         fillRule="evenodd"
                         d="M27.2 16.4a3.2 3.2 0 0 1-3.1-2.4h-3.667a1.6 1.6 0 0 0-1.578 1.337l-.132.79A3.2 3.2 0 0 1 17.683 18a3.2 3.2 0 0 1 1.04 1.874l.132.789A1.6 1.6 0 0 0 20.433 22h.468a3.201 3.201 0 0 1 6.299.8 3.2 3.2 0 0 1-6.3.8h-.467a3.2 3.2 0 0 1-3.156-2.674l-.132-.789a1.6 1.6 0 0 0-1.578-1.337h-1.268a3.201 3.201 0 0 1-6.198 0H6.299A3.201 3.201 0 0 1 0 18a3.2 3.2 0 0 1 6.3-.8h1.8a3.201 3.201 0 0 1 6.2 0h1.267a1.6 1.6 0 0 0 1.578-1.337l.132-.79a3.2 3.2 0 0 1 3.156-2.673h3.668a3.201 3.201 0 0 1 6.299.8 3.2 3.2 0 0 1-3.2 3.2m0-1.6a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2m-24 4.8a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2m9.6-1.6a1.6 1.6 0 1 1-3.2 0 1.6 1.6 0 0 1 3.2 0m12.8 4.8a1.6 1.6 0 1 1-3.2 0 1.6 1.6 0 0 1 3.2 0"
                         clipRule="evenodd"
@@ -280,10 +285,11 @@ export function Sidebar({
                       <div className="relative z-10">
                         <div className="font-bold text-xl tracking-wide drop-shadow-lg relative">
                           {/* Background glow */}
-                          <div className="absolute inset-0 text-white/20 blur-sm">MI-WARE</div>
+                          {/* <div className="absolute inset-0 text-white/20 blur-sm">MI-WARE</div> */}
+                          <div className="absolute inset-0 text-black/10 blur-sm">MI-WARE</div>
                           
                           {/* Main text with writing effect */}
-                          <div className="relative text-white">
+                          <div className="relative text-black">
                             {"MI-WARE".split("").map((char, index) => (
                               <span
                                 key={index}
@@ -427,7 +433,7 @@ export function Sidebar({
                     className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 hover:border-white/30 transition-all duration-300 shadow-lg rounded-xl relative z-10 group"
                     onClick={openProjectModal}
                   >
-                    <Plus className="h-5 w-5 text-white group-hover:scale-110 transition-transform duration-200" />
+                    <Plus className="h-5 w-5 text-purple group-hover:scale-110 transition-transform duration-200" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={5}>
@@ -975,5 +981,3 @@ export function Sidebar({
     </div>
   );
 }
-
-
