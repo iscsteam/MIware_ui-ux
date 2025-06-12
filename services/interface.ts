@@ -70,6 +70,7 @@ export interface DAG {
   dag_sequence: object[];
   active_dag_run?: number | null;
   client_id?: number;
+  type?: string
 }
 
 export type MappingSourceInfo = {
