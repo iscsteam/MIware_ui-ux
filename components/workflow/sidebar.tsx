@@ -1,5 +1,4 @@
 
-// Enhanced sidebar.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -196,12 +195,7 @@ export function Sidebar({
         )}
       >
         {/* Header */}
-        {/* <div className="flex items-center justify-between p-5 border-b border-slate-200/60 bg-gradient-to-r from-indigo-600 via-purple-600 to-teal-600 flex-shrink-0 relative overflow-hidden"> */}
-      <div className="flex items-center justify-between p-5 border-b border-slate-200/60 bg-white flex-shrink-0 relative overflow-hidden">
-
-
-
-         
+        <div className="flex items-center justify-between p-5 border-b border-slate-200/60 bg-white flex-shrink-0 relative overflow-hidden">
           {/* Background glow effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-teal-600/20 blur-xl"></div>
           
@@ -231,188 +225,10 @@ export function Sidebar({
                     </svg>
                   </div>
                   {!isCollapsed && (
-                    <div className="relative">
-                      {/* Rotating Spark Circle */}
-                      <div className="absolute inset-0 pointer-events-none w-32 h-8 flex items-center justify-center">
-                        {/* Main rotating spark */}
-                        <div 
-                          className="absolute w-3 h-3 rounded-full"
-                          style={{
-                            background: 'linear-gradient(45deg, #ffd700, #ff6347)',
-                            boxShadow: '0 0 10px rgba(255, 215, 0, 0.8)',
-                            animation: 'sparkRotate 3s linear infinite',
-                            transformOrigin: '0 0',
-                          }}
-                        >
-                          <div className="absolute inset-0 bg-white/60 rounded-full animate-pulse"></div>
-                        </div>
-                        
-                        {/* Secondary sparks */}
-                        <div 
-                          className="absolute w-2 h-2 rounded-full"
-                          style={{
-                            background: 'linear-gradient(45deg, #00ffff, #4169e1)',
-                            boxShadow: '0 0 8px rgba(0, 255, 255, 0.6)',
-                            animation: 'sparkRotate2 4s linear infinite reverse',
-                            transformOrigin: '0 0',
-                          }}
-                        >
-                          <div className="absolute inset-0 bg-white/40 rounded-full animate-pulse"></div>
-                        </div>
-                        
-                        <div 
-                          className="absolute w-1.5 h-1.5 rounded-full"
-                          style={{
-                            background: 'linear-gradient(45deg, #ff69b4, #9370db)',
-                            boxShadow: '0 0 6px rgba(255, 105, 180, 0.6)',
-                            animation: 'sparkRotate3 2.5s linear infinite',
-                            transformOrigin: '0 0',
-                          }}
-                        >
-                          <div className="absolute inset-0 bg-white/40 rounded-full animate-pulse"></div>
-                        </div>
-                        
-                        {/* Orbital trail */}
-                        <div 
-                          className="absolute w-24 h-6 border border-white/20 rounded-full"
-                          style={{
-                            animation: 'orbitalPulse 2s ease-in-out infinite',
-                          }}
-                        ></div>
+                    <div className="relative z-10">
+                      <div className="font-bold text-xl tracking-wide drop-shadow-lg text-black">
+                        MI-WARE
                       </div>
-                      
-                      {/* Animated Text */}
-                      <div className="relative z-10">
-                        <div className="font-bold text-xl tracking-wide drop-shadow-lg relative">
-                          {/* Background glow */}
-                          {/* <div className="absolute inset-0 text-white/20 blur-sm">MI-WARE</div> */}
-                          <div className="absolute inset-0 text-black/10 blur-sm">MI-WARE</div>
-                          
-                          {/* Main text with writing effect */}
-                          <div className="relative text-black">
-                            {"MI-WARE".split("").map((char, index) => (
-                              <span
-                                key={index}
-                                className="inline-block relative"
-                                style={{
-                                  animation: `writeChar 4s ease-in-out infinite`,
-                                  animationDelay: `${index * 0.3}s`,
-                                  opacity: 0,
-                                }}
-                              >
-                                {char}
-                                <span 
-                                  className="absolute inset-0 text-cyan-200 blur-sm"
-                                  style={{
-                                    animation: `charGlow 4s ease-in-out infinite`,
-                                    animationDelay: `${index * 0.3}s`,
-                                    opacity: 0,
-                                  }}
-                                >
-                                  {char}
-                                </span>
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Embedded styles for animations */}
-                      <style dangerouslySetInnerHTML={{
-                        __html: `
-                          @keyframes sparkRotate {
-                            0% { 
-                              transform: rotate(0deg) translateX(48px) rotate(0deg);
-                              opacity: 1;
-                            }
-                            50% { 
-                              opacity: 0.7;
-                            }
-                            100% { 
-                              transform: rotate(360deg) translateX(48px) rotate(-360deg);
-                              opacity: 1;
-                            }
-                          }
-                          
-                          @keyframes sparkRotate2 {
-                            0% { 
-                              transform: rotate(0deg) translateX(36px) rotate(0deg);
-                              opacity: 0.8;
-                            }
-                            50% { 
-                              opacity: 0.4;
-                            }
-                            100% { 
-                              transform: rotate(360deg) translateX(36px) rotate(-360deg);
-                              opacity: 0.8;
-                            }
-                          }
-                          
-                          @keyframes sparkRotate3 {
-                            0% { 
-                              transform: rotate(0deg) translateX(42px) rotate(0deg);
-                              opacity: 0.9;
-                            }
-                            50% { 
-                              opacity: 0.5;
-                            }
-                            100% { 
-                              transform: rotate(360deg) translateX(42px) rotate(-360deg);
-                              opacity: 0.9;
-                            }
-                          }
-                          
-                          @keyframes orbitalPulse {
-                            0%, 100% {
-                              opacity: 0.3;
-                              transform: scale(1);
-                            }
-                            50% {
-                              opacity: 0.6;
-                              transform: scale(1.1);
-                            }
-                          }
-                          
-                          @keyframes writeChar {
-                            0%, 10% {
-                              opacity: 0;
-                              transform: translateY(20px) scale(0.8);
-                              filter: blur(4px);
-                            }
-                            20%, 80% {
-                              opacity: 1;
-                              transform: translateY(0) scale(1);
-                              filter: blur(0);
-                            }
-                            90%, 100% {
-                              opacity: 0.9;
-                              transform: translateY(0) scale(1);
-                              filter: blur(0);
-                            }
-                          }
-                          
-                          @keyframes charGlow {
-                            0%, 10% {
-                              opacity: 0;
-                            }
-                            20%, 40% {
-                              opacity: 0.8;
-                            }
-                            60%, 100% {
-                              opacity: 0;
-                            }
-                          }
-                          
-                          @keyframes cursorBlink {
-                            0%, 50% {
-                              opacity: 1;
-                            }
-                            51%, 100% {
-                              opacity: 0;
-                            }
-                          }
-                        `
-                      }} />
                     </div>
                   )}
                 </div>
