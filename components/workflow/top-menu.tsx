@@ -1,15 +1,15 @@
 //top-menu.tsx
+//top-menu.tsx
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Share2, UserPlus, Save, Play, Loader2, Square, Download, Upload } from "lucide-react"
-
+import { Share2, UserPlus, Save, Play, Loader2, Square, LogOut, User, Settings, ChevronDown, Download, Upload } from "lucide-react"
 import { useWorkflow } from "./workflow-context";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/services/client"
@@ -18,27 +18,38 @@ import { stopCurrentWorkflow } from "@/services/dagService" // Removed `getCurre
 
 const topTabs = ["File", "Edit", "Project", "Run"];
 
+interface User {
+  name: string
+}
+
+interface TopMenuProps {
+  activeView: string;
+  setActiveView: (view: string) => void;
+  user?: User;
+  onLogout?: () => void;
+  onNavigateToClients?: () => void; // Add this prop for navigation
+}
+
 export function TopMenu({
   activeView,
   setActiveView,
-}: {
-  activeView: string;
-  setActiveView: (view: string) => void;
-}) {
+  user,
+  onLogout,
+  onNavigateToClients,
+}: TopMenuProps) {
   const { runWorkflow, saveWorkflowToBackend, saveAndRunWorkflow, currentWorkflowName, getCurrentWorkflowId, getWorkflowExportData, loadWorkflow } = useWorkflow()
   const [activeTab, setActiveTab] = useState("File")
-
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false)
   const [clientName, setClientName] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [createdClient, setCreatedClient] = useState<ClientCreateResponse | null>(null)
-
   const [errorMessage, setErrorMessage] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [isStopping, setIsStopping] = useState(false)
-
   const [workflowIdAvailable, setWorkflowIdAvailable] = useState(false)
+  const [userPopoverOpen, setUserPopoverOpen] = useState(false)
+  const [clientPopoverOpen, setClientPopoverOpen] = useState(false) // Add state for client popover
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -217,6 +228,33 @@ export function TopMenu({
     }
   };
 
+  const handleLogout = () => {
+    // Clear stored credentials and workflow data
+    localStorage.removeItem("userCredentials")
+    localStorage.removeItem("currentClient")
+    localStorage.removeItem("currentWorkflow")
+    
+    // Close popover
+    setUserPopoverOpen(false)
+    
+    // Call the logout handler passed from parent
+    if (onLogout) {
+      onLogout()
+    }
+  }
+
+  const handleCreateClientClick = () => {
+    setClientPopoverOpen(false) // Close popover
+    setCreateClientDialogOpen(true) // Open create client dialog
+  }
+
+  const handleListClientsClick = () => {
+    setClientPopoverOpen(false) // Close popover
+    if (onNavigateToClients) {
+      onNavigateToClients() // Navigate to clients page
+    }
+  }
+
   return (
     <div className="w-full">
       <div className="flex h-14 items-center justify-between border-b px-4 bg-background">
@@ -298,19 +336,65 @@ export function TopMenu({
             {isStopping ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Stopping...</> : <><Square className="h-4 w-4 mr-1" />Stop</>}
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCreateClientDialogOpen(true)}
-          >
-            <UserPlus className="h-4 w-4 mr-1" />
-            Create Client
-          </Button>
+          {/* Client Management Popover */}
+          <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <UserPlus className="h-4 w-4 mr-1" />
+                Clients
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" align="end">
+              <div className="flex flex-col gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCreateClientClick}
+                  className="justify-start"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Create Client
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleListClientsClick}
+                  className="justify-start"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  List Clients
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <Button variant="outline" size="sm">
             <Share2 className="h-4 w-4 mr-1" />
             Share
           </Button>
+
+          {/* User Info and Logout */}
+          {user && (
+            <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
+              <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded-md">
+                <User className="h-4 w-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">
+                  {user.name}
+                </span>
+              </div>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleLogout}
+                className="text-red-600 hover:text-red-700 hover:border-red-300 hover:bg-red-50"
+              >
+                <LogOut className="h-4 w-4 mr-1" />
+                Logout
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
