@@ -14,6 +14,35 @@ export interface DagSyncResult {
 }
 
 /**
+ * Get the current collection name from localStorage
+ * Priority: currentCollection > currentWorkflow.collection > throw error
+ */
+function getCurrentCollection(): string {
+  try {
+    // First check for explicit currentCollection
+    const currentCollection = localStorage.getItem("currentCollection")
+    if (currentCollection && currentCollection.trim()) {
+      console.log(`[DagSyncService] Using currentCollection: ${currentCollection}`)
+      return currentCollection.trim()
+    }
+
+    // Fallback to currentWorkflow.collection
+    const currentWorkflow = localStorage.getItem("currentWorkflow")
+    if (currentWorkflow) {
+      const workflowData = JSON.parse(currentWorkflow)
+      if (workflowData.collection && workflowData.collection.trim()) {
+        console.log(`[DagSyncService] Using collection from currentWorkflow: ${workflowData.collection}`)
+        return workflowData.collection.trim()
+      }
+    }
+  } catch (error) {
+    console.warn("[DagSyncService] Error reading collection from localStorage:", error)
+  }
+
+  throw new Error("No collection context found. Please select a collection first.")
+}
+
+/**
  * Find the actual DAG ID in Airflow that corresponds to a workflow
  */
 export async function findAirflowDagId(workflowName: string, frontendDagId: string): Promise<string | null> {
@@ -57,9 +86,15 @@ export async function findAirflowDagId(workflowName: string, frontendDagId: stri
 /**
  * Synchronize a workflow's DAG ID between Airflow and MongoDB
  */
-export async function syncWorkflowDagId(workflowName: string, frontendDagId: string): Promise<DagSyncResult> {
+export async function syncWorkflowDagId(
+  workflowName: string,
+  frontendDagId: string,
+  collectionName?: string,
+): Promise<DagSyncResult> {
+  const targetCollection = collectionName || getCurrentCollection()
+
   try {
-    console.log(`[DagSyncService] Syncing DAG ID for workflow: ${workflowName}`)
+    console.log(`[DagSyncService] Syncing DAG ID for workflow: ${workflowName} in collection: ${targetCollection}`)
 
     // Find the actual DAG ID in Airflow
     const airflowDagId = await findAirflowDagId(workflowName, frontendDagId)
@@ -85,7 +120,7 @@ export async function syncWorkflowDagId(workflowName: string, frontendDagId: str
     // Update MongoDB with the correct DAG ID
     try {
       // First, try to get the existing workflow data from MongoDB
-      const existingResponse = await mongoAPI.get({ dag_id: frontendDagId })
+      const existingResponse = await mongoAPI.get({ dag_id: frontendDagId }, targetCollection)
 
       if (existingResponse.ok) {
         const existingData = await existingResponse.json()
@@ -99,16 +134,17 @@ export async function syncWorkflowDagId(workflowName: string, frontendDagId: str
             metadata: {
               ...workflowData.metadata,
               dag_id: airflowDagId,
+              collection: targetCollection,
               updated_at: new Date().toISOString(),
               sync_note: `Synchronized with Airflow DAG ID: ${airflowDagId}`,
             },
           }
 
           // Delete the old record
-          await mongoAPI.delete({ dag_id: frontendDagId })
+          await mongoAPI.deleteByDagId(frontendDagId, targetCollection)
 
           // Insert with the new DAG ID
-          const updateResponse = await mongoAPI.insert(updatedWorkflowData)
+          const updateResponse = await mongoAPI.insertOrUpdate(updatedWorkflowData, airflowDagId, targetCollection)
 
           if (updateResponse.ok) {
             console.log(`[DagSyncService] Successfully updated MongoDB with Airflow DAG ID: ${airflowDagId}`)
@@ -119,7 +155,9 @@ export async function syncWorkflowDagId(workflowName: string, frontendDagId: str
               try {
                 const workflowInfo = JSON.parse(currentWorkflow)
                 workflowInfo.dag_id = airflowDagId
+                workflowInfo.collection = targetCollection
                 localStorage.setItem("currentWorkflow", JSON.stringify(workflowInfo))
+                localStorage.setItem("currentCollection", targetCollection)
                 console.log("[DagSyncService] Updated localStorage with synchronized DAG ID")
               } catch (error) {
                 console.warn("[DagSyncService] Could not update localStorage:", error)
@@ -165,8 +203,12 @@ export async function syncWorkflowDagId(workflowName: string, frontendDagId: str
 /**
  * Get the correct DAG ID to use for operations (prioritizes Airflow)
  */
-export async function getCorrectDagId(workflowName: string, frontendDagId: string): Promise<string> {
-  const syncResult = await syncWorkflowDagId(workflowName, frontendDagId)
+export async function getCorrectDagId(
+  workflowName: string,
+  frontendDagId: string,
+  collectionName?: string,
+): Promise<string> {
+  const syncResult = await syncWorkflowDagId(workflowName, frontendDagId, collectionName)
 
   if (syncResult.success && syncResult.airflowDagId) {
     return syncResult.airflowDagId

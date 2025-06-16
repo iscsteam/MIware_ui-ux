@@ -3,17 +3,45 @@ import { mongoAPI, baseUrl } from "./api"
 import type { WorkflowDocument } from "./workflow-position-service"
 
 /**
+ * Get the current collection name from localStorage
+ */
+function getCurrentCollection(): string {
+  try {
+    // First check for explicit currentCollection
+    const currentCollection = localStorage.getItem("currentCollection")
+    if (currentCollection && currentCollection.trim()) {
+      return currentCollection.trim()
+    }
+
+    // Fallback to currentWorkflow.collection
+    const currentWorkflow = localStorage.getItem("currentWorkflow")
+    if (currentWorkflow) {
+      const workflowData = JSON.parse(currentWorkflow)
+      if (workflowData.collection && workflowData.collection.trim()) {
+        return workflowData.collection.trim()
+      }
+    }
+  } catch (error) {
+    console.warn("[MongoDB Debug] Error reading collection from localStorage:", error)
+  }
+
+  throw new Error("No collection context found. Please select a collection first.")
+}
+
+/**
  * Debug function to test MongoDB API endpoints
  */
-export async function testMongoDBAPI(dagId = "test_dag_123") {
+export async function testMongoDBAPI(dagId = "test_dag_123", collectionName?: string) {
+  const targetCollection = collectionName || getCurrentCollection()
   console.log("=== Testing MongoDB API ===")
   console.log("Base URL:", baseUrl(""))
   console.log("Testing with DAG ID:", dagId)
+  console.log("Testing with Collection:", targetCollection)
 
   try {
     // Test 1: Check if we can reach the API
     console.log("\n--- Test 1: GET all data ---")
-    const getAllResponse = await mongoAPI.getAllWorkflows("mi_ware")
+    const getAllResponse = await mongoAPI.getAllWorkflows(targetCollection)
     console.log("GET all - Status:", getAllResponse.status)
 
     if (getAllResponse.ok) {
@@ -29,7 +57,7 @@ export async function testMongoDBAPI(dagId = "test_dag_123") {
 
     // Test 2: Try to get specific workflow
     console.log("\n--- Test 2: GET specific workflow ---")
-    const getSpecificResponse = await mongoAPI.getWorkflowByDagId(dagId, "mi_ware")
+    const getSpecificResponse = await mongoAPI.getWorkflowByDagId(dagId, targetCollection)
     console.log("GET specific - Status:", getSpecificResponse.status)
 
     if (getSpecificResponse.ok) {
@@ -77,6 +105,7 @@ export async function testMongoDBAPI(dagId = "test_dag_123") {
       metadata: {
         name: "Test Workflow",
         dag_id: dagId,
+        collection: targetCollection,
         exported_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -89,8 +118,8 @@ export async function testMongoDBAPI(dagId = "test_dag_123") {
       metadata: sampleWorkflow.metadata,
     })
 
-    console.log(`Expected URL: /mongo/insert_data_to_collections_or_update/mi_ware?dag_id=${dagId}`)
-    const insertResponse = await mongoAPI.insertOrUpdate(sampleWorkflow, dagId, "mi_ware")
+    console.log(`Expected URL: /mongo/insert_data_to_collections_or_update/${targetCollection}?dag_id=${dagId}`)
+    const insertResponse = await mongoAPI.insertOrUpdate(sampleWorkflow, dagId, targetCollection)
     console.log("POST - Status:", insertResponse.status)
 
     if (insertResponse.ok) {
@@ -103,7 +132,7 @@ export async function testMongoDBAPI(dagId = "test_dag_123") {
 
     // Test 4: Try to get the inserted data
     console.log("\n--- Test 4: GET inserted data ---")
-    const getInsertedResponse = await mongoAPI.getWorkflowByDagId(dagId, "mi_ware")
+    const getInsertedResponse = await mongoAPI.getWorkflowByDagId(dagId, targetCollection)
     console.log("GET inserted - Status:", getInsertedResponse.status)
 
     if (getInsertedResponse.ok) {
@@ -143,8 +172,10 @@ export async function testMongoDBAPI(dagId = "test_dag_123") {
 /**
  * Test the workflow save and load cycle
  */
-export async function testWorkflowSaveLoad(dagId = "test_workflow_456") {
+export async function testWorkflowSaveLoad(dagId = "test_workflow_456", collectionName?: string) {
+  const targetCollection = collectionName || getCurrentCollection()
   console.log("=== Testing Workflow Save/Load Cycle ===")
+  console.log("Using collection:", targetCollection)
 
   try {
     const { saveWorkflowToMongoDB, loadWorkflowFromMongoDB } = await import("./workflow-position-service")
@@ -210,18 +241,19 @@ export async function testWorkflowSaveLoad(dagId = "test_workflow_456") {
     const testMetadata = {
       name: "Test Data Processing Workflow",
       dag_id: dagId,
+      collection: targetCollection,
       schedule: "0 0 * * *",
       created_at: new Date().toISOString(),
     }
 
     // Test save
     console.log("Saving test workflow...")
-    await saveWorkflowToMongoDB(testNodes, testConnections, testMetadata)
+    await saveWorkflowToMongoDB(testNodes, testConnections, testMetadata, targetCollection)
     console.log("✅ Workflow saved successfully")
 
     // Test load
     console.log("Loading test workflow...")
-    const loadedWorkflow = await loadWorkflowFromMongoDB(dagId)
+    const loadedWorkflow = await loadWorkflowFromMongoDB(dagId, targetCollection)
 
     if (loadedWorkflow) {
       console.log("✅ Workflow loaded successfully")
