@@ -339,7 +339,7 @@ export function BottomPanel({ className }: BottomPanelProps) {
           <TabsList className="mx-4 mt-2 w-fit">
             {/* <TabsTrigger value="execution">Execution Logs</TabsTrigger> */}
             <TabsTrigger value="api">Execution Logs</TabsTrigger>
-            <TabsTrigger value="output">DAG Output</TabsTrigger>
+            {/* <TabsTrigger value="output">DAG Output</TabsTrigger> */}
             <TabsTrigger value="stats">Node Stats</TabsTrigger>
           </TabsList>
 

@@ -13,6 +13,7 @@ export interface DAG {
   active: boolean
   dag_sequence: object[]
   active_dag_run?: number | null
+  client_id?: number
 }
 
 // Interface for stop DAG response

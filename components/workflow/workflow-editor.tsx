@@ -4,45 +4,40 @@ import type React from "react";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import {
   useWorkflow,
-  type WorkflowNode,
-  type NodeConnection,
-} from "./workflow-context";
-import { NodeComponent } from "./node-component";
-import { ConnectionLine } from "./connection-line";
-import { NodeModal } from "./node-modal";
-import { ExecutionModal } from "@/components/workflow/execution-modal";
+  type WorkflowNode as ContextWorkflowNode,
+  type NodeConnection as ContextNodeConnection,
+  type DAG,
+} from "@/components/workflow/workflow-context";
+import { NodeComponent, type NodeComponentProps } from "@/components/workflow/node-component";
+import { ConnectionLine, type ConnectionLineProps } from "@/components/workflow/connection-line";
+import { NodeModal } from "@/components/workflow/node-modal";
 import { SideModal } from "@/components/workflow/sidemodal";
 import { Minimap } from "@/components/minimap/Minimap";
-import SchemaModal from "./SchemaModal";
-import { getNodeSchema } from "./nodeSchemas";
 import {
-  Plus,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
-  Maximize2,
-  Grid3X3,
+  Plus, ZoomIn, ZoomOut, RotateCcw, Maximize2, Grid3X3, Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { SchemaItem, SchemaModalData, NodeType } from "@/services/interface";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { type SchemaItem, type SchemaModalData, NodeType } from "@/services/interface";
+import SchemaModal from "@/components/workflow/SchemaModal";
+import { getNodeSchema } from "@/components/workflow/nodeSchemas";
+
+const NODE_WIDTH = 100;
+const NODE_HEIGHT = 60; // Base height, name display adds more
 
 interface CanvasOffset {
   x: number;
   y: number;
 }
 
-const NODE_WIDTH = 100;
-const NODE_HEIGHT = 100;
+interface WorkflowEditorProps {
+  initialDagData?: DAG;
+  onClose?: () => void;
+  dagId?: string;
+}
 
-export function WorkflowEditor() {
+export function WorkflowEditor({ initialDagData, onClose, dagId }: WorkflowEditorProps) {
   const {
     nodes,
     connections,
@@ -58,46 +53,48 @@ export function WorkflowEditor() {
     addNode,
     updateNode,
     removeConnection,
-    addConnection, // Added from Code A logic
+    addConnection,
     selectNode,
     executeNode,
     getNodeById,
+    loadWorkflowFromDAG,
+    clearWorkflow, // Make sure clearWorkflow is available from context if used
+    runWorkflow,
+    removeNode, // For deleting nodes
   } = useWorkflow();
 
-  // --- MERGED STATE ---
-  // Canvas State (from B)
-  const [canvasOffset, setCanvasOffset] = useState<CanvasOffset>({
-    x: 0,
-    y: 0,
-  });
+  const [canvasOffset, setCanvasOffset] = useState<CanvasOffset>({ x: 0, y: 0 });
   const [canvasScale, setCanvasScale] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  // UI State (Merged)
   const [isSideModalOpen, setIsSideModalOpen] = useState(false);
   const [showMinimap, setShowMinimap] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
-  const [gridSize, setGridSize] = useState(20);
+  const [gridSize] = useState(20);
 
-  // Feature State (from A)
-  const [connectionToSplit, setConnectionToSplit] =
-    useState<NodeConnection | null>(null);
-  const [insertPosition, setInsertPosition] = useState<{
-    x: number;
-    y: number;
-  }>({ x: 0, y: 0 });
-  const [executionModalOpen, setExecutionModalOpen] = useState(false);
-  const [executingNodeId, setExecutingNodeId] = useState<string | null>(null);
-
-  // Refs
   const canvasRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
 
-  // At the very top of WorkflowEditor.tsx (or whichever file you're in)
+  const [insertContext, setInsertContext] = useState<{
+    connection: ContextNodeConnection;
+    position: { x: number; y: number };
+  } | null>(null);
 
-  // --- NEW CANVAS DESIGN (from B) ---
+  useEffect(() => {
+    if (initialDagData) {
+      // It's often good practice to clear before loading a new DAG,
+      // but depends on desired behavior (e.g., merging vs replacing)
+      if (clearWorkflow) clearWorkflow(); 
+      loadWorkflowFromDAG(initialDagData).catch(err => {
+        console.error("WorkflowEditor: Error loading initial DAG data", err);
+      });
+    } else if (dagId && !nodes.length && !initialDagData) {
+        console.warn(`WorkflowEditor: dagId ${dagId} provided but no fetching logic implemented yet to load by ID directly.`);
+    }
+  }, [initialDagData, loadWorkflowFromDAG, clearWorkflow, dagId, nodes.length]);
+
+
   const dynamicGridSize = useMemo(() => {
     const baseSize = gridSize;
     if (canvasScale < 0.5) return baseSize * 4;
@@ -107,623 +104,456 @@ export function WorkflowEditor() {
   }, [gridSize, canvasScale]);
 
   const canvasBackground = useMemo(() => {
+    if (!showGrid) return { background: "radial-gradient(circle at center, rgba(59, 130, 246, 0.03) 0%, transparent 70%)" };
     const smallGrid = dynamicGridSize;
     const largeGrid = smallGrid * 5;
-    const opacity = Math.min(canvasScale, 1) * 0.6;
+    const baseOpacity = 0.5;
+    const adjustedOpacity = Math.min(canvasScale * 0.7, 1) * baseOpacity;
 
     return {
-      backgroundImage: `
-        radial-gradient(circle at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%),
-        linear-gradient(rgba(148, 163, 184, ${
-          opacity * 0.3
-        }) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(148, 163, 184, ${
-          opacity * 0.3
-        }) 1px, transparent 1px),
-        linear-gradient(rgba(59, 130, 246, ${
-          opacity * 0.6
-        }) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(59, 130, 246, ${
-          opacity * 0.6
-        }) 1px, transparent 1px)
-      `,
-      backgroundSize: `
-        100% 100%,
-        ${smallGrid}px ${smallGrid}px,
-        ${smallGrid}px ${smallGrid}px,
-        ${largeGrid}px ${largeGrid}px,
-        ${largeGrid}px ${largeGrid}px
-      `,
-      backgroundPosition: `
-        center center,
-        ${canvasOffset.x}px ${canvasOffset.y}px,
-        ${canvasOffset.x}px ${canvasOffset.y}px,
-        ${canvasOffset.x}px ${canvasOffset.y}px,
-        ${canvasOffset.x}px ${canvasOffset.y}px
-      `,
+        backgroundImage: `
+            radial-gradient(circle at center, rgba(59, 130, 246, 0.03) 0%, transparent 60%),
+            linear-gradient(rgba(200, 200, 200, ${adjustedOpacity * 0.3}) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(200, 200, 200, ${adjustedOpacity * 0.3}) 1px, transparent 1px),
+            linear-gradient(rgba(180, 180, 180, ${adjustedOpacity * 0.6}) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(180, 180, 180, ${adjustedOpacity * 0.6}) 1px, transparent 1px)
+        `,
+        backgroundSize: `100% 100%, ${smallGrid}px ${smallGrid}px, ${smallGrid}px ${smallGrid}px, ${largeGrid}px ${largeGrid}px, ${largeGrid}px ${largeGrid}px`,
+        backgroundPosition: `center center, ${canvasOffset.x}px ${canvasOffset.y}px, ${canvasOffset.x}px ${canvasOffset.y}px, ${canvasOffset.x}px ${canvasOffset.y}px, ${canvasOffset.x}px ${canvasOffset.y}px`,
     };
   }, [canvasOffset, canvasScale, dynamicGridSize, showGrid]);
 
-  // --- MERGED CANVAS INTERACTION ---
-  const handleCanvasMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
+
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+      if (e.button === 1 || (e.button === 0 && (e.ctrlKey || e.metaKey))) { // Middle mouse or Ctrl/Cmd+Left Click for panning
         e.preventDefault();
         setIsPanning(true);
         setLastPanPoint({ x: e.clientX, y: e.clientY });
-      } else if (e.button === 0 && e.target === e.currentTarget) {
+        if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
+      } else if (e.button === 0 && e.target === e.currentTarget) { // Left click on canvas background
         selectNode(null);
         setPendingConnection(null);
       }
-    },
-    [selectNode, setPendingConnection]
+    },[selectNode, setPendingConnection]
   );
 
-  const handleCanvasMouseMove = useCallback(
-    (e: React.MouseEvent) => {
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
       if (isPanning) {
         const deltaX = e.clientX - lastPanPoint.x;
         const deltaY = e.clientY - lastPanPoint.y;
-        setCanvasOffset((prev) => ({
-          x: prev.x + deltaX,
-          y: prev.y + deltaY,
-        }));
+        setCanvasOffset((prev) => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
         setLastPanPoint({ x: e.clientX, y: e.clientY });
       }
-    },
-    [isPanning, lastPanPoint]
-  );
-
-  const handleCanvasMouseUp = useCallback(() => {
-    setIsPanning(false);
-  }, []);
-
-  const handleCanvasWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      const newScale = Math.max(0.1, Math.min(3, canvasScale * delta));
-
-      if (newScale !== canvasScale) {
-        const rect = canvasRef.current?.getBoundingClientRect();
-        if (rect) {
-          const mouseX = e.clientX - rect.left;
-          const mouseY = e.clientY - rect.top;
-          const scaleRatio = newScale / canvasScale;
-          setCanvasOffset((prev) => ({
-            x: mouseX - (mouseX - prev.x) * scaleRatio,
-            y: mouseY - (mouseY - prev.y) * scaleRatio,
-          }));
-        }
-        setCanvasScale(newScale);
-      }
-    },
-    [canvasScale]
-  );
-
-  const handleNodeDragStart = useCallback(
-    (nodeId: string, e: React.MouseEvent) => {
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const node = getNodeById(nodeId);
-      if (!node) return;
-      const offsetX =
-        (e.clientX - rect.left - canvasOffset.x) / canvasScale -
-        node.position.x;
-      const offsetY =
-        (e.clientY - rect.top - canvasOffset.y) / canvasScale - node.position.y;
-      setDraggingNodeInfo({ id: nodeId, offset: { x: offsetX, y: offsetY } });
-      selectNode(nodeId);
-    },
-    [canvasOffset, canvasScale, getNodeById, setDraggingNodeInfo, selectNode]
-  );
-
-  useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
-
-      if (draggingNodeInfo) {
-        const newX =
-          (e.clientX - rect.left - canvasOffset.x) / canvasScale -
-          draggingNodeInfo.offset.x;
-        const newY =
-          (e.clientY - rect.top - canvasOffset.y) / canvasScale -
-          draggingNodeInfo.offset.y;
-        updateNode(draggingNodeInfo.id, { position: { x: newX, y: newY } });
-      }
-
-      if (pendingConnection) {
+      if (pendingConnection && canvasRef.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
         const x = (e.clientX - rect.left - canvasOffset.x) / canvasScale;
         const y = (e.clientY - rect.top - canvasOffset.y) / canvasScale;
         setMousePosition({ x, y });
       }
+    }, [isPanning, lastPanPoint, pendingConnection, canvasOffset.x, canvasOffset.y, canvasScale]
+  );
+
+  const handleCanvasMouseUp = useCallback(() => {
+    if (isPanning) {
+        setIsPanning(false);
+        if (canvasRef.current) canvasRef.current.style.cursor = 'grab';
+    }
+  }, [isPanning]);
+
+  const handleCanvasWheel = useCallback((e: React.WheelEvent) => {
+      e.preventDefault();
+      const scrollSensitivity = 0.1;
+      const delta = e.deltaY > 0 ? (1 - scrollSensitivity) : (1 + scrollSensitivity);
+      const newScale = Math.max(0.2, Math.min(2.5, canvasScale * delta));
+
+      if (canvasRef.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        const newOffsetX = mouseX - (mouseX - canvasOffset.x) * (newScale / canvasScale);
+        const newOffsetY = mouseY - (mouseY - canvasOffset.y) * (newScale / canvasScale);
+        
+        setCanvasOffset({ x: newOffsetX, y: newOffsetY });
+        setCanvasScale(newScale);
+      }
+    }, [canvasScale, canvasOffset.x, canvasOffset.y]
+  );
+
+  const handleNodeDragStart = useCallback((nodeId: string, e: React.MouseEvent) => {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const node = getNodeById(nodeId);
+      if (!node) return;
+      
+      const mouseCanvasX = (e.clientX - rect.left - canvasOffset.x) / canvasScale;
+      const mouseCanvasY = (e.clientY - rect.top - canvasOffset.y) / canvasScale;
+
+      const offsetX = mouseCanvasX - node.position.x;
+      const offsetY = mouseCanvasY - node.position.y;
+      
+      if (setDraggingNodeInfo) setDraggingNodeInfo({ id: nodeId, offset: { x: offsetX, y: offsetY } });
+      selectNode(nodeId);
+    }, [canvasOffset, canvasScale, getNodeById, setDraggingNodeInfo, selectNode]
+  );
+
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (draggingNodeInfo && canvasRef.current && updateNode) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const newX = (e.clientX - rect.left - canvasOffset.x) / canvasScale - draggingNodeInfo.offset.x;
+        const newY = (e.clientY - rect.top - canvasOffset.y) / canvasScale - draggingNodeInfo.offset.y;
+        updateNode(draggingNodeInfo.id, { position: { x: newX, y: newY } });
+      }
     };
 
-    const handleGlobalMouseUp = () => {
-      setDraggingNodeInfo(null);
-      setIsPanning(false);
+    const handleGlobalMouseUp = (e: MouseEvent) => {
+      if (draggingNodeInfo && setDraggingNodeInfo) {
+        setDraggingNodeInfo(null);
+      }
+       if (isPanning) {
+        setIsPanning(false);
+        if (canvasRef.current) canvasRef.current.style.cursor = 'grab';
+      }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setPendingConnection(null);
+        if (setPendingConnection) setPendingConnection(null);
         setIsSideModalOpen(false);
-        setPropertiesModalNodeId(null);
-        setDataMappingModalNodeId(null);
-        setExecutionModalOpen(false);
+        if (setPropertiesModalNodeId) setPropertiesModalNodeId(null);
+        if (setDataMappingModalNodeId) setDataMappingModalNodeId(null);
+        if (selectNode) selectNode(null);
+        setInsertContext(null);
+      }
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedNodeId && removeNode && removeConnection && getNodeById) {
+        const node = getNodeById(selectedNodeId);
+        if (node && node.type !== 'start' && node.type !== 'end') {
+          const connectionsToDelete = connections.filter(
+              conn => conn.sourceId === selectedNodeId || conn.targetId === selectedNodeId
+          );
+          connectionsToDelete.forEach(conn => removeConnection(conn.id));
+          removeNode(selectedNodeId);
+        }
       }
     };
 
     window.addEventListener("mousemove", handleGlobalMouseMove);
     window.addEventListener("mouseup", handleGlobalMouseUp);
     window.addEventListener("keydown", handleKeyDown);
-
     return () => {
       window.removeEventListener("mousemove", handleGlobalMouseMove);
       window.removeEventListener("mouseup", handleGlobalMouseUp);
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [
-    draggingNodeInfo,
-    pendingConnection,
-    canvasOffset,
-    canvasScale,
-    updateNode,
-    setDraggingNodeInfo,
-    setPendingConnection,
-    setPropertiesModalNodeId,
-    setDataMappingModalNodeId,
-  ]);
+      draggingNodeInfo, canvasOffset, canvasScale, updateNode, setDraggingNodeInfo, 
+      setPendingConnection, isPanning, selectNode, selectedNodeId,
+      setPropertiesModalNodeId, setDataMappingModalNodeId, removeConnection, removeNode, getNodeById, connections
+    ]
+  );
 
-  // --- CANVAS CONTROLS (from B) ---
-  const handleZoomIn = () => setCanvasScale((prev) => Math.min(3, prev * 1.2));
-  const handleZoomOut = () =>
-    setCanvasScale((prev) => Math.max(0.1, prev / 1.2));
-  const handleResetView = () => {
-    setCanvasScale(1);
-    setCanvasOffset({ x: 0, y: 0 });
-  };
+  const handleZoomIn = () => setCanvasScale((prev) => Math.min(2.5, prev * 1.2));
+  const handleZoomOut = () => setCanvasScale((prev) => Math.max(0.2, prev / 1.2));
+  const handleResetView = () => { setCanvasScale(1); setCanvasOffset({ x: 0, y: 0 }); };
+  
   const handleFitToScreen = () => {
     if (nodes.length === 0) return handleResetView();
-    const padding = 100;
-    const minX = Math.min(...nodes.map((n) => n.position.x)) - padding;
-    const minY = Math.min(...nodes.map((n) => n.position.y)) - padding;
-    const maxX = Math.max(...nodes.map((n) => n.position.x + 200)) + padding; // Node width 200
-    const maxY = Math.max(...nodes.map((n) => n.position.y + 100)) + padding; // Node height 100
+    const padding = 50;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    nodes.forEach(n => {
+        minX = Math.min(minX, n.position.x);
+        minY = Math.min(minY, n.position.y);
+        maxX = Math.max(maxX, n.position.x + NODE_WIDTH);
+        maxY = Math.max(maxY, n.position.y + NODE_HEIGHT + 20); // Account for name below node
+    });
+
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+
+    if (contentWidth <= 0 || contentHeight <= 0) return handleResetView();
+
     const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const scaleX = rect.width / (maxX - minX);
-    const scaleY = rect.height / (maxY - minY);
-    const newScale = Math.min(scaleX, scaleY, 1);
+    if (!rect || rect.width === 0 || rect.height === 0) return;
+
+    const scaleX = (rect.width - 2 * padding) / contentWidth;
+    const scaleY = (rect.height - 2 * padding) / contentHeight;
+    const newScale = Math.min(scaleX, scaleY, 1.5);
+
     setCanvasScale(newScale);
     setCanvasOffset({
-      x: (rect.width - (maxX - minX) * newScale) / 2 - minX * newScale,
-      y: (rect.height - (maxY - minY) * newScale) / 2 - minY * newScale,
+      x: (rect.width - contentWidth * newScale) / 2 - minX * newScale + padding,
+      y: (rect.height - contentHeight * newScale) / 2 - minY * newScale + padding,
     });
   };
 
-  // --- MERGED FEATURE HANDLERS ---
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const nodeType = e.dataTransfer.getData("nodeType") as NodeType;
-      if (!nodeType) return;
+  const handleNodeTypeSelectFromSideModalGeneral = useCallback((nodeType: NodeType) => {
       const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const x = (e.clientX - rect.left - canvasOffset.x) / canvasScale;
-      const y = (e.clientY - rect.top - canvasOffset.y) / canvasScale;
-      addNode(nodeType, { x, y });
-    },
-    [canvasOffset, canvasScale, addNode]
+      let x = NODE_WIDTH, y = NODE_HEIGHT;
+      if (rect) {
+        x = (rect.width / 2 - canvasOffset.x) / canvasScale;
+        y = (rect.height / 2 - canvasOffset.y) / canvasScale;
+      }
+      if (addNode) addNode(nodeType, { x, y }, { label: nodeType, displayName: nodeType });
+      setIsSideModalOpen(false);
+    }, [addNode, canvasOffset, canvasScale]
   );
 
-  const handleDragOver = useCallback(
-    (e: React.DragEvent) => e.preventDefault(),
-    []
-  );
-
-  const handleInsertNode = useCallback(
-    (connection: NodeConnection, position: { x: number; y: number }) => {
-      setConnectionToSplit(connection);
-      setInsertPosition(position);
+  const prepareInsertNodeOnConnection = useCallback(
+    (connection: ContextNodeConnection, position: { x: number; y: number }) => {
+      setInsertContext({ connection, position });
       setIsSideModalOpen(true);
     },
     []
   );
 
-  const handleNodeTypeSelect = useCallback(
+  const finalizeInsertNodeOnConnection = useCallback(
     (nodeType: NodeType) => {
-      if (connectionToSplit) {
-        const newNodeId = addNode(nodeType, insertPosition);
-        addConnection(connectionToSplit.sourceId, newNodeId);
-        addConnection(newNodeId, connectionToSplit.targetId);
-        removeConnection(connectionToSplit.id);
-        setConnectionToSplit(null);
+      if (!insertContext || !removeConnection || !addNode || !addConnection) return;
+
+      const { connection, position } = insertContext;
+      removeConnection(connection.id);
+      const newNodeId = addNode(nodeType, position, { label: nodeType, displayName: nodeType });
+
+      if (newNodeId) {
+        addConnection(connection.sourceId, newNodeId);
+        addConnection(newNodeId, connection.targetId);
       } else {
-        const rect = canvasRef.current?.getBoundingClientRect();
-        if (rect) {
-          const x = (rect.width / 2 - canvasOffset.x) / canvasScale;
-          const y = (rect.height / 2 - canvasOffset.y) / canvasScale;
-          addNode(nodeType, { x, y });
-        }
+        console.error("Failed to create new node during insertion on connection.");
+        addConnection(connection.sourceId, connection.targetId);
       }
+      setInsertContext(null);
       setIsSideModalOpen(false);
     },
-    [
-      connectionToSplit,
-      insertPosition,
-      addNode,
-      addConnection,
-      removeConnection,
-      canvasOffset,
-      canvasScale,
-    ]
+    [insertContext, removeConnection, addNode, addConnection]
   );
 
-  const handleExecuteNode = useCallback(
-    (nodeId: string) => {
-      setExecutingNodeId(nodeId);
-      setExecutionModalOpen(true);
-      executeNode(nodeId);
-    },
-    [executeNode]
+  const handleOpenSchemaModal = useCallback((nodeId: string) => {
+      if (setDataMappingModalNodeId) setDataMappingModalNodeId(nodeId);
+    },[setDataMappingModalNodeId]
   );
 
-  // --- ROBUST SCHEMA MODAL LOGIC (MERGED) ---
-  const handleOpenSchemaModal = useCallback(
-    (nodeId: string) => {
-      setDataMappingModalNodeId(nodeId);
-    },
-    [setDataMappingModalNodeId]
-  );
-
-  const schemaModalData = useMemo(() => {
-    if (!dataMappingModalNodeId) return null;
+  const schemaModalData = useMemo((): SchemaModalData | null => {
+    if (!dataMappingModalNodeId || !getNodeById) return null;
     const currentNode = getNodeById(dataMappingModalNodeId);
     if (!currentNode) return null;
 
-    // Recursive function from Code A for full upstream schema discovery
-    const findAllUpstreamOutputs = (
-      nodeId: string,
-      visited = new Set<string>()
-    ): SchemaItem[] => {
-      if (visited.has(nodeId)) return [];
-      visited.add(nodeId);
-      const incomingConnections = connections.filter(
-        (conn) => conn.targetId === nodeId
-      );
-      let collectedOutputs: SchemaItem[] = [];
-
-      for (const conn of incomingConnections) {
-        const sourceNode = getNodeById(conn.sourceId);
-        if (sourceNode) {
-          const sourceSchema = getNodeSchema(sourceNode.type);
-          if (sourceSchema?.outputSchema) {
-            sourceSchema.outputSchema.forEach((outputItem) => {
-              collectedOutputs.push({
-                ...outputItem,
-                name: `${sourceNode.data?.label || sourceNode.type} - ${
-                  outputItem.name
-                }`,
-                originalName: outputItem.name,
-                sourceNodeId: sourceNode.id,
-              });
-            });
-          }
-          collectedOutputs.push(
-            ...findAllUpstreamOutputs(sourceNode.id, visited)
-          );
-        }
-      }
-      return collectedOutputs;
+    const findAllUpstreamOutputs = (targetNodeId: string, visited = new Set<string>()): SchemaItem[] => {
+        if (visited.has(targetNodeId)) return [];
+        visited.add(targetNodeId);
+        const upstreamOutputs: SchemaItem[] = [];
+        connections.forEach(conn => {
+            if (conn.targetId === targetNodeId) {
+                const sourceNode = getNodeById(conn.sourceId);
+                if (sourceNode) {
+                    const sourceSchema = getNodeSchema(sourceNode.type);
+                    if (sourceSchema?.outputSchema) {
+                        upstreamOutputs.push(...sourceSchema.outputSchema.map(item => ({...item, sourceNodeId: sourceNode.id, sourceNodeLabel: sourceNode.data.displayName || sourceNode.data.label || sourceNode.type })));
+                    }
+                    // Optional: Recursively find outputs from further upstream nodes
+                    // upstreamOutputs.push(...findAllUpstreamOutputs(sourceNode.id, visited));
+                }
+            }
+        });
+        return Array.from(new Map(upstreamOutputs.map(item => [item.name, item])).values());
     };
-
+    
     const nodeSchema = getNodeSchema(currentNode.type);
     const availableInputs = findAllUpstreamOutputs(dataMappingModalNodeId);
-
+    
     return {
       nodeId: currentNode.id,
       nodeType: currentNode.type,
-      nodeLabel: currentNode.data?.label || currentNode.type,
+      nodeLabel: currentNode.data?.displayName || currentNode.data?.label || currentNode.type,
       baseInputSchema: nodeSchema?.inputSchema || [],
       baseOutputSchema: nodeSchema?.outputSchema || [],
       availableInputsFromPrevious: availableInputs,
+      // currentMappings: currentNode.data?.fieldMappings || {},
     };
-  }, [dataMappingModalNodeId, getNodeById, nodes, connections]);
+  }, [dataMappingModalNodeId, getNodeById, connections]);
 
-  // --- MINIMAP HANDLERS (from B) ---
-  const handleMinimapClick = useCallback(
-    (newOffset: CanvasOffset) => setCanvasOffset(newOffset),
-    []
-  );
+  const handleMinimapClick = useCallback((newOffset: CanvasOffset) => setCanvasOffset(newOffset), []);
   const handleMinimapPan = useCallback((delta: CanvasOffset) => {
     setCanvasOffset((prev) => ({ x: prev.x + delta.x, y: prev.y + delta.y }));
   }, []);
 
+  const handleExecuteWorkflow = () => { if (runWorkflow) runWorkflow(); };
+
   return (
-    <div className="flex-1 relative overflow-hidden bg-gray-50">
-      {/* Canvas Controls (from B) */}
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-        <div className="bg-white rounded-lg shadow-lg border p-2 flex flex-col gap-1">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsSideModalOpen(true)}
-                  className="w-full justify-start"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Node
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Add a new node to the workflow</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+    <div className="flex-1 flex flex-col h-full w-full overflow-hidden bg-gray-100 dark:bg-gray-900">
+      <div className="bg-background dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-2 flex items-center justify-between shadow-sm sticky top-0 z-20">
+        <div className="flex items-center gap-1">
+            <TooltipProvider>
+                 <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => { setInsertContext(null); setIsSideModalOpen(true);}}><Plus className="h-4 w-4 mr-1" /> Add Node</Button></TooltipTrigger><TooltipContent>Add New Node to Canvas</TooltipContent></Tooltip>
+                 <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomOut}><ZoomOut className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Zoom Out</TooltipContent></Tooltip>
+            </TooltipProvider>
+            <Badge variant="outline" className="px-2 py-0.5 text-xs min-w-[50px] text-center h-7 flex items-center">{Math.round(canvasScale * 100)}%</Badge>
+            <TooltipProvider>
+                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomIn}><ZoomIn className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Zoom In</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleResetView}><RotateCcw className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Reset View</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleFitToScreen}><Maximize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Fit to Screen</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button variant={showGrid ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setShowGrid(!showGrid)}><Grid3X3 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Toggle Grid</TooltipContent></Tooltip>
+            </TooltipProvider>
         </div>
-        <div className="bg-white rounded-lg shadow-lg border p-2 flex flex-col gap-1">
-          <div className="flex items-center gap-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" onClick={handleZoomOut}>
-                    <ZoomOut className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Zoom out</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <Badge
-              variant="outline"
-              className="px-2 py-1 text-xs min-w-[60px] text-center"
-            >
-              {Math.round(canvasScale * 100)}%
-            </Badge>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" onClick={handleZoomIn}>
-                    <ZoomIn className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Zoom in</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          <div className="w-32 px-1">
-            <Slider
-              value={[canvasScale]}
-              onValueChange={([value]) => setCanvasScale(value)}
-              min={0.1}
-              max={3}
-              step={0.1}
-            />
-          </div>
-          <div className="flex gap-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" onClick={handleResetView}>
-                    <RotateCcw className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Reset view</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" onClick={handleFitToScreen}>
-                    <Maximize2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Fit to screen</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={showGrid ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setShowGrid(!showGrid)}
-                  >
-                    <Grid3X3 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Toggle grid</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-      </div>
-
-      {/* Minimap (from B) */}
-      {showMinimap && (
-        <div className="absolute top-4 right-4 z-20 bg-white rounded-lg shadow-lg border overflow-hidden">
-          <Minimap
-            nodes={nodes}
-            connections={connections}
-            canvasOffset={canvasOffset}
-            canvasScale={canvasScale}
-            onMinimapClick={handleMinimapClick}
-            onMinimapPan={handleMinimapPan}
-          />
-        </div>
-      )}
-
-      {/* Main Canvas */}
-      <div
-        ref={canvasRef}
-        className="w-full h-full cursor-grab active:cursor-grabbing"
-        style={
-          showGrid
-            ? canvasBackground
-            : {
-                background:
-                  "radial-gradient(circle at center, rgba(59, 130, 246, 0.05) 0%, transparent 70%)",
-              }
-        }
-        onMouseDown={handleCanvasMouseDown}
-        onMouseMove={handleCanvasMouseMove}
-        onMouseUp={handleCanvasMouseUp}
-        onWheel={handleCanvasWheel}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-      >
-        <div
-          className="relative w-full h-full"
-          style={{
-            transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})`,
-            transformOrigin: "0 0",
-          }}
-        >
-          <svg
-            ref={svgRef}
-            className="absolute inset-0 pointer-events-none"
-            style={{ width: "100%", height: "100%", overflow: "visible" }}
-          >
-            {connections.map((connection) => {
-              const sourceNode = getNodeById(connection.sourceId);
-              const targetNode = getNodeById(connection.targetId);
-              if (!sourceNode || !targetNode) return null;
-              return (
-                <ConnectionLine
-                  key={connection.id}
-                  connection={connection}
-                  sourceNode={sourceNode}
-                  targetNode={targetNode}
-                  onDelete={() => removeConnection(connection.id)}
-                  onInsertNode={handleInsertNode}
-                />
-              );
-            })}
-            {pendingConnection && (
-              <PendingConnectionLine
-                sourceNode={getNodeById(pendingConnection.sourceId) ?? null}
-                mousePosition={mousePosition}
-              />
+        <div className="flex items-center gap-2">
+            <Button onClick={handleExecuteWorkflow} size="sm" className="h-7 flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white">
+                <Play className="h-3.5 w-3.5" /> Run
+            </Button>
+            {onClose && (
+                 <Button variant="outline" size="sm" className="h-7" onClick={onClose}>Close Editor</Button>
             )}
-          </svg>
-
-          {nodes.map((node) => (
-            <NodeComponent
-              key={node.id}
-              node={node}
-              selected={selectedNodeId === node.id}
-              isConnecting={
-                !!pendingConnection && pendingConnection.sourceId === node.id
-              }
-              onSelect={() => selectNode(node.id)}
-              onDragStart={handleNodeDragStart}
-              onExecuteNode={handleExecuteNode}
-              onOpenProperties={setPropertiesModalNodeId}
-              onOpenSchemaModal={handleOpenSchemaModal}
-            />
-          ))}
         </div>
       </div>
 
-      {/* Connection helper text (from A) */}
-      {pendingConnection && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm z-50">
-          Click on an input port to complete connection • Press ESC to cancel
-        </div>
-      )}
+      <div className="flex-1 relative overflow-hidden">
+        {showMinimap && canvasRef.current && (
+          <div className="absolute top-3 right-3 z-10 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <Minimap
+              nodes={nodes.map(n => ({...n, width: NODE_WIDTH, height: NODE_HEIGHT + (n.type !== 'start' && n.type !== 'end' ? 20 : 0) }))}
+              connections={connections}
+              canvasOffset={canvasOffset}
+              canvasScale={canvasScale}
+              onMinimapClick={handleMinimapClick}
+              onMinimapPan={handleMinimapPan}
+              width={canvasRef.current.clientWidth}
+              height={canvasRef.current.clientHeight}
+            />
+          </div>
+        )}
 
-      {/* Modals (Merged) */}
+        <div
+          ref={canvasRef}
+          className="w-full h-full cursor-grab"
+          style={canvasBackground}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleCanvasMouseMove}
+          onMouseUp={handleCanvasMouseUp}
+          onMouseLeave={handleCanvasMouseUp}
+          onWheel={handleCanvasWheel}
+        >
+          <div
+            className="relative w-full h-full"
+            style={{
+              transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})`,
+              transformOrigin: "0 0",
+              transition: isPanning ? "none" : "transform 0.05s ease-out",
+            }}
+          >
+            <svg
+              className="absolute inset-0 pointer-events-none"
+              style={{ width: "100%", height: "100%", overflow: "visible" }}
+            >
+              {connections.map((connection) => {
+                const sourceNode = getNodeById(connection.sourceId);
+                const targetNode = getNodeById(connection.targetId);
+                if (!sourceNode || !targetNode) return null;
+                return (
+                  <ConnectionLine
+                    key={connection.id}
+                    connection={connection}
+                    sourceNode={sourceNode}
+                    targetNode={targetNode}
+                    onDelete={() => { if (removeConnection) removeConnection(connection.id);}}
+                    onInsertNode={prepareInsertNodeOnConnection} // Corrected
+                  />
+                );
+              })}
+              {pendingConnection && getNodeById && getNodeById(pendingConnection.sourceId) && (
+                <PendingConnectionLine
+                  sourceNode={getNodeById(pendingConnection.sourceId) as ContextWorkflowNode}
+                  mousePosition={mousePosition}
+                  nodeWidth={NODE_WIDTH}
+                  nodeHeight={NODE_HEIGHT}
+                />
+              )}
+            </svg>
+
+            {nodes.map((node) => (
+              <NodeComponent
+                key={node.id}
+                node={node}
+                selected={selectedNodeId === node.id}
+                isConnecting={!!pendingConnection && pendingConnection.sourceId === node.id}
+                onSelect={() => { if (selectNode) selectNode(node.id);}}
+                onDragStart={handleNodeDragStart}
+                onExecuteNode={executeNode ? (id) => executeNode(id) : () => {}}
+                onOpenProperties={setPropertiesModalNodeId ? (id) => setPropertiesModalNodeId(id) : () => {}}
+                onOpenSchemaModal={handleOpenSchemaModal ? (id) => handleOpenSchemaModal(id) : () => {}}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
       <SideModal
         isOpen={isSideModalOpen}
-        onClose={() => setIsSideModalOpen(false)}
-        onSelectNodeType={handleNodeTypeSelect}
+        onClose={() => {
+            setIsSideModalOpen(false);
+            setInsertContext(null);
+        }}
+        onSelectNodeType={(nodeType) => {
+            if (insertContext) {
+                finalizeInsertNodeOnConnection(nodeType);
+            } else {
+                handleNodeTypeSelectFromSideModalGeneral(nodeType);
+            }
+        }}
+        // title={insertContext ? "Select Node to Insert" : "Add New Node"} // Optional title
       />
 
-      {propertiesModalNodeId && (
+      {propertiesModalNodeId && setPropertiesModalNodeId && (
         <NodeModal
           nodeId={propertiesModalNodeId}
           isOpen={!!propertiesModalNodeId}
           onClose={() => setPropertiesModalNodeId(null)}
         />
       )}
-
-      <ExecutionModal
-        isOpen={executionModalOpen}
-        onClose={() => setExecutionModalOpen(false)}
-        nodeId={executingNodeId}
-      />
-
-      {dataMappingModalNodeId && schemaModalData && (
+      
+      {dataMappingModalNodeId && schemaModalData && setDataMappingModalNodeId && updateNode && (
         <SchemaModal
           {...schemaModalData}
           onClose={() => setDataMappingModalNodeId(null)}
           onSaveMappings={(mappings) => {
-            /* Implement save logic if needed */
+            const nodeToUpdate = getNodeById(dataMappingModalNodeId);
+            if (nodeToUpdate) {
+                updateNode(dataMappingModalNodeId, {
+                    data: {
+                        ...nodeToUpdate.data,
+                        fieldMappings: mappings, // Make sure WorkflowNodeData has fieldMappings
+                    }
+                });
+            }
+            setDataMappingModalNodeId(null);
           }}
         />
       )}
-
-      {/* Status Bar (from B) */}
-      <div className="absolute bottom-4 left-4 z-20 bg-white rounded-lg shadow-lg border px-3 py-2 flex items-center gap-4 text-sm text-gray-600">
-        <span>{nodes.length} nodes</span>
-        <span>{connections.length} connections</span>
-        <span>Scale: {Math.round(canvasScale * 100)}%</span>
-        {selectedNodeId && (
-          <Badge variant="outline">
-            Selected:{" "}
-            {getNodeById(selectedNodeId)?.data?.label || selectedNodeId}
-          </Badge>
-        )}
-      </div>
     </div>
   );
 }
 
-// Helper component for pending connection line
-// function PendingConnectionLine({
-//   sourceNode,
-//   mousePosition,
-// }: {
-//   sourceNode: WorkflowNode | null;
-//   mousePosition: { x: number; y: number };
-// }) {
-//   if (!sourceNode) return null;
-//   const sourceX = sourceNode.position.x + 200; // Node width is 200px
-//   const sourceY = sourceNode.position.y + 50; // Middle of right edge
-//   const controlPointOffset = Math.abs(mousePosition.x - sourceX) * 0.5;
-//   const path = `M ${sourceX} ${sourceY} C ${sourceX + controlPointOffset} ${sourceY}, ${mousePosition.x - controlPointOffset} ${mousePosition.y}, ${mousePosition.x} ${mousePosition.y}`;
-//   return <path d={path} stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" fill="none" />;
-// }
-
-function PendingConnectionLine({
-  sourceNode,
-  mousePosition,
-}: {
-  sourceNode: WorkflowNode | null;
-  mousePosition: { x: number; y: number };
+function PendingConnectionLine({ 
+    sourceNode, 
+    mousePosition,
+    nodeWidth,
+    nodeHeight 
+}: { 
+    sourceNode: ContextWorkflowNode; 
+    mousePosition: { x: number; y: number };
+    nodeWidth: number;
+    nodeHeight: number;
 }) {
   if (!sourceNode) return null;
+  const sourcePortXOffset = nodeWidth; 
+  const sourcePortYOffset = nodeHeight / 2; 
 
-  // ← use the shared constant here, not 200
-  const sourceX = sourceNode.position.x + NODE_WIDTH;
-  // vertically center on the port
-  const sourceY = sourceNode.position.y + NODE_HEIGHT / 2;
-
-  const controlPointOffset = Math.abs(mousePosition.x - sourceX) * 0.5;
-  const path = `
-    M ${sourceX} ${sourceY}
-    C ${sourceX + controlPointOffset} ${sourceY},
-      ${mousePosition.x - controlPointOffset} ${mousePosition.y},
-      ${mousePosition.x} ${mousePosition.y}
-  `;
-  return (
-    <path
-      d={path}
-      stroke="#3b82f6"
-      strokeWidth="2"
-      strokeDasharray="5,5"
-      fill="none"
-    />
-  );
+  const sourceX = sourceNode.position.x + sourcePortXOffset;
+  const sourceY = sourceNode.position.y + sourcePortYOffset;
+  
+  const controlPointOffset = Math.max(50, Math.abs(mousePosition.x - sourceX) * 0.3);
+  
+  const path = `M ${sourceX} ${sourceY} C ${sourceX + controlPointOffset} ${sourceY}, ${mousePosition.x - controlPointOffset} ${mousePosition.y}, ${mousePosition.x} ${mousePosition.y}`;
+  
+  return <path d={path} stroke="#3b82f6" strokeWidth="2.5" strokeDasharray="6,6" fill="none" className="animate-connector-flow" />;
 }
+

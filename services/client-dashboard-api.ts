@@ -23,56 +23,56 @@ interface DAGStatusResponse {
   logs?: string;
 }
 
-// export async function fetchClientConfigs(
-//   clientId: number
-// ): Promise<ConfigItem[]> {
-//   const configTypes = [
-//     "file_conversion_configs",
-//     "read_salesforce_configs",
-//     "write_salesforce_configs",
-//     "cli_operators_configs",
-//   ];
+export async function fetchClientConfigs(
+  clientId: number
+): Promise<ConfigItem[]> {
+  const configTypes = [
+    "file_conversion_configs",
+    "read_salesforce_configs",
+    "write_salesforce_configs",
+    "cli_operators_configs",
+  ];
 
-//   const allConfigs: ConfigItem[] = [];
+  const allConfigs: ConfigItem[] = [];
 
-//   for (const configType of configTypes) {
-//     try {
-//       const response = await fetch(
-//         baseUrl(`/clients/${clientId}/${configType}`)
-//       );
+  for (const configType of configTypes) {
+    try {
+      const response = await fetch(
+        baseUrl(`/clients/${clientId}/${configType}`)
+      );
 
-//       if (!response.ok) {
-//         console.warn(
-//           `Failed to fetch ${configType} for client ${clientId}:`,
-//           response.statusText
-//         );
-//         continue;
-//       }
+      if (!response.ok) {
+        console.warn(
+          `Failed to fetch ${configType} for client ${clientId}:`,
+          response.statusText
+        );
+        continue;
+      }
 
-//       const configs = await response.json();
+      const configs = await response.json();
 
-//       // Transform configs to our standard format
-//       const transformedConfigs = configs.map((config: any) => ({
-//         id: config.id || `${configType}_${config.dag_id}`,
-//         dag_id: config.dag_id,
-//         trigger_id: config.trigger_id,
-//         name: config.name,
-//         status: config.status,
-//         type: configType.replace("_configs", "") as ConfigItem["type"],
-//         config_data: config,
-//       }));
+      // Transform configs to our standard format
+      const transformedConfigs = configs.map((config: any) => ({
+        id: config.id || `${configType}_${config.dag_id}`,
+        dag_id: config.dag_id,
+        trigger_id: config.trigger_id,
+        name: config.name,
+        status: config.status,
+        type: configType.replace("_configs", "") as ConfigItem["type"],
+        config_data: config,
+      }));
 
-//       allConfigs.push(...transformedConfigs);
-//     } catch (error) {
-//       console.error(
-//         `Error fetching ${configType} for client ${clientId}:`,
-//         error
-//       );
-//     }
-//   }
+      allConfigs.push(...transformedConfigs);
+    } catch (error) {
+      console.error(
+        `Error fetching ${configType} for client ${clientId}:`,
+        error
+      );
+    }
+  }
 
-//   return allConfigs;
-// }
+  return allConfigs;
+}
 
 
 type ApiDagRunResponse = DagRun[];

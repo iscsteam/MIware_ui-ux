@@ -31,7 +31,7 @@ import { NodeType } from "@/services/interface";
 import SchemaModal from "./SchemaModal"; // Adjust path
 
 // --- Interfaces ---
-interface NodeComponentProps {
+export interface NodeComponentProps {
 
   node: WorkflowNode;
   selected: boolean;
