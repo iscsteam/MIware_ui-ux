@@ -24,9 +24,22 @@ export interface StopDAGResponse {
   stopped_at?: string
 }
 
-export async function fetchDAGs(): Promise<DAG[] | null> {
+// export async function fetchDAGs(): Promise<DAG[] | null> {
+//   try {
+//     const res = await fetch(baseUrl(URLS.listCreateDAGs))
+//     if (!res.ok) throw new Error("Failed to fetch DAGs")
+//     return await res.json()
+//   } catch (error) {
+//     console.error(error)
+//     return null
+//   }
+// }
+
+export async function fetchDAGs(skip = 0, limit = 300): Promise<DAG[] | null> {
   try {
-    const res = await fetch(baseUrl(URLS.listCreateDAGs))
+    const query = `?skip=${skip}&limit=${limit}&max_retries=3&retry_delay=1`
+    const res = await fetch(baseUrl(URLS.listCreateDAGs) + query)
+
     if (!res.ok) throw new Error("Failed to fetch DAGs")
     return await res.json()
   } catch (error) {
