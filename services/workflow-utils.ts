@@ -530,6 +530,23 @@ export async function saveAndRunWorkflow(
           })
           return false
         }
+
+        // Validate connection string format for PostgreSQL
+        if (writeNode.data.provider === "local" || writeNode.data.provider === "postgresql") {
+          if (
+            !writeNode.data.connectionString.includes("postgresql://") &&
+            !writeNode.data.connectionString.includes("jdbc:postgresql://")
+          ) {
+            toast({
+              title: "Error",
+              description: `Database sequence ${
+                sequence.sequenceIndex + 1
+              } requires a valid PostgreSQL connection string.`,
+              variant: "destructive",
+            })
+            return false
+          }
+        }
       }
 
       // Create config payload based on sequence type
@@ -539,11 +556,18 @@ export async function saveAndRunWorkflow(
       } else if (type === "file-to-database") {
         configPayload = createFileToDatabaseConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
 
-        // Explicitly mark this as a database operation
-        configPayload.output = {
-          ...configPayload.output,
-          type: "database",
-        }
+        // Ensure the output format matches the expected payload structure
+        // configPayload.output = {
+        //   ...configPayload.output,
+        //   connectionString: writeNode.data.connectionString,
+        //   table: writeNode.data.table,
+        //   type: "database",
+        //   options: {
+        //     header: true,
+        //     inferSchema: true,
+        //     ...configPayload.output.options,
+        //   },
+        // }
       } else {
         // database-to-file
         configPayload = createDatabaseToFileConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
@@ -969,52 +993,4 @@ export {
   findSalesforceSequences,
   findSalesforceWriteSequences,
   findAllOperationsInOrder,
-}
-
-function createFileToFileConfig(readNode, writeNode, filterNode, workflowId) {
-  const config = {
-    input: {
-      path: readNode.data.path,
-      format: readNode.data.format,
-      options: readNode.data.options || {},
-    },
-    output: {
-      path: writeNode.data.path,
-      format: writeNode.data.format,
-      options: writeNode.data.options || {},
-    },
-    filter: filterNode
-      ? {
-          condition: filterNode.data.condition,
-        }
-      : null,
-    workflow_id: workflowId,
-    nodeType: "write-file",
-  }
-
-  return config
-}
-
-function createFileToDatabaseConfig(readNode, writeNode, filterNode, workflowId) {
-  const config = {
-    input: {
-      path: readNode.data.path,
-      format: readNode.data.format,
-      options: readNode.data.options || {},
-    },
-    output: {
-      connectionString: writeNode.data.connectionString,
-      table: writeNode.data.table,
-      options: writeNode.data.options || {},
-    },
-    filter: filterNode
-      ? {
-          condition: filterNode.data.condition,
-        }
-      : null,
-    workflow_id: workflowId,
-    nodeType: "database",
-  }
-
-  return config
 }

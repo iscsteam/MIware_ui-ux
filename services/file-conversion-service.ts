@@ -2,45 +2,7 @@
 import { toast } from "@/components/ui/use-toast"
 import { URLS } from "@/services/url"
 import { baseUrl } from "@/services/api"
-export interface FileConversionConfig {
-  input: {
-    provider: string
-    format: string
-    path: string
-    options?: Record<string, any>
-    schema?: {
-      fields: Array<{
-        name: string
-        type: string
-        nullable: boolean
-      }>
-    }
-  }
-  output: {
-    provider: string
-    format: string
-    path: string
-    mode: string
-    options?: Record<string, any>
-  }
-  filter?: {
-    operator: string
-    conditions: any[]
-  }
-  order_by?: Array<[string, string]>
-  aggregation?: {
-    group_by: string[]
-    aggregations: Array<[string, string]>
-  }
-  spark_config?: {
-    executor_instances: number
-    executor_cores: number
-    executor_memory: string
-    driver_memory: string
-    driver_cores: number
-  }
-  dag_id?: string
-}
+import type { FileConversionConfig } from "@/services/schema-mapper"
 
 export interface FileConversionConfigResponse extends FileConversionConfig {
   id: number
@@ -366,4 +328,3 @@ export function getDatabaseDriver(provider: string): string {
 //     return false
 //   }
 // }
-

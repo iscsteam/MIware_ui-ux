@@ -6,8 +6,6 @@ import type {
   OrderByClauseBackend,
   AggregationConfigBackend,
 } from "@/components/workflow/workflow-context"
-import { toast } from "@/components/ui/use-toast"
-
 
 // const baseUrl = process.env.NEXT_PUBLIC_API_URL
 
@@ -29,8 +27,11 @@ export interface FileConversionConfig {
   output: {
     provider: string
     format: string
-    path: string
+    path?: string
+    connectionString?: string
+    table?: string
     mode: string
+    type?: string // Add this field
     options?: Record<string, any>
   }
   filter?: {
@@ -139,10 +140,13 @@ export function mapNodeToOutputConfig(node: WorkflowNode) {
     return {
       provider: node.data.provider === "local" ? "local" : node.data.provider,
       format: "sql",
-      path: node.data.connectionString,
+      path: node.data.connectionString, // Use path instead of connectionString
       mode: node.data.writeMode || "overwrite",
+      type: "database",
       options: {
-        table: node.data.table,
+        table: node.data.table, // Move table to options
+        header: node.data.options?.header || true,
+        inferSchema: node.data.options?.inferSchema || true,
         user: node.data.user || "",
         password: node.data.password || "",
         batchSize: node.data.batchSize || "5000",
@@ -261,6 +265,7 @@ export function createFileToDatabaseConfig(
     throw new Error("Invalid file or database node configuration for file-to-database.")
   }
 
+  // Output is already correctly formatted from mapNodeToOutputConfig
   return {
     input,
     output,
@@ -356,5 +361,3 @@ export function mapDeleteFileToCliOperator(node: WorkflowNode, dagId: string): C
     dag_id: dagId,
   }
 }
-
-
