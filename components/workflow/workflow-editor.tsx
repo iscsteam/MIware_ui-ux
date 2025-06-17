@@ -1,19 +1,652 @@
+
+// "use client";
+
+// import type React from "react";
+// import { useRef, useState, useEffect, useCallback } from "react";
+// import {
+//   useWorkflow,
+  
+//   type WorkflowNode,
+//   type NodeConnection,
+// } from "./workflow-context";
+// import { NodeComponent } from "./node-component";
+// import { ConnectionLine } from "./connection-line";
+// import { NodeModal } from "./node-modal";
+// import { ExecutionModal } from "./execution-modal";
+// import { SideModal } from "./sidemodal";
+// import { Plus } from "lucide-react";
+// import { Button } from "@/components/ui/button";
+// import SchemaModal from "./SchemaModal";
+// import { getNodeSchema } from "./nodeSchemas";
+// import {
+//   SchemaModalProps,
+//   SchemaItem,
+//   SchemaModalData,
+//   NodeType
+// } from "@/services/interface";
+
+// // Define SchemaItem interface which was missing
+// // interface SchemaItem {
+// //   name: string
+// //   type?: string
+// //   description?: string
+// //   required?: boolean
+// //   originalName?: string
+// //   sourceNodeId?: string
+// // }
+
+// // interface SchemaModalData {
+// //   nodeType: NodeType
+// //   baseInputSchema: SchemaItem[]
+// //   baseOutputSchema: SchemaItem[]
+// //   availableInputsFromPrevious: SchemaItem[] // Outputs from connected source nodes
+// //   nodeLabel?: string // Optional: Pass the specific node's label
+// // }
+
+// // Define NodeComponentProps interface to fix TypeScript error
+// // interface NodeComponentProps {
+// //   key: string;
+// //   node: WorkflowNode;
+// //   selected: boolean;
+// //   isConnecting: boolean;
+// //   onSelect: () => void;
+// //   onDragStart: (nodeId: string, e: React.MouseEvent) => void;
+// //   onExecuteNode: (nodeId: string) => void;
+// //   onOpenProperties: (nodeId: string) => void;
+// //   onOpenSchemaModal: (nodeId: string) => void;
+// // }
+
+// export function WorkflowEditor() {
+//   const {
+//     nodes,
+//     connections,
+//     selectedNodeId,
+//     pendingConnection,
+//     setPendingConnection,
+//     addNode,
+//     updateNode,
+//     selectNode,
+//     removeConnection,
+//     executeNode,
+//     addConnection,
+//   } = useWorkflow();
+
+//   const canvasRef = useRef<HTMLDivElement>(null);
+//   const [isDragging, setIsDragging] = useState(false);
+//   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+//   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
+//   const [canvasScale, setCanvasScale] = useState(1);
+//   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+//   const [sideModalOpen, setSideModalOpen] = useState(false);
+//   const [insertPosition, setInsertPosition] = useState<{
+//     x: number;
+//     y: number;
+//   }>({ x: 0, y: 0 });
+//   const [connectionToSplit, setConnectionToSplit] =
+//     useState<NodeConnection | null>(null);
+//   const [executionModalOpen, setExecutionModalOpen] = useState(false);
+//   const [executingNodeId, setExecutingNodeId] = useState<string | null>(null);
+//   const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
+//   const [activeNodeForModal, setActiveNodeForModal] =
+//     useState<WorkflowNode | null>(null);
+
+//   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
+//   const [nodeTypeForSchemaModal, setNodeTypeForSchemaModal] =
+//     useState<NodeType | null>(null);
+//   const [modalOpen, setModalOpen] = useState(false);
+//   const [schemaModalData, setSchemaModalData] =
+//     useState<SchemaModalData | null>(null);
+
+//   const handleOpenSchemaModal = useCallback(
+//     (nodeId: string) => {
+//       const targetNode = nodes.find((n) => n.id === nodeId);
+//       if (!targetNode) {
+//         console.error("Target node not found for schema modal:", nodeId);
+//         return;
+//       }
+
+//       const nodeType = targetNode.type;
+//       const baseSchema = getNodeSchema(nodeType);
+
+//       if (!baseSchema) {
+//         console.error("Schema not found for node type:", nodeType);
+//         setSchemaModalData({
+//            nodeId,
+//           nodeType,
+//           baseInputSchema: [],
+//           baseOutputSchema: [],
+//           availableInputsFromPrevious: [],
+//           nodeLabel: targetNode.data?.label || nodeType,
+//         });
+//         setIsSchemaModalOpen(true); // Make sure to open the modal
+//         return;
+//       }
+
+//       // Recursive function to collect outputs from all upstream nodes
+//       const findAllUpstreamOutputs = (
+//         currentNodeId: string,
+//         visited = new Set<string>()
+//       ): SchemaItem[] => {
+//         if (visited.has(currentNodeId)) return [];
+//         visited.add(currentNodeId);
+
+//         const incomingConnections = connections.filter(
+//           (conn) => conn.targetId === currentNodeId
+//         );
+
+//         let collectedOutputs: SchemaItem[] = [];
+
+//         for (const conn of incomingConnections) {
+//           const sourceNode = nodes.find((n) => n.id === conn.sourceId);
+//           if (sourceNode) {
+//             const sourceSchema = getNodeSchema(sourceNode.type);
+
+//             if (sourceSchema?.outputSchema) {
+//               sourceSchema.outputSchema.forEach((outputItem) => {
+//                 const uniqueName = `${
+//                   sourceNode.data?.label || sourceNode.type
+//                 } - ${outputItem.name}`;
+//                 collectedOutputs.push({
+//                   ...outputItem,
+//                   name: uniqueName,
+//                   description: `${outputItem.description || ""} (from ${
+//                     sourceNode.data?.label || sourceNode.type
+//                   })`,
+//                   originalName: outputItem.name,
+//                   sourceNodeId: sourceNode.id,
+//                 });
+//               });
+//             }
+
+//             // Recursively collect outputs from further upstream
+//             const upstreamOutputs = findAllUpstreamOutputs(
+//               sourceNode.id,
+//               visited
+//             );
+//             collectedOutputs = collectedOutputs.concat(upstreamOutputs);
+//           }
+//         }
+
+//         return collectedOutputs;
+//       };
+
+//       const availableInputs = findAllUpstreamOutputs(nodeId);
+
+//       setSchemaModalData({
+//         nodeId,
+//         nodeType,
+//         baseInputSchema: baseSchema.inputSchema || [],
+//         baseOutputSchema: baseSchema.outputSchema || [],
+//         availableInputsFromPrevious: availableInputs,
+//         nodeLabel: targetNode.data?.label || nodeType,
+//       });
+//       setIsSchemaModalOpen(true); // Make sure to open the modal
+//     },
+//     [nodes, connections]
+//   );
+
+//   const handleCloseSchemaModal = () => {
+//     setSchemaModalData(null);
+//     setIsSchemaModalOpen(false);
+//   };
+
+//   // Handle node drop from palette
+//   const handleDrop = useCallback(
+//     (e: React.DragEvent) => {
+//       e.preventDefault();
+
+//       const nodeType = e.dataTransfer.getData("nodeType") as NodeType;
+//       if (!nodeType) return;
+
+//       const canvasRect = canvasRef.current?.getBoundingClientRect();
+//       if (!canvasRect) return;
+
+//       // Calculate position relative to canvas, accounting for scroll and zoom
+//       const x = (e.clientX - canvasRect.left) / canvasScale - canvasOffset.x;
+//       const y = (e.clientY - canvasRect.top) / canvasScale - canvasOffset.y;
+
+//       addNode(nodeType, { x, y });
+//     },
+//     [addNode, canvasScale, canvasOffset]
+//   );
+
+//   // Handle drag over for drop target
+//   const handleDragOver = useCallback((e: React.DragEvent) => {
+//     e.preventDefault();
+//   }, []);
+
+//   // start node dragging
+//   const startNodeDrag = useCallback(
+//     (nodeId: string, e: React.MouseEvent) => {
+//       const node = nodes.find((n) => n.id === nodeId);
+//       if (!node) return;
+
+//       setIsDragging(true);
+//       selectNode(nodeId);
+
+//       const canvasRect = canvasRef.current?.getBoundingClientRect();
+//       if (!canvasRect) return;
+
+//       // Calculate offset between mouse and node position
+//       const x = e.clientX - canvasRect.left - node.position.x * canvasScale;
+//       const y = e.clientY - canvasRect.top - node.position.y * canvasScale;
+
+//       setDragOffset({ x, y });
+//     },
+//     [nodes, selectNode, canvasScale]
+//   );
+
+//   // Handle mouse move for node dragging and pending connection
+//   const handleMouseMove = useCallback(
+//     (e: MouseEvent) => {
+//       const canvasRect = canvasRef.current?.getBoundingClientRect();
+//       if (!canvasRect) return;
+
+//       // Update mouse position for pending connection line
+//       const x = (e.clientX - canvasRect.left) / canvasScale;
+//       const y = (e.clientY - canvasRect.top) / canvasScale;
+//       setMousePosition({ x, y });
+
+//       // Handle node dragging
+//       if (isDragging && selectedNodeId) {
+//         // Calculate new position, accounting for scale and offset
+//         const x = (e.clientX - canvasRect.left - dragOffset.x) / canvasScale;
+//         const y = (e.clientY - canvasRect.top - dragOffset.y) / canvasScale;
+
+//         updateNode(selectedNodeId, {
+//           position: { x, y },
+//         });
+//       }
+//     },
+//     [isDragging, selectedNodeId, dragOffset, updateNode, canvasScale]
+//   );
+
+//   // Handle mouse up to end dragging
+//   const handleMouseUp = useCallback(() => {
+//     setIsDragging(false);
+//   }, []);
+
+//   // Handle canvas click to cancel pending connection
+//   const handleCanvasClick = useCallback(() => {
+//     if (pendingConnection) {
+//       setPendingConnection(null);
+//     } else {
+//       selectNode(null);
+//       setModalOpen(false);
+//     }
+//   }, [pendingConnection, setPendingConnection, selectNode]);
+
+//   // Set up event listeners
+//   useEffect(() => {
+//     const handleGlobalMouseMove = (e: MouseEvent) => {
+//       handleMouseMove(e);
+//     };
+
+//     const handleGlobalMouseUp = () => {
+//       handleMouseUp();
+//     };
+
+//     const handleKeyDown = (e: KeyboardEvent) => {
+//       if (e.key === "Escape") {
+//         setPendingConnection(null);
+//         setSideModalOpen(false);
+//         setModalOpen(false);
+//         setIsSchemaModalOpen(false);
+//       }
+//     };
+
+//     window.addEventListener("mousemove", handleGlobalMouseMove);
+//     window.addEventListener("mouseup", handleGlobalMouseUp);
+//     window.addEventListener("keydown", handleKeyDown);
+
+//     return () => {
+//       window.removeEventListener("mousemove", handleGlobalMouseMove);
+//       window.removeEventListener("mouseup", handleGlobalMouseUp);
+//       window.removeEventListener("keydown", handleKeyDown);
+//     };
+//   }, [handleMouseMove, handleMouseUp, setPendingConnection]);
+
+//   // Handle zoom with mouse wheel
+//   const handleWheel = useCallback(
+//     (e: React.WheelEvent) => {
+//       e.preventDefault();
+
+//       // Calculate zoom factor
+//       const delta = e.deltaY > 0 ? 0.9 : 1.1;
+//       const newScale = Math.max(0.5, Math.min(2, canvasScale * delta));
+
+//       // Calculate mouse position relative to canvas
+//       const canvasRect = canvasRef.current?.getBoundingClientRect();
+//       if (!canvasRect) return;
+
+//       const mouseX = e.clientX - canvasRect.left;
+//       const mouseY = e.clientY - canvasRect.top;
+
+//       // Calculate new offset to zoom toward mouse position
+//       const newOffsetX =
+//         mouseX / newScale - (mouseX / canvasScale - canvasOffset.x);
+//       const newOffsetY =
+//         mouseY / newScale - (mouseY / canvasScale - canvasOffset.y);
+
+//       setCanvasScale(newScale);
+//       setCanvasOffset({ x: newOffsetX, y: newOffsetY });
+//     },
+//     [canvasScale, canvasOffset]
+//   );
+
+//   // Find source node for pending connection
+//   const getPendingConnectionSourceNode = useCallback(() => {
+//     if (!pendingConnection) return null;
+//     return nodes.find((node) => node.id === pendingConnection.sourceId);
+//   }, [pendingConnection, nodes]);
+
+//   // Handle inserting a node into a connection
+//   const handleInsertNode = useCallback(
+//     (connection: NodeConnection, position: { x: number; y: number }) => {
+//       setConnectionToSplit(connection);
+//       setInsertPosition(position);
+//       setSideModalOpen(true);
+//     },
+//     []
+//   );
+
+//   // Handle node selection from palette for insertion
+//   const handleNodeTypeSelect = useCallback(
+//     (nodeType: NodeType) => {
+//       if (connectionToSplit) {
+//         // Create the new node
+//         const newNodeId = addNode(nodeType, insertPosition);
+
+//         // Create connections from source to new node and from new node to target
+//         addConnection(connectionToSplit.sourceId, newNodeId);
+//         addConnection(newNodeId, connectionToSplit.targetId);
+
+//         // Remove the original connection
+//         removeConnection(connectionToSplit.id);
+
+//         // Reset state
+//         setConnectionToSplit(null);
+//       } else {
+//         // Add node in the center of the canvas if no position specified
+//         const canvasRect = canvasRef.current?.getBoundingClientRect();
+//         if (canvasRect) {
+//           const centerX = canvasRect.width / 2 / canvasScale - canvasOffset.x;
+//           const centerY = canvasRect.height / 2 / canvasScale - canvasOffset.y;
+//           addNode(nodeType, { x: centerX, y: centerY });
+//         }
+//       }
+
+//       // Close the side modal
+//       setSideModalOpen(false);
+//     },
+//     [
+//       connectionToSplit,
+//       insertPosition,
+//       addNode,
+//       addConnection,
+//       removeConnection,
+//       canvasScale,
+//       canvasOffset,
+//     ]
+//   );
+
+//   // Handle executing a single node
+//   const handleExecuteNode = useCallback(
+//     (nodeId: string) => {
+//       setExecutingNodeId(nodeId);
+//       setExecutionModalOpen(true);
+
+//       // Execute the node
+//       executeNode(nodeId);
+//     },
+//     [executeNode]
+//   );
+
+//   // Toggle Side Modal
+//   const toggleSideModal = useCallback(() => {
+//     setSideModalOpen((prev) => !prev);
+//   }, []);
+
+//   // Open properties panel when double-clicking on node icon
+//   const handleOpenProperties = useCallback(
+//     (nodeId: string) => {
+//       selectNode(nodeId);
+//       setModalOpen(true);
+//     },
+//     [selectNode]
+//   );
+
+//   // Close properties panel
+//   const handleCloseProperties = useCallback(() => {
+//     setModalOpen(false);
+//   }, []);
+
+//   function DotsBackground() {
+//     return (
+//       <svg
+//         className="absolute inset-0 pointer-events-none"
+//         xmlns="http://www.w3.org/2000/svg"
+//         style={{
+//           width: "100%",
+//           height: "100%",
+//         }}
+//       >
+//         <defs>
+//           <pattern
+//             id="dot-grid"
+//             width="20"
+//             height="20"
+//             patternUnits="userSpaceOnUse"
+//           >
+//             <circle cx="1" cy="1" r="1.2" fill="rgba(38, 37, 37, 0.2)" />
+//           </pattern>
+//         </defs>
+//         <rect width="100%" height="100%" fill="url(#dot-grid)" />
+//       </svg>
+//     );
+//   }
+
+//   return (
+//     <div className="relative flex-1 overflow-hidden bg-blue">
+//       {/* Add Button in top-right corner */}
+//       <div className="absolute top-4 right-4 z-10">
+//         <Button
+//           onClick={toggleSideModal}
+//           variant="outline"
+//           size="icon"
+//           className=" bg-white shadow-md hover:bg-gray-100"
+//         >
+//           <Plus className="h-4 w-4" />
+//         </Button>
+//       </div>
+
+//       <div
+//         ref={canvasRef}
+//         className="h-full w-full overflow-hidden"
+//         onDrop={handleDrop}
+//         onDragOver={handleDragOver}
+//         onWheel={handleWheel}
+//         onClick={handleCanvasClick}
+//       >
+//         <DotsBackground />
+//         <div
+//           className="h-full w-full"
+//           style={{
+//             transform: `scale(${canvasScale}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
+//             transformOrigin: "0 0",
+//           }}
+//         >
+//           {/* Connections */}
+//           <svg className="absolute h-full w-full pointer-events-none">
+//             {connections.map((connection) => {
+//               const source = nodes.find((n) => n.id === connection.sourceId);
+//               const target = nodes.find((n) => n.id === connection.targetId);
+
+//               if (!source || !target) return null;
+
+//               // Skip connections to/from inactive nodes
+//               if (
+//                 source.data?.active === false ||
+//                 target.data?.active === false
+//               ) {
+//                 return null;
+//               }
+
+//               return (
+//                 <ConnectionLine
+//                   key={connection.id}
+//                   connection={connection}
+//                   sourceNode={source}
+//                   targetNode={target}
+//                   onDelete={() => removeConnection(connection.id)}
+//                   onInsertNode={handleInsertNode}
+//                 />
+//               );
+//             })}
+
+//             {/* Pending connection line */}
+//             {pendingConnection && (
+//               <PendingConnectionLine
+//                 sourceNode={getPendingConnectionSourceNode() ?? null}
+//                 mousePosition={mousePosition}
+//               />
+//             )}
+//           </svg>
+
+//           {/* Nodes */}
+//           {nodes.map((node) => (
+//             <NodeComponent
+//               key={node.id}
+//               node={node}
+//               selected={node.id === selectedNodeId}
+//               isConnecting={
+//                 !!pendingConnection && pendingConnection.sourceId === node.id
+//               }
+//               // Pass down callbacks
+//               onSelect={() => {
+//                 // Prevent select if modal open
+//                 if (
+//                   isSchemaModalOpen ||
+//                   propertiesPanelOpen ||
+//                   sideModalOpen ||
+//                   executionModalOpen
+//                 )
+//                   return;
+//                 selectNode(node.id);
+//               }}
+//               onDragStart={startNodeDrag} // Already checks for modals
+//               onExecuteNode={handleExecuteNode} // Already checks for modals
+//               onOpenProperties={handleOpenProperties} // Already checks for modals
+//               onOpenSchemaModal={handleOpenSchemaModal} // Pass the handler
+//             />
+//           ))}
+//         </div>
+//       </div>
+
+//       {/* Connection helper text */}
+//       {pendingConnection && (
+//         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm z-50">
+//           Click on an input port to complete connection • Press ESC to cancel
+//         </div>
+//       )}
+
+//       {/* Node Modal */}
+//       {selectedNodeId && (
+//         <NodeModal
+//           nodeId={selectedNodeId}
+//           isOpen={modalOpen}
+//           onClose={handleCloseProperties}
+//         />
+//       )}
+
+//       {/* Side modal for adding nodes */}
+//       <SideModal
+//         isOpen={sideModalOpen}
+//         onClose={() => setSideModalOpen(false)}
+//         onSelectNodeType={handleNodeTypeSelect}
+//       />
+
+//       {/* Execution modal */}
+//       <ExecutionModal
+//         isOpen={executionModalOpen}
+//         onClose={() => setExecutionModalOpen(false)}
+//         nodeId={executingNodeId}
+//       />
+
+//       {/* Schema Modal */}
+//       {schemaModalData && (
+//         <SchemaModal
+//           nodeId={schemaModalData.nodeId}
+//           nodeType={schemaModalData.nodeType}
+//           nodeLabel={schemaModalData.nodeLabel}
+//           baseInputSchema={schemaModalData.baseInputSchema}
+//           baseOutputSchema={schemaModalData.baseOutputSchema}
+//           availableInputsFromPrevious={
+//             schemaModalData.availableInputsFromPrevious
+//           }
+//           onClose={handleCloseSchemaModal}
+//         />
+//       )}
+//     </div>
+//   );
+// }
+
+// // Component for rendering the pending connection line
+// function PendingConnectionLine({
+//   sourceNode,
+//   mousePosition,
+// }: {
+//   sourceNode: WorkflowNode | null;
+//   mousePosition: { x: number; y: number };
+// }) {
+//   if (!sourceNode) return null;
+
+//   // Calculate the starting point of the connection
+//   const sourceX = sourceNode.position.x + 100; // Node width is 100px
+//   const sourceY = sourceNode.position.y + 50; // Node height is 100px, port at middle
+
+//   // Create a bezier curve path from source to mouse position
+//   const controlPointOffset = 60;
+//   const sourceControlX = sourceX + controlPointOffset;
+//   const targetControlX = mousePosition.x - controlPointOffset;
+
+//   const path = `M ${sourceX} ${sourceY} C ${sourceControlX} ${sourceY}, ${targetControlX} ${mousePosition.y}, ${mousePosition.x} ${mousePosition.y}`;
+
+//   return (
+//     <path
+//       d={path}
+//       stroke="#3b82f6"
+//       strokeWidth="2"
+//       strokeDasharray="5,5"
+//       fill="none"
+//     />
+//   );
+// }
+
+
 "use client";
 
 import type React from "react";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import {
   useWorkflow,
-  type WorkflowNode as ContextWorkflowNode,
-  type NodeConnection as ContextNodeConnection,
-  type DAG,
-  type WorkflowNodeData, // Assuming WorkflowNodeData is exported from context
-} from "@/components/workflow/workflow-context";
-import { NodeComponent } from "@/components/workflow/node-component"; // Removed type NodeComponentProps as it's defined in node-component
-import { ConnectionLine } from "@/components/workflow/connection-line"; // Removed type ConnectionLineProps
-import { NodeModal } from "@/components/workflow/node-modal";
-import { SideModal } from "@/components/workflow/sidemodal";
-import { Minimap } from "@/components/minimap/Minimap";
+  type WorkflowNode,
+  type NodeConnection,
+} from "./workflow-context";
+import { NodeComponent } from "./node-component";
+import { ConnectionLine } from "./connection-line";
+import { NodeModal } from "./node-modal";
+import { ExecutionModal } from "./execution-modal";
+import { SideModal } from "./sidemodal";
+import SchemaModal from "./SchemaModal";
+import { getNodeSchema } from "./nodeSchemas";
+import {
+  type SchemaItem,
+  type SchemaModalData,
+  NodeType,
+} from "@/services/interface";
+
+// Lucide Icons for UI controls
 import {
   Plus,
   ZoomIn,
@@ -21,8 +654,10 @@ import {
   RotateCcw,
   Maximize2,
   Grid3X3,
-  Play,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+// Assuming UI components from a library like shadcn/ui
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -31,294 +666,266 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  type SchemaItem,
-  type SchemaModalData,
-  NodeType,
-} from "@/services/interface";
-import SchemaModal from "@/components/workflow/SchemaModal";
-import { getNodeSchema } from "@/components/workflow/nodeSchemas";
 
+// Define representative node dimensions (adjust if necessary)
 const NODE_WIDTH = 100;
-const NODE_HEIGHT = 60; // Base height, name display adds more
+const NODE_HEIGHT = 100; // NodeComponent port is at Y=50, implying height could be 100
 
-interface CanvasOffset {
-  x: number;
-  y: number;
-}
-
-interface WorkflowEditorProps {
-  initialDagData?: DAG;
-  onClose?: () => void;
-  dagId?: string;
-}
-
-// Ensure WorkflowNodeData in context includes this if you use it
-// interface WorkflowNodeDataExtended extends WorkflowNodeData {
-//   fieldMappings?: Record<string, string>; // Example type for mappings
-// }
-
-export function WorkflowEditor({
-  initialDagData,
-  onClose,
-  dagId,
-}: WorkflowEditorProps) {
+export function WorkflowEditor() {
   const {
     nodes,
     connections,
     selectedNodeId,
     pendingConnection,
     setPendingConnection,
-    propertiesModalNodeId,
-    setPropertiesModalNodeId,
-    dataMappingModalNodeId,
-    setDataMappingModalNodeId,
-    draggingNodeInfo,
-    setDraggingNodeInfo,
     addNode,
     updateNode,
-    removeConnection,
-    addConnection,
     selectNode,
+    removeConnection,
     executeNode,
-    getNodeById,
-    loadWorkflowFromDAG,
-    clearWorkflow,
-    runWorkflow,
-    removeNode,
+    addConnection,
   } = useWorkflow();
 
-  const [canvasOffset, setCanvasOffset] = useState<CanvasOffset>({
-    x: 0,
-    y: 0,
-  });
-  const [canvasScale, setCanvasScale] = useState(1);
-  const [isPanning, setIsPanning] = useState(false);
-  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-
-  const [isSideModalOpen, setIsSideModalOpen] = useState(false);
-  const [showMinimap, setShowMinimap] = useState(true);
-  const [showGrid, setShowGrid] = useState(true);
-  const [gridSize] = useState(20);
-
   const canvasRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 }); // In content coordinates (pre-scale)
+  const [canvasScale, setCanvasScale] = useState(1);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [sideModalOpen, setSideModalOpen] = useState(false);
+  const [insertPosition, setInsertPosition] = useState<{
+    x: number;
+    y: number;
+  }>({ x: 0, y: 0 });
+  const [connectionToSplit, setConnectionToSplit] =
+    useState<NodeConnection | null>(null);
+  const [executionModalOpen, setExecutionModalOpen] = useState(false);
+  const [executingNodeId, setExecutingNodeId] = useState<string | null>(null);
+  // const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false); // Not used directly in new controls
+  const [activeNodeForModal, setActiveNodeForModal] =
+    useState<WorkflowNode | null>(null);
 
-  const [insertContext, setInsertContext] = useState<{
-    connection: ContextNodeConnection;
-    position: { x: number; y: number };
-  } | null>(null);
+  const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
+  // const [nodeTypeForSchemaModal, setNodeTypeForSchemaModal] = useState<NodeType | null>(null); // Not used
+  const [modalOpen, setModalOpen] = useState(false); // For NodeModal (properties)
+  const [schemaModalData, setSchemaModalData] =
+    useState<SchemaModalData | null>(null);
 
-  useEffect(() => {
-    if (initialDagData) {
-      if (clearWorkflow) clearWorkflow();
-      loadWorkflowFromDAG(initialDagData).catch((err) => {
-        console.error("WorkflowEditor: Error loading initial DAG data", err);
-      });
-    } else if (dagId && !nodes.length && !initialDagData) {
-      console.warn(
-        `WorkflowEditor: dagId ${dagId} provided but no fetching logic implemented yet to load by ID directly.`
-      );
-    }
-  }, [initialDagData, loadWorkflowFromDAG, clearWorkflow, dagId, nodes.length]);
+  // Grid and Minimap State
+  const [gridSize] = useState(20); // Base grid size in pixels at 1x zoom
+  const [showGrid, setShowGrid] = useState(true);
+  const [showMinimap, setShowMinimap] = useState(true);
 
   const dynamicGridSize = useMemo(() => {
     const baseSize = gridSize;
     if (canvasScale < 0.5) return baseSize * 4;
     if (canvasScale < 0.75) return baseSize * 2;
-    if (canvasScale > 2) return baseSize / 2;
+    if (canvasScale > 2) return baseSize / 2; // For scales up to 2.5
     return baseSize;
   }, [gridSize, canvasScale]);
 
-  const canvasBackground = useMemo(() => {
-    if (!showGrid)
-      return {
-        background:
-          "radial-gradient(circle at center, rgba(59, 130, 246, 0.03) 0%, transparent 70%)",
-      };
+  const canvasBackgroundStyle = useMemo(() => {
+    const plainBgColor = "hsl(var(--background))"; // Example: using CSS var for background
+                                                  // or specific: '#f0f4f8' (light blueish gray)
+
+    if (!showGrid) {
+      return { backgroundColor: plainBgColor };
+    }
+
     const smallGrid = dynamicGridSize;
     const largeGrid = smallGrid * 5;
-    const baseOpacity = 0.5;
-    const adjustedOpacity = Math.min(canvasScale * 0.7, 1) * baseOpacity;
+    const baseOpacity = 0.4; // Adjusted for better visibility
+    const lineOpacity = Math.min(1, canvasScale * 0.6) * baseOpacity;
 
     return {
       backgroundImage: `
-            radial-gradient(circle at center, rgba(59, 130, 246, 0.03) 0%, transparent 60%),
             linear-gradient(rgba(200, 200, 200, ${
-              adjustedOpacity * 0.3
-            }) 1px, transparent 1px),
+              lineOpacity * 0.5
+            }) 0.5px, transparent 0.5px),
             linear-gradient(90deg, rgba(200, 200, 200, ${
-              adjustedOpacity * 0.3
-            }) 1px, transparent 1px),
-            linear-gradient(rgba(180, 180, 180, ${
-              adjustedOpacity * 0.6
-            }) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(180, 180, 180, ${
-              adjustedOpacity * 0.6
-            }) 1px, transparent 1px)
+              lineOpacity * 0.5
+            }) 0.5px, transparent 0.5px),
+            linear-gradient(rgba(180, 180, 180, ${lineOpacity}) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(180, 180, 180, ${lineOpacity}) 1px, transparent 1px)
         `,
-      backgroundSize: `100% 100%, ${smallGrid}px ${smallGrid}px, ${smallGrid}px ${smallGrid}px, ${largeGrid}px ${largeGrid}px, ${largeGrid}px ${largeGrid}px`,
-      backgroundPosition: `center center, ${canvasOffset.x}px ${canvasOffset.y}px, ${canvasOffset.x}px ${canvasOffset.y}px, ${canvasOffset.x}px ${canvasOffset.y}px, ${canvasOffset.x}px ${canvasOffset.y}px`,
+      backgroundSize: `
+            ${smallGrid}px ${smallGrid}px,
+            ${smallGrid}px ${smallGrid}px,
+            ${largeGrid}px ${largeGrid}px,
+            ${largeGrid}px ${largeGrid}px
+        `,
+      backgroundPosition: `
+            ${canvasOffset.x * canvasScale}px ${canvasOffset.y * canvasScale}px,
+            ${canvasOffset.x * canvasScale}px ${canvasOffset.y * canvasScale}px,
+            ${canvasOffset.x * canvasScale}px ${canvasOffset.y * canvasScale}px,
+            ${canvasOffset.x * canvasScale}px ${canvasOffset.y * canvasScale}px
+        `,
+      backgroundColor: plainBgColor,
     };
   }, [canvasOffset, canvasScale, dynamicGridSize, showGrid]);
 
-  const handleCanvasMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.button === 1 || (e.button === 0 && (e.ctrlKey || e.metaKey))) {
-        e.preventDefault();
-        setIsPanning(true);
-        setLastPanPoint({ x: e.clientX, y: e.clientY });
-        if (canvasRef.current) canvasRef.current.style.cursor = "grabbing";
-      } else if (e.button === 0 && e.target === e.currentTarget) {
-        if (selectNode) selectNode(null);
-        if (setPendingConnection) setPendingConnection(null);
-      }
-    },
-    [selectNode, setPendingConnection]
-  );
-
-  const handleCanvasMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (isPanning) {
-        const deltaX = e.clientX - lastPanPoint.x;
-        const deltaY = e.clientY - lastPanPoint.y;
-        setCanvasOffset((prev) => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
-        setLastPanPoint({ x: e.clientX, y: e.clientY });
-      }
-      if (pendingConnection && canvasRef.current) {
-        const rect = canvasRef.current.getBoundingClientRect();
-        const x = (e.clientX - rect.left - canvasOffset.x) / canvasScale;
-        const y = (e.clientY - rect.top - canvasOffset.y) / canvasScale;
-        setMousePosition({ x, y });
-      }
-    },
-    [
-      isPanning,
-      lastPanPoint,
-      pendingConnection,
-      canvasOffset.x,
-      canvasOffset.y,
-      canvasScale,
-    ]
-  );
-
-  const handleCanvasMouseUp = useCallback(() => {
-    if (isPanning) {
-      setIsPanning(false);
-      if (canvasRef.current) canvasRef.current.style.cursor = "grab";
-    }
-  }, [isPanning]);
-
-  const handleCanvasWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.preventDefault();
-      const scrollSensitivity = 0.1;
-      const delta =
-        e.deltaY > 0 ? 1 - scrollSensitivity : 1 + scrollSensitivity;
-      const newScale = Math.max(0.2, Math.min(2.5, canvasScale * delta));
-
-      if (canvasRef.current) {
-        const rect = canvasRef.current.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-
-        const newOffsetX =
-          mouseX - (mouseX - canvasOffset.x) * (newScale / canvasScale);
-        const newOffsetY =
-          mouseY - (mouseY - canvasOffset.y) * (newScale / canvasScale);
-
-        setCanvasOffset({ x: newOffsetX, y: newOffsetY });
-        setCanvasScale(newScale);
-      }
-    },
-    [canvasScale, canvasOffset.x, canvasOffset.y]
-  );
-
-  const handleNodeDragStart = useCallback(
-    (nodeId: string, e: React.MouseEvent) => {
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect || !getNodeById) return;
-      const node = getNodeById(nodeId);
-      if (!node) return;
-
-      const mouseCanvasX =
-        (e.clientX - rect.left - canvasOffset.x) / canvasScale;
-      const mouseCanvasY =
-        (e.clientY - rect.top - canvasOffset.y) / canvasScale;
-
-      const offsetX = mouseCanvasX - node.position.x;
-      const offsetY = mouseCanvasY - node.position.y;
-
-      if (setDraggingNodeInfo)
-        setDraggingNodeInfo({ id: nodeId, offset: { x: offsetX, y: offsetY } });
-      if (selectNode) selectNode(nodeId);
-    },
-    [canvasOffset, canvasScale, getNodeById, setDraggingNodeInfo, selectNode]
-  );
-
-  useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      if (draggingNodeInfo && canvasRef.current && updateNode) {
-        const rect = canvasRef.current.getBoundingClientRect();
-        const newX =
-          (e.clientX - rect.left - canvasOffset.x) / canvasScale -
-          draggingNodeInfo.offset.x;
-        const newY =
-          (e.clientY - rect.top - canvasOffset.y) / canvasScale -
-          draggingNodeInfo.offset.y;
-        updateNode(draggingNodeInfo.id, { position: { x: newX, y: newY } });
-      }
-    };
-
-    const handleGlobalMouseUp = (e: MouseEvent) => {
-      if (draggingNodeInfo && setDraggingNodeInfo) {
-        setDraggingNodeInfo(null);
-      }
-      if (isPanning) {
-        setIsPanning(false);
-        if (canvasRef.current) canvasRef.current.style.cursor = "grab";
-      }
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const targetElement = e.target as HTMLElement;
-      const isInputFocused =
-        targetElement.tagName === "INPUT" ||
-        targetElement.tagName === "TEXTAREA" ||
-        targetElement.isContentEditable;
-
-      if (e.key === "Escape") {
-        if (setPendingConnection) setPendingConnection(null);
-        setIsSideModalOpen(false);
-        if (setPropertiesModalNodeId) setPropertiesModalNodeId(null);
-        if (setDataMappingModalNodeId) setDataMappingModalNodeId(null);
-        if (selectNode) selectNode(null);
-        setInsertContext(null);
+  const handleOpenSchemaModal = useCallback(/* ... as in your original code ... */
+    (nodeId: string) => {
+      const targetNode = nodes.find((n) => n.id === nodeId);
+      if (!targetNode) {
+        console.error("Target node not found for schema modal:", nodeId);
+        return;
       }
 
-      if (
-        !isInputFocused &&
-        (e.key === "Delete" || e.key === "Backspace") &&
-        selectedNodeId &&
-        removeNode &&
-        removeConnection &&
-        getNodeById
-      ) {
-        e.preventDefault();
-        const node = getNodeById(selectedNodeId);
-        if (node && node.type !== "start" && node.type !== "end") {
-          const connectionsToDelete = connections.filter(
-            (conn) =>
-              conn.sourceId === selectedNodeId ||
-              conn.targetId === selectedNodeId
-          );
-          connectionsToDelete.forEach((conn) => removeConnection(conn.id));
-          removeNode(selectedNodeId);
-          if (selectNode) selectNode(null);
+      const nodeType = targetNode.type;
+      const baseSchema = getNodeSchema(nodeType);
+
+      if (!baseSchema) {
+        console.warn("Schema not found for node type:", nodeType, "- using empty schema.");
+        setSchemaModalData({
+           nodeId,
+          nodeType,
+          baseInputSchema: [],
+          baseOutputSchema: [],
+          availableInputsFromPrevious: [],
+          nodeLabel: targetNode.data?.label || nodeType,
+        });
+        setIsSchemaModalOpen(true);
+        return;
+      }
+      const findAllUpstreamOutputs = (
+        currentNodeId: string,
+        visited = new Set<string>()
+      ): SchemaItem[] => {
+        if (visited.has(currentNodeId)) return [];
+        visited.add(currentNodeId);
+
+        const incomingConnections = connections.filter(
+          (conn) => conn.targetId === currentNodeId
+        );
+        let collectedOutputs: SchemaItem[] = [];
+        for (const conn of incomingConnections) {
+          const sourceNode = nodes.find((n) => n.id === conn.sourceId);
+          if (sourceNode) {
+            const sourceSchema = getNodeSchema(sourceNode.type);
+            if (sourceSchema?.outputSchema) {
+              sourceSchema.outputSchema.forEach((outputItem) => {
+                const uniqueName = `${
+                  sourceNode.data?.label || sourceNode.type
+                } - ${outputItem.name}`;
+                collectedOutputs.push({
+                  ...outputItem,
+                  name: uniqueName,
+                  description: `${outputItem.description || ""} (from ${
+                    sourceNode.data?.label || sourceNode.type
+                  })`,
+                  originalName: outputItem.name,
+                  sourceNodeId: sourceNode.id,
+                });
+              });
+            }
+            const upstreamOutputs = findAllUpstreamOutputs(
+              sourceNode.id,
+              visited
+            );
+            collectedOutputs = collectedOutputs.concat(upstreamOutputs);
+          }
         }
+        return collectedOutputs;
+      };
+      const availableInputs = findAllUpstreamOutputs(nodeId);
+      setSchemaModalData({
+        nodeId,
+        nodeType,
+        baseInputSchema: baseSchema.inputSchema || [],
+        baseOutputSchema: baseSchema.outputSchema || [],
+        availableInputsFromPrevious: availableInputs,
+        nodeLabel: targetNode.data?.label || nodeType,
+      });
+      setIsSchemaModalOpen(true);
+    },
+    [nodes, connections]
+  );
+
+  const handleCloseSchemaModal = () => {
+    setSchemaModalData(null);
+    setIsSchemaModalOpen(false);
+  };
+
+  const handleDrop = useCallback(/* ... as in your original code ... */
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const nodeType = e.dataTransfer.getData("nodeType") as NodeType;
+      if (!nodeType) return;
+      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      if (!canvasRect) return;
+      const x = (e.clientX - canvasRect.left) / canvasScale - canvasOffset.x;
+      const y = (e.clientY - canvasRect.top) / canvasScale - canvasOffset.y;
+      addNode(nodeType, { x, y });
+    },
+    [addNode, canvasScale, canvasOffset]
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => e.preventDefault(), []);
+
+  const startNodeDrag = useCallback(/* ... as in your original code ... */
+    (nodeId: string, e: React.MouseEvent) => {
+      const node = nodes.find((n) => n.id === nodeId);
+      if (!node) return;
+      setIsDragging(true);
+      selectNode(nodeId);
+      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      if (!canvasRect) return;
+      // Offset is mouse position relative to top-left of node, scaled by current zoom
+      const scaledNodeX = node.position.x * canvasScale + canvasOffset.x * canvasScale;
+      const scaledNodeY = node.position.y * canvasScale + canvasOffset.y * canvasScale;
+      setDragOffset({
+        x: e.clientX - canvasRect.left - scaledNodeX,
+        y: e.clientY - canvasRect.top - scaledNodeY,
+      });
+    },
+    [nodes, selectNode, canvasScale, canvasOffset]
+  );
+
+  const handleMouseMove = useCallback(/* ... as in your original code ... */
+    (e: MouseEvent) => {
+      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      if (!canvasRect) return;
+
+      const currentMouseX = (e.clientX - canvasRect.left);
+      const currentMouseY = (e.clientY - canvasRect.top);
+
+      setMousePosition({
+        x: (currentMouseX / canvasScale) - canvasOffset.x,
+        y: (currentMouseY / canvasScale) - canvasOffset.y,
+      });
+
+      if (isDragging && selectedNodeId) {
+        const newX = (currentMouseX - dragOffset.x) / canvasScale - canvasOffset.x;
+        const newY = (currentMouseY - dragOffset.y) / canvasScale - canvasOffset.y;
+        updateNode(selectedNodeId, { position: { x: newX, y: newY } });
+      }
+    },
+    [isDragging, selectedNodeId, dragOffset, updateNode, canvasScale, canvasOffset]
+  );
+
+  const handleMouseUp = useCallback(() => setIsDragging(false), []);
+
+  const handleCanvasClick = useCallback(() => {
+    if (pendingConnection) {
+      setPendingConnection(null);
+    } else {
+      selectNode(null);
+      setModalOpen(false); // Close NodeModal (properties)
+    }
+  }, [pendingConnection, setPendingConnection, selectNode]);
+
+  useEffect(() => { /* ... event listeners as in your original code ... */
+    const handleGlobalMouseMove = (e: MouseEvent) => handleMouseMove(e);
+    const handleGlobalMouseUp = () => handleMouseUp();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setPendingConnection(null);
+        setSideModalOpen(false);
+        setModalOpen(false); // Close NodeModal
+        setIsSchemaModalOpen(false); // Close SchemaModal
       }
     };
-
     window.addEventListener("mousemove", handleGlobalMouseMove);
     window.addEventListener("mouseup", handleGlobalMouseUp);
     window.addEventListener("keydown", handleKeyDown);
@@ -327,515 +934,483 @@ export function WorkflowEditor({
       window.removeEventListener("mouseup", handleGlobalMouseUp);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [
-    draggingNodeInfo,
-    canvasOffset,
-    canvasScale,
-    updateNode,
-    setDraggingNodeInfo,
-    setPendingConnection,
-    isPanning,
-    selectNode,
-    selectedNodeId,
-    setPropertiesModalNodeId,
-    setDataMappingModalNodeId,
-    removeConnection,
-    removeNode,
-    getNodeById,
-    connections,
-  ]);
+  }, [handleMouseMove, handleMouseUp, setPendingConnection]);
 
-  const handleZoomIn = () =>
-    setCanvasScale((prev) => Math.min(2.5, prev * 1.2));
-  const handleZoomOut = () =>
-    setCanvasScale((prev) => Math.max(0.2, prev / 1.2));
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      e.preventDefault();
+      const scrollSensitivity = 0.1; // Make it consistent with first example
+      const deltaFactor = e.deltaY > 0 ? 1 - scrollSensitivity : 1 + scrollSensitivity;
+      const newScale = Math.max(0.2, Math.min(2.5, canvasScale * deltaFactor));
+
+      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      if (!canvasRect) return;
+
+      const mouseX = e.clientX - canvasRect.left; // Mouse position relative to viewport
+      const mouseY = e.clientY - canvasRect.top;
+
+      // Calculate new offset to zoom towards mouse position
+      // Tx_new = (MouseX_vp / S_new) - (MouseX_vp / S_old - Tx_old)
+      const newOffsetX = mouseX / newScale - (mouseX / canvasScale - canvasOffset.x);
+      const newOffsetY = mouseY / newScale - (mouseY / canvasScale - canvasOffset.y);
+
+      setCanvasScale(newScale);
+      setCanvasOffset({ x: newOffsetX, y: newOffsetY });
+    },
+    [canvasScale, canvasOffset]
+  );
+
+  const getPendingConnectionSourceNode = useCallback(() => {
+    if (!pendingConnection) return null;
+    return nodes.find((node) => node.id === pendingConnection.sourceId) || null;
+  }, [pendingConnection, nodes]);
+
+  const handleInsertNode = useCallback(/* ... as in your original code ... */
+    (connection: NodeConnection, position: { x: number; y: number }) => {
+      setConnectionToSplit(connection);
+      setInsertPosition(position);
+      setSideModalOpen(true);
+    }, []
+  );
+
+  const handleNodeTypeSelect = useCallback(/* ... as in your original code ... */
+    (nodeType: NodeType) => {
+      if (connectionToSplit) {
+        const newNodeId = addNode(nodeType, insertPosition);
+        if (newNodeId) { // Check if addNode returned an ID
+          addConnection(connectionToSplit.sourceId, newNodeId);
+          addConnection(newNodeId, connectionToSplit.targetId);
+          removeConnection(connectionToSplit.id);
+        }
+        setConnectionToSplit(null);
+      } else {
+        const canvasRect = canvasRef.current?.getBoundingClientRect();
+        if (canvasRect) {
+          const centerX = (canvasRect.width / 2 / canvasScale) - canvasOffset.x;
+          const centerY = (canvasRect.height / 2 / canvasScale) - canvasOffset.y;
+          addNode(nodeType, { x: centerX, y: centerY });
+        }
+      }
+      setSideModalOpen(false);
+    },
+    [connectionToSplit, insertPosition, addNode, addConnection, removeConnection, canvasScale, canvasOffset]
+  );
+
+  const handleExecuteNode = useCallback(/* ... as in your original code ... */
+    (nodeId: string) => {
+      setExecutingNodeId(nodeId);
+      setExecutionModalOpen(true);
+      executeNode(nodeId);
+    }, [executeNode]
+  );
+
+  const toggleSideModal = useCallback(() => {
+    setSideModalOpen((prev) => !prev);
+  }, []);
+
+  const handleOpenProperties = useCallback((nodeId: string) => {
+    selectNode(nodeId);
+    setModalOpen(true); // This opens NodeModal
+  }, [selectNode]);
+
+  const handleCloseProperties = useCallback(() => setModalOpen(false), []);
+
+  // New UI Control Handlers
+  const handleZoomIn = () => setCanvasScale((prev) => Math.min(2.5, prev * 1.2));
+  const handleZoomOut = () => setCanvasScale((prev) => Math.max(0.2, prev / 1.2));
   const handleResetView = () => {
     setCanvasScale(1);
-    setCanvasOffset({ x: 0, y: 0 });
+    setCanvasOffset({ x: 0, y: 0 }); // Reset to origin of content space
   };
 
   const handleFitToScreen = () => {
-    if (nodes.length === 0) return handleResetView();
-    const padding = 50;
-    let minX = Infinity,
-      minY = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity;
+    if (nodes.length === 0 || !canvasRef.current) {
+      handleResetView();
+      return;
+    }
+    const padding = 50; // Screen pixels padding
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-    nodes.forEach((n) => {
+    nodes.forEach(n => {
       minX = Math.min(minX, n.position.x);
       minY = Math.min(minY, n.position.y);
       maxX = Math.max(maxX, n.position.x + NODE_WIDTH);
-      maxY = Math.max(maxY, n.position.y + NODE_HEIGHT + 20);
+      maxY = Math.max(maxY, n.position.y + NODE_HEIGHT);
     });
+
+    if (maxX === -Infinity) { handleResetView(); return; }
 
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
 
-    if (contentWidth <= 0 || contentHeight <= 0) return handleResetView();
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    if (canvasRect.width <= 0 || canvasRect.height <= 0 || contentWidth <=0 || contentHeight <=0) {
+        handleResetView();
+        return;
+    }
 
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect || rect.width === 0 || rect.height === 0) return;
-
-    const scaleX = (rect.width - 2 * padding) / contentWidth;
-    const scaleY = (rect.height - 2 * padding) / contentHeight;
-    const newScale = Math.min(scaleX, scaleY, 1.5);
+    const scaleX = (canvasRect.width - 2 * padding) / contentWidth;
+    const scaleY = (canvasRect.height - 2 * padding) / contentHeight;
+    const newScale = Math.min(scaleX, scaleY, 2.5); // Cap at max zoom
 
     setCanvasScale(newScale);
-    setCanvasOffset({
-      x: (rect.width - contentWidth * newScale) / 2 - minX * newScale + padding,
-      y:
-        (rect.height - contentHeight * newScale) / 2 -
-        minY * newScale +
-        padding,
-    });
+    // New offset to center the content bounding box (with padding)
+    const newOffsetX = (padding / newScale) - minX;
+    const newOffsetY = (padding / newScale) - minY;
+    setCanvasOffset({ x: newOffsetX, y: newOffsetY });
   };
 
-  const handleNodeTypeSelectFromSideModalGeneral = useCallback(
-    (nodeType: NodeType) => {
-      const rect = canvasRef.current?.getBoundingClientRect();
-      let x = NODE_WIDTH,
-        y = NODE_HEIGHT;
-      if (rect) {
-        x = (rect.width / 2 - canvasOffset.x) / canvasScale;
-        y = (rect.height / 2 - canvasOffset.y) / canvasScale;
-      }
-      if (addNode)
-        addNode(nodeType, { x, y }, { label: nodeType, displayName: nodeType });
-      setIsSideModalOpen(false);
-    },
-    [addNode, canvasOffset, canvasScale]
-  );
-
-  const prepareInsertNodeOnConnection = useCallback(
-    (connection: ContextNodeConnection, position: { x: number; y: number }) => {
-      setInsertContext({ connection, position });
-      setIsSideModalOpen(true);
-    },
-    []
-  );
-
-  const finalizeInsertNodeOnConnection = useCallback(
-    (nodeType: NodeType) => {
-      if (!insertContext || !removeConnection || !addNode || !addConnection)
-        return;
-
-      const { connection, position } = insertContext;
-      removeConnection(connection.id);
-      const newNodeId = addNode(nodeType, position, {
-        label: nodeType,
-        displayName: nodeType,
-      });
-
-      if (newNodeId) {
-        addConnection(connection.sourceId, newNodeId);
-        addConnection(newNodeId, connection.targetId);
-      } else {
-        console.error(
-          "Failed to create new node during insertion on connection."
-        );
-        addConnection(connection.sourceId, connection.targetId);
-      }
-      setInsertContext(null);
-      setIsSideModalOpen(false);
-    },
-    [insertContext, removeConnection, addNode, addConnection]
-  );
-
-  const handleOpenSchemaModal = useCallback(
-    (nodeId: string) => {
-      if (setDataMappingModalNodeId) setDataMappingModalNodeId(nodeId);
-    },
-    [setDataMappingModalNodeId]
-  );
-
-  const schemaModalData = useMemo((): SchemaModalData | null => {
-    if (!dataMappingModalNodeId || !getNodeById) return null;
-    const currentNode = getNodeById(dataMappingModalNodeId);
-    if (!currentNode) return null;
-
-    const findAllUpstreamOutputs = (
-      targetNodeId: string,
-      visited = new Set<string>()
-    ): SchemaItem[] => {
-      if (visited.has(targetNodeId)) return [];
-      visited.add(targetNodeId);
-      const upstreamOutputs: SchemaItem[] = [];
-      connections.forEach((conn) => {
-        if (conn.targetId === targetNodeId) {
-          const sourceNode = getNodeById(conn.sourceId);
-          if (sourceNode) {
-            const sourceSchema = getNodeSchema(sourceNode.type);
-            if (sourceSchema?.outputSchema) {
-              upstreamOutputs.push(
-                ...sourceSchema.outputSchema.map((item) => ({
-                  ...item,
-                  sourceNodeId: sourceNode.id,
-                  sourceNodeLabel:
-                    sourceNode.data.displayName ||
-                    sourceNode.data.label ||
-                    sourceNode.type,
-                }))
-              );
-            }
-          }
-        }
-      });
-      return Array.from(
-        new Map(
-          upstreamOutputs.map((item) => [
-            `${item.sourceNodeId}-${item.name}`,
-            item,
-          ])
-        ).values()
-      ); // Ensure unique items
-    };
-
-    const nodeSchema = getNodeSchema(currentNode.type);
-    const availableInputs = findAllUpstreamOutputs(dataMappingModalNodeId);
-
-    return {
-      nodeId: currentNode.id,
-      nodeType: currentNode.type,
-      nodeLabel:
-        currentNode.data?.displayName ||
-        currentNode.data?.label ||
-        currentNode.type,
-      baseInputSchema: nodeSchema?.inputSchema || [],
-      baseOutputSchema: nodeSchema?.outputSchema || [],
-      availableInputsFromPrevious: availableInputs,
-      // currentMappings: (currentNode.data as any)?.fieldMappings || {}, // Cast to any if fieldMappings is not on WorkflowNodeData
-    };
-  }, [dataMappingModalNodeId, getNodeById, connections]);
-
-  const handleMinimapClick = useCallback(
-    (newOffset: CanvasOffset) => setCanvasOffset(newOffset),
-    []
-  );
-  const handleMinimapPan = useCallback((delta: CanvasOffset) => {
-    setCanvasOffset((prev) => ({ x: prev.x + delta.x, y: prev.y + delta.y }));
+  // Minimap click handler
+  const handleMinimapClick = useCallback((newContentOffset: { x: number; y: number }) => {
+    setCanvasOffset(newContentOffset);
   }, []);
 
-  const handleExecuteWorkflow = () => {
-    if (runWorkflow) runWorkflow();
-  };
+
+  function DotsBackground() { /* ... as in your original code ... */
+    return (
+      <svg
+        className="absolute inset-0 pointer-events-none"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{ width: "100%", height: "100%" }}
+      >
+        <defs>
+          <pattern id="dot-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="1.2" fill="rgba(38, 37, 37, 0.2)" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#dot-grid)" />
+      </svg>
+    );
+  }
 
   return (
-    <div className="flex-1 flex flex-col h-full w-full overflow-hidden bg-gray-100 dark:bg-gray-900">
-      <div className="bg-background dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-2 flex items-center justify-between shadow-sm sticky top-0 z-20">
-        <div className="flex items-center gap-1">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setInsertContext(null);
-                    setIsSideModalOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add Node
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Add New Node to Canvas</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={handleZoomOut}
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Zoom Out</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <Badge
-            variant="outline"
-            className="px-2 py-0.5 text-xs min-w-[50px] text-center h-7 flex items-center"
-          >
+    // Use a general background color for the editor area, canvas gets its own specific BG
+    <div className="relative flex-1 overflow-hidden bg-background dark:bg-background">
+      <TooltipProvider>
+        {/* Toolbar */}
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-card dark:bg-card p-1.5 rounded-md shadow-lg border">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleSideModal}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Add Node</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomOut}>
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Zoom Out</TooltipContent>
+          </Tooltip>
+          <Badge variant="outline" className="px-2 py-0.5 text-xs min-w-[50px] text-center h-7 flex items-center select-none">
             {Math.round(canvasScale * 100)}%
           </Badge>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={handleZoomIn}
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Zoom In</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={handleResetView}
-                >
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Reset View</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={handleFitToScreen}
-                >
-                  <Maximize2 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Fit to Screen</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={showGrid ? "secondary" : "ghost"}
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setShowGrid(!showGrid)}
-                >
-                  <Grid3X3 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Toggle Grid</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomIn}>
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Zoom In</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleResetView}>
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Reset View</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleFitToScreen}>
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Fit to Screen</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant={showGrid ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setShowGrid(s => !s)}>
+                <Grid3X3 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Toggle Grid</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant={showMinimap ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setShowMinimap(s => !s)}>
+                {showMinimap ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Toggle Minimap</TooltipContent>
+          </Tooltip>
         </div>
-        {/* <div className="flex items-center gap-2">
-            {runWorkflow && (
-                <Button onClick={handleExecuteWorkflow} size="sm" className="h-7 flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white">
-                    <Play className="h-3.5 w-3.5" /> Run
-                </Button>
-            )}
-            {onClose && (
-                 <Button variant="outline" size="sm" className="h-7" onClick={onClose}>Close Editor</Button>
-            )}
-        </div> */}
-      </div>
+      </TooltipProvider>
 
-      <div className="flex-1 relative overflow-hidden">
-        {showMinimap && canvasRef.current && (
-          <div className="absolute top-3 right-3 z-10 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <Minimap
-              nodes={nodes.map((n) => ({
-                ...n,
-                width: NODE_WIDTH,
-                height:
-                  NODE_HEIGHT +
-                  (n.type !== "start" && n.type !== "end" ? 20 : 0),
-              }))}
-              connections={connections}
-              canvasOffset={canvasOffset}
-              canvasScale={canvasScale}
-              onMinimapClick={handleMinimapClick}
-              onMinimapPan={handleMinimapPan}
-              width={canvasRef.current.clientWidth}
-              height={canvasRef.current.clientHeight}
-            />
-          </div>
-        )}
-
-        <div
-          ref={canvasRef}
-          className="w-full h-full cursor-grab"
-          style={canvasBackground}
-          onMouseDown={handleCanvasMouseDown}
-          onMouseMove={handleCanvasMouseMove}
-          onMouseUp={handleCanvasMouseUp}
-          onMouseLeave={handleCanvasMouseUp}
-          onWheel={handleCanvasWheel}
-        >
-          <div
-            className="relative w-full h-full"
-            style={{
-              transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})`,
-              transformOrigin: "0 0",
-              transition: isPanning ? "none" : "transform 0.05s ease-out",
-            }}
-          >
-            <svg
-              className="absolute inset-0 pointer-events-none"
-              style={{ width: "100%", height: "100%", overflow: "visible" }}
-            >
-              {connections.map((connection) => {
-                const sourceNode = getNodeById
-                  ? getNodeById(connection.sourceId)
-                  : undefined;
-                const targetNode = getNodeById
-                  ? getNodeById(connection.targetId)
-                  : undefined;
-                if (!sourceNode || !targetNode) return null;
-                return (
-                  <ConnectionLine
-                    key={connection.id}
-                    connection={connection}
-                    sourceNode={sourceNode}
-                    targetNode={targetNode}
-                    onDelete={() => {
-                      if (removeConnection) removeConnection(connection.id);
-                    }}
-                    onInsertNode={prepareInsertNodeOnConnection}
-                  />
-                );
-              })}
-              {pendingConnection &&
-                getNodeById &&
-                getNodeById(pendingConnection.sourceId) && (
-                  <PendingConnectionLine
-                    sourceNode={
-                      getNodeById(
-                        pendingConnection.sourceId
-                      ) as ContextWorkflowNode
-                    }
-                    mousePosition={mousePosition}
-                    nodeWidth={NODE_WIDTH}
-                    nodeHeight={NODE_HEIGHT}
-                  />
-                )}
-            </svg>
-
-            {nodes.map((node) => (
-              <NodeComponent
-                key={node.id}
-                node={node}
-                selected={selectedNodeId === node.id}
-                isConnecting={
-                  !!pendingConnection && pendingConnection.sourceId === node.id
-                }
-                onSelect={() => {
-                  if (selectNode) selectNode(node.id);
-                }}
-                onDragStart={handleNodeDragStart}
-                onExecuteNode={executeNode ? (id) => executeNode(id) : () => {}}
-                onOpenProperties={
-                  setPropertiesModalNodeId
-                    ? (id) => setPropertiesModalNodeId(id)
-                    : () => {}
-                }
-                onOpenSchemaModal={
-                  handleOpenSchemaModal
-                    ? (id) => handleOpenSchemaModal(id)
-                    : () => {}
-                }
+      {/* Minimap */}
+      {showMinimap && canvasRef.current && (
+          <div className="absolute top-2 right-2 z-10 bg-card dark:bg-card rounded-md shadow-lg border dark:border-border overflow-hidden">
+              <Minimap
+                  nodes={nodes}
+                  connections={connections}
+                  canvasOffset={canvasOffset}
+                  canvasScale={canvasScale}
+                  viewportWidth={canvasRef.current.clientWidth}
+                  viewportHeight={canvasRef.current.clientHeight}
+                  onMinimapClick={handleMinimapClick}
+                  nodeWidth={NODE_WIDTH}
+                  nodeHeight={NODE_HEIGHT}
               />
-            ))}
           </div>
-        </div>
-      </div>
-
-      <SideModal
-        isOpen={isSideModalOpen}
-        onClose={() => {
-          setIsSideModalOpen(false);
-          setInsertContext(null);
-        }}
-        onSelectNodeType={(nodeType) => {
-          if (insertContext) {
-            finalizeInsertNodeOnConnection(nodeType);
-          } else {
-            handleNodeTypeSelectFromSideModalGeneral(nodeType);
-          }
-        }}
-      />
-
-      {propertiesModalNodeId && setPropertiesModalNodeId && (
-        <NodeModal
-          nodeId={propertiesModalNodeId}
-          isOpen={!!propertiesModalNodeId}
-          onClose={() => setPropertiesModalNodeId(null)}
-        />
       )}
 
-      {dataMappingModalNodeId &&
-        schemaModalData &&
-        setDataMappingModalNodeId &&
-        updateNode &&
-        getNodeById && (
-          <SchemaModal
-            {...schemaModalData}
-            onClose={() => setDataMappingModalNodeId(null)}
-            onSaveMappings={(mappings) => {
-              const nodeToUpdate = getNodeById(dataMappingModalNodeId); // Already checked by schemaModalData condition
-              if (nodeToUpdate) {
-                // Redundant check, but safe
-                updateNode(dataMappingModalNodeId, {
-                  data: {
-                    ...nodeToUpdate.data,
-                    fieldMappings: mappings, // Ensure WorkflowNodeData in context includes fieldMappings
-                  } as WorkflowNodeData, // Cast if fieldMappings is optional or not strictly typed
-                });
-              }
-              setDataMappingModalNodeId(null);
-            }}
-          />
-        )}
+      <div
+        ref={canvasRef}
+        className="h-full w-full overflow-hidden" // Removed cursor-grab, let specific interactions handle cursors
+        style={canvasBackgroundStyle} // Apply dynamic grid or plain background
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onWheel={handleWheel}
+        onClick={handleCanvasClick}
+      >
+        {!showGrid && <DotsBackground />} {/* Show dots if grid is off */}
+        <div
+          className="h-full w-full" // transformOrigin is default 0 0
+          style={{
+            transform: `scale(${canvasScale}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
+            transformOrigin: "0 0", // Explicitly set
+          }}
+        >
+          {/* Connections */}
+          <svg className="absolute h-full w-full pointer-events-none overflow-visible">
+            {connections.map((connection) => {
+              const source = nodes.find((n) => n.id === connection.sourceId);
+              const target = nodes.find((n) => n.id === connection.targetId);
+              if (!source || !target || source.data?.active === false || target.data?.active === false) return null;
+              return (
+                <ConnectionLine
+                  key={connection.id}
+                  connection={connection}
+                  sourceNode={source}
+                  targetNode={target}
+                  onDelete={() => removeConnection(connection.id)}
+                  onInsertNode={handleInsertNode}
+                />
+              );
+            })}
+            {pendingConnection && (
+              <PendingConnectionLine
+                sourceNode={getPendingConnectionSourceNode()}
+                mousePosition={mousePosition}
+              />
+            )}
+          </svg>
+
+          {/* Nodes */}
+          {nodes.map((node) => (
+            <NodeComponent
+              key={node.id}
+              node={node}
+              selected={node.id === selectedNodeId}
+              isConnecting={!!pendingConnection && pendingConnection.sourceId === node.id}
+              onSelect={() => {
+                if (isSchemaModalOpen || modalOpen || sideModalOpen || executionModalOpen) return;
+                selectNode(node.id);
+              }}
+              onDragStart={startNodeDrag}
+              onExecuteNode={handleExecuteNode}
+              onOpenProperties={handleOpenProperties}
+              onOpenSchemaModal={handleOpenSchemaModal}
+            />
+          ))}
+        </div>
+      </div>
+
+      {pendingConnection && ( /* ... Connection helper text ... */
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm z-50">
+          Click on an input port to complete connection • Press ESC to cancel
+        </div>
+      )}
+      {selectedNodeId && ( /* ... Node Modal ... */
+        <NodeModal nodeId={selectedNodeId} isOpen={modalOpen} onClose={handleCloseProperties} />
+      )}
+      <SideModal /* ... Side modal ... */
+        isOpen={sideModalOpen}
+        onClose={() => setSideModalOpen(false)}
+        onSelectNodeType={handleNodeTypeSelect}
+      />
+      <ExecutionModal /* ... Execution modal ... */
+        isOpen={executionModalOpen}
+        onClose={() => setExecutionModalOpen(false)}
+        nodeId={executingNodeId}
+      />
+      {schemaModalData && ( /* ... Schema Modal ... */
+        <SchemaModal
+          nodeId={schemaModalData.nodeId}
+          nodeType={schemaModalData.nodeType}
+          nodeLabel={schemaModalData.nodeLabel}
+          baseInputSchema={schemaModalData.baseInputSchema}
+          baseOutputSchema={schemaModalData.baseOutputSchema}
+          availableInputsFromPrevious={schemaModalData.availableInputsFromPrevious}
+          onClose={handleCloseSchemaModal}
+          // Assuming SchemaModal has an onSave or similar prop if needed
+        />
+      )}
     </div>
   );
 }
 
-function PendingConnectionLine({
+function PendingConnectionLine({ /* ... as in your original code ... */
   sourceNode,
   mousePosition,
-  nodeWidth,
-  nodeHeight,
 }: {
-  sourceNode: ContextWorkflowNode;
+  sourceNode: WorkflowNode | null;
   mousePosition: { x: number; y: number };
-  nodeWidth: number;
-  nodeHeight: number;
 }) {
   if (!sourceNode) return null;
-  const sourcePortXOffset = nodeWidth;
-  const sourcePortYOffset = nodeHeight / 2;
+  const sourceX = sourceNode.position.x + NODE_WIDTH; // Node width
+  const sourceY = sourceNode.position.y + NODE_HEIGHT / 2; // Port at middle-right
 
-  const sourceX = sourceNode.position.x + sourcePortXOffset;
-  const sourceY = sourceNode.position.y + sourcePortYOffset;
-
-  const controlPointOffset = Math.max(
-    50,
-    Math.abs(mousePosition.x - sourceX) * 0.3
-  );
-
-  const path = `M ${sourceX} ${sourceY} C ${
-    sourceX + controlPointOffset
-  } ${sourceY}, ${mousePosition.x - controlPointOffset} ${mousePosition.y}, ${
-    mousePosition.x
-  } ${mousePosition.y}`;
-
-  return (
-    <path
-      d={path}
-      stroke="#3b82f6"
-      strokeWidth="2.5"
-      strokeDasharray="6,6"
-      fill="none"
-      className="animate-connector-flow"
-    />
-  );
+  const controlPointOffset = Math.max(50, Math.abs(mousePosition.x - sourceX) * 0.3);
+  const path = `M ${sourceX} ${sourceY} C ${sourceX + controlPointOffset} ${sourceY}, ${mousePosition.x - controlPointOffset} ${mousePosition.y}, ${mousePosition.x} ${mousePosition.y}`;
+  return <path d={path} stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" fill="none" />;
 }
 
-// Add this to your global CSS or a relevant stylesheet:
-/*
-@keyframes connector-flow {
-  to {
-    stroke-dashoffset: -24; 
-  }
+
+// Minimap Component
+interface MinimapProps {
+    nodes: WorkflowNode[];
+    connections: NodeConnection[]; // Included for future connection drawing
+    canvasOffset: { x: number; y: number }; // Content offset (pre-scale)
+    canvasScale: number; // Main canvas zoom
+    viewportWidth: number; // Main canvas clientWidth
+    viewportHeight: number; // Main canvas clientHeight
+    onMinimapClick: (newContentOffset: { x: number; y: number }) => void;
+    nodeWidth: number;
+    nodeHeight: number;
 }
-.animate-connector-flow {
-  animation: connector-flow 1s linear infinite;
-}
-*/
+
+const MINIMAP_WIDTH = 200; // Fixed minimap size in pixels
+const MINIMAP_HEIGHT = 150;
+const MINIMAP_NODE_COLOR = "rgba(96, 165, 250, 0.7)"; // tailwind blue-400 with opacity
+const MINIMAP_VIEWPORT_BORDER_COLOR = "rgba(0, 0, 0, 0.3)";
+const MINIMAP_PADDING = 20; // Content padding within minimap scale calculation
+
+const Minimap: React.FC<MinimapProps> = ({
+    nodes,
+    // connections, // For later
+    canvasOffset,
+    canvasScale,
+    viewportWidth,
+    viewportHeight,
+    onMinimapClick,
+    nodeWidth,
+    nodeHeight,
+}) => {
+    const minimapRef = useRef<HTMLDivElement>(null);
+
+    const { minX, minY, contentWidth, contentHeight } = useMemo(() => {
+        if (nodes.length === 0) {
+            // Default bounds if no nodes, e.g., showing one screen worth of content
+            return { minX: 0, minY: 0, contentWidth: viewportWidth / canvasScale, contentHeight: viewportHeight / canvasScale };
+        }
+        let nMinX = Infinity, nMinY = Infinity, nMaxX = -Infinity, nMaxY = -Infinity;
+        nodes.forEach(node => {
+            nMinX = Math.min(nMinX, node.position.x);
+            nMinY = Math.min(nMinY, node.position.y);
+            nMaxX = Math.max(nMaxX, node.position.x + nodeWidth);
+            nMaxY = Math.max(nMaxY, node.position.y + nodeHeight);
+        });
+        // Add padding to the effective content for scaling
+        nMinX -= MINIMAP_PADDING;
+        nMinY -= MINIMAP_PADDING;
+        nMaxX += MINIMAP_PADDING;
+        nMaxY += MINIMAP_PADDING;
+        return { minX: nMinX, minY: nMinY, contentWidth: Math.max(1, nMaxX - nMinX), contentHeight: Math.max(1, nMaxY - nMinY) };
+    }, [nodes, nodeWidth, nodeHeight, viewportWidth, canvasScale, viewportHeight]);
+
+    const minimapScale = useMemo(() => {
+        return Math.min(MINIMAP_WIDTH / contentWidth, MINIMAP_HEIGHT / contentHeight);
+    }, [contentWidth, contentHeight]);
+
+    const handleMinimapInteraction = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!minimapRef.current) return;
+        const rect = minimapRef.current.getBoundingClientRect();
+        const clickXInMinimap = e.clientX - rect.left; // Click relative to minimap div
+        const clickYInMinimap = e.clientY - rect.top;
+
+        // Convert minimap click position to content coordinates
+        const clickedContentX = (clickXInMinimap / minimapScale) + minX;
+        const clickedContentY = (clickYInMinimap / minimapScale) + minY;
+
+        // Calculate new canvasOffset to center the main viewport over the clicked content point
+        // Target content offset Tx, Ty: (clickedContentX + Tx) * mainScale = mainViewportWidth / 2
+        // Tx = (mainViewportWidth / (2 * mainScale)) - clickedContentX
+        const newContentOffsetX = (viewportWidth / (2 * canvasScale)) - clickedContentX;
+        const newContentOffsetY = (viewportHeight / (2 * canvasScale)) - clickedContentY;
+
+        onMinimapClick({ x: newContentOffsetX, y: newContentOffsetY });
+    };
+
+    // Calculate viewport rectangle position and size on the minimap
+    // Viewport top-left in content coordinates:
+    const viewTopLeftInContentX = -canvasOffset.x;
+    const viewTopLeftInContentY = -canvasOffset.y;
+    // Viewport dimensions in content coordinates:
+    const viewWidthInContent = viewportWidth / canvasScale;
+    const viewHeightInContent = viewportHeight / canvasScale;
+
+    // Viewport rectangle in minimap pixel coordinates:
+    const minimapViewRectX = (viewTopLeftInContentX - minX) * minimapScale;
+    const minimapViewRectY = (viewTopLeftInContentY - minY) * minimapScale;
+    const minimapViewRectW = viewWidthInContent * minimapScale;
+    const minimapViewRectH = viewHeightInContent * minimapScale;
+
+    return (
+        <div
+            ref={minimapRef}
+            style={{
+                width: MINIMAP_WIDTH,
+                height: MINIMAP_HEIGHT,
+                backgroundColor: "var(--minimap-bg, hsla(var(--card)/0.8))", // Slightly transparent card
+                position: "relative",
+                overflow: "hidden",
+                cursor: "pointer",
+                userSelect: "none",
+            }}
+            onMouseDown={handleMinimapInteraction} // Allow dragging later by changing this
+        >
+            {/* Render nodes scaled to minimap */}
+            {nodes.map(node => (
+                <div
+                    key={`minimap-${node.id}`}
+                    style={{
+                        position: 'absolute',
+                        left: (node.position.x - minX) * minimapScale,
+                        top: (node.position.y - minY) * minimapScale,
+                        width: Math.max(1, nodeWidth * minimapScale), // Ensure min 1px width
+                        height: Math.max(1, nodeHeight * minimapScale), // Ensure min 1px height
+                        backgroundColor: MINIMAP_NODE_COLOR,
+                    }}
+                />
+            ))}
+            {/* Render viewport rectangle */}
+            <div
+                style={{
+                    position: 'absolute',
+                    left: minimapViewRectX,
+                    top: minimapViewRectY,
+                    width: minimapViewRectW,
+                    height: minimapViewRectH,
+                    border: `1px solid ${MINIMAP_VIEWPORT_BORDER_COLOR}`,
+                    backgroundColor: 'rgba(0,0,0,0.05)',
+                    pointerEvents: 'none', // Important: let clicks pass to the parent for navigation
+                }}
+            />
+        </div>
+    );
+};
