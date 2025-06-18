@@ -295,38 +295,56 @@ export default function SalesforceCloudNodeProperties({
   const [selectAll, setSelectAll] = useState(false);
 
   // Initialize default values
-  useEffect(() => {
-    if (!formData.object_name) {
-      onChange("object_name", "Account");
-    }
+useEffect(() => {
+  if (!formData.object_name) {
+    onChange("object_name", "Account");
+  }
 
-    // Set default file path if not set
-    if (!formData.file_path) {
-      onChange("file_path", "/app/data/mock_data/output/salesforceread.csv");
-    }
+  // Set default file path if not set
+  if (!formData.file_path) {
+    onChange("file_path", "/app/data/mock_data/output/salesforceread.csv");
+  }
 
-    // Set default bulk API value if not set
-    if (formData.use_bulk_api === undefined) {
-      onChange("use_bulk_api", false);
-    }
+  // Set default bulk API value if not set
+  if (formData.use_bulk_api === undefined) {
+    onChange("use_bulk_api", false);
+  }
 
-    // Initialize selected fields based on current object
-    const currentObject = formData.object_name || "Account";
-    if (!formData.selectedFields || formData.selectedFields.length === 0) {
-      // Default to selecting Id and Name fields
-      const defaultFields = objectFields[
-        currentObject as keyof typeof objectFields
-      ].filter((field) => ["Id", "Name", "CreatedDate"].includes(field));
-      setSelectedFields(defaultFields);
-      onChange("selectedFields", defaultFields);
+  // Initialize selected fields based on current object
+  const currentObject = formData.object_name || "Account";
+  
+  // Check if we have fields from formData first (loaded from existing config)
+  let fieldsToUse: string[] = [];
+  
+  if (formData.fields && formData.fields.length > 0) {
+    fieldsToUse = formData.fields;
+  } else if (formData.selectedFields && formData.selectedFields.length > 0) {
+    fieldsToUse = formData.selectedFields;
+  } else {
+    // Default to selecting Id and Name fields
+    fieldsToUse = objectFields[
+      currentObject as keyof typeof objectFields
+    ].filter((field) => ["Id", "Name", "CreatedDate"].includes(field));
+  }
 
-      // Generate initial query
-      const initialQuery = generateQuery(currentObject, defaultFields);
-      onChange("query", initialQuery);
-    } else {
-      setSelectedFields(formData.selectedFields);
-    }
-  }, [formData.object_name, onChange]);
+  setSelectedFields(fieldsToUse);
+  
+  // Ensure both fields and selectedFields are set in formData
+  if (!formData.fields || formData.fields.length === 0) {
+    onChange("fields", fieldsToUse);
+  }
+  if (!formData.selectedFields || formData.selectedFields.length === 0) {
+    onChange("selectedFields", fieldsToUse);
+  }
+
+  // Generate initial query if not present
+  if (!formData.query) {
+    const initialQuery = generateQuery(currentObject, fieldsToUse);
+    onChange("query", initialQuery);
+  }
+
+  console.log("Initialized fields:", fieldsToUse); // Debug log
+}, [formData.object_name, formData.fields, formData.selectedFields, onChange]);
 
   // Generate SOQL query based on selected object and fields
   const generateQuery = (objectName: string, fields: string[]) => {
@@ -357,180 +375,140 @@ export default function SalesforceCloudNodeProperties({
   };
 
   const handleFieldToggle = (field: string, checked: boolean) => {
-    let newSelectedFields: string[];
+  let newSelectedFields: string[];
 
-    if (checked) {
-      newSelectedFields = [...selectedFields, field];
-    } else {
-      newSelectedFields = selectedFields.filter((f) => f !== field);
-    }
+  if (checked) {
+    newSelectedFields = [...selectedFields, field];
+  } else {
+    newSelectedFields = selectedFields.filter((f) => f !== field);
+  }
 
-    setSelectedFields(newSelectedFields);
-    onChange("selectedFields", newSelectedFields);
+  setSelectedFields(newSelectedFields);
+  // Update formData with both selectedFields and fields
+  onChange("selectedFields", newSelectedFields);
+  onChange("fields", newSelectedFields); // Add this line
 
-    // Update query
-    const newQuery = generateQuery(formData.object_name, newSelectedFields);
-    onChange("query", newQuery);
+  // Update query
+  const newQuery = generateQuery(formData.object_name, newSelectedFields);
+  onChange("query", newQuery);
 
-    // Update selectAll state
-    const currentObjectFields =
-      objectFields[formData.object_name as keyof typeof objectFields] || [];
-    setSelectAll(newSelectedFields.length === currentObjectFields.length);
-  };
+  // Update selectAll state
+  const currentObjectFields =
+    objectFields[formData.object_name as keyof typeof objectFields] || [];
+  setSelectAll(newSelectedFields.length === currentObjectFields.length);
+};
 
-  const handleSelectAllToggle = (checked: boolean) => {
-    setSelectAll(checked);
+const handleSelectAllToggle = (checked: boolean) => {
+  setSelectAll(checked);
 
-    let newSelectedFields: string[] = [];
-    if (checked) {
-      // Select all fields for current object
-      newSelectedFields = [
-        ...objectFields[formData.object_name as keyof typeof objectFields],
-      ];
-    } else {
-      // Default to just Id
-      newSelectedFields = ["Id"];
-    }
+  let newSelectedFields: string[] = [];
+  if (checked) {
+    // Select all fields for current object
+    newSelectedFields = [
+      ...objectFields[formData.object_name as keyof typeof objectFields],
+    ];
+  } else {
+    // Default to just Id
+    newSelectedFields = ["Id"];
+  }
 
-    setSelectedFields(newSelectedFields);
-    onChange("selectedFields", newSelectedFields);
+  setSelectedFields(newSelectedFields);
+  // Update formData with both selectedFields and fields
+  onChange("selectedFields", newSelectedFields);
+  onChange("fields", newSelectedFields); // Add this line
 
-    // Update query
-    const newQuery = generateQuery(formData.object_name, newSelectedFields);
-    onChange("query", newQuery);
-  };
-
-  //   const handleTestConnection = async () => {
-  //     setTestingConnection(true)
-  //     setError(null)
-  //     setSuccessMessage(null)
-
-  //     try {
-  //       // Simulate connection test with provided credentials
-  //       await new Promise((resolve) => setTimeout(resolve, 2000))
-
-  //       // Check if username and password are provided
-  //       if (formData.username && formData.password) {
-  //         // Here you could add actual Salesforce connection testing if needed
-  //         setSuccessMessage("Salesforce credentials validated successfully!")
-  //       } else {
-  //         setError("Please provide both username and password to test connection.")
-  //       }
-  //     } catch (err: any) {
-  //       setError(`Connection test failed: ${err.message}`)
-  //     } finally {
-  //       setTestingConnection(false)
-  //     }
-  //   }
+  // Update query
+  const newQuery = generateQuery(formData.object_name, newSelectedFields);
+  onChange("query", newQuery);
+};
 
   const handleExecuteQuery = async () => {
-    setLoading(true);
-    setError(null);
-    setSuccessMessage(null);
+  setLoading(true);
+  setError(null);
+  setSuccessMessage(null);
 
-    try {
-      // Get current client ID
-      const getCurrentClientId = (): string | null => {
-        try {
-          const clientDataString = localStorage.getItem("currentClient");
-          if (clientDataString) {
-            const parsedClient = JSON.parse(clientDataString);
-            if (parsedClient?.id && String(parsedClient.id).trim() !== "") {
-              return String(parsedClient.id);
-            }
+  try {
+    // Get current client ID
+    const getCurrentClientId = (): string | null => {
+      try {
+        const clientDataString = localStorage.getItem("currentClient");
+        if (clientDataString) {
+          const parsedClient = JSON.parse(clientDataString);
+          if (parsedClient?.id && String(parsedClient.id).trim() !== "") {
+            return String(parsedClient.id);
           }
-        } catch (error) {
-          console.error("Error getting client ID:", error);
         }
-        return null;
-      };
-
-      const clientId = getCurrentClientId();
-      if (!clientId) {
-        throw new Error(
-          "No client selected. Please create or select a client first."
-        );
+      } catch (error) {
+        console.error("Error getting client ID:", error);
       }
+      return null;
+    };
 
-      // Store the configuration in the node data for later use by workflow-utils
-      const salesforceConfig = {
-        object_name: formData.object_name,
-        query: formData.query,
-        use_bulk_api: formData.use_bulk_api || false,
-        file_path: formData.file_path,
-        selectedFields: selectedFields,
-        fields: selectedFields || [],
-        where: formData.where || "",
-        limit: formData.limit || undefined,
-      };
-
-      // Update the node with the configuration data
-      if (selectedNodeId) {
-        updateNode(selectedNodeId, {
-          status: "configured",
-          data: {
-            ...formData,
-            ...salesforceConfig,
-          },
-          output: {
-            config_ready: true,
-            object_name: salesforceConfig.object_name,
-            file_path: salesforceConfig.file_path,
-            message:
-              "Salesforce configuration saved. Ready for workflow execution.",
-          },
-        });
-      }
-
-      setSuccessMessage(
-        `Salesforce configuration saved successfully! Object: ${salesforceConfig.object_name}, Output: ${salesforceConfig.file_path}. Use 'Run' button to execute the workflow.`
+    const clientId = getCurrentClientId();
+    if (!clientId) {
+      throw new Error(
+        "No client selected. Please create or select a client first."
       );
-
-      console.log("Salesforce configuration saved to node:", salesforceConfig);
-    } catch (err: any) {
-      const errorMessage = err.message || "Unknown error";
-      setError(errorMessage);
-      if (selectedNodeId) {
-        updateNode(selectedNodeId, {
-          status: "error",
-          output: { error: errorMessage, success: false },
-        });
-      }
-    } finally {
-      setLoading(false);
     }
-  };
 
+    // Ensure we have the latest selected fields
+    const currentSelectedFields = selectedFields.length > 0 ? selectedFields : ["Id"];
+    
+    // Store the configuration in the node data for later use by workflow-utils
+    const salesforceConfig = {
+      object_name: formData.object_name,
+      query: formData.query,
+      use_bulk_api: formData.use_bulk_api || false,
+      file_path: formData.file_path,
+      selectedFields: currentSelectedFields, // Keep this for UI state
+      fields: currentSelectedFields, // This is what the API expects
+      where: formData.where || "",
+      limit: formData.limit || undefined,
+    };
+
+    console.log("Salesforce config being saved:", salesforceConfig); // Debug log
+
+    // Update the node with the configuration data
+    if (selectedNodeId) {
+      updateNode(selectedNodeId, {
+        status: "configured",
+        data: {
+          ...formData,
+          ...salesforceConfig,
+          // Explicitly set fields to ensure it's stored
+          fields: currentSelectedFields,
+          selectedFields: currentSelectedFields,
+        },
+        output: {
+          config_ready: true,
+          object_name: salesforceConfig.object_name,
+          file_path: salesforceConfig.file_path,
+          fields: currentSelectedFields, // Include in output for verification
+          message: "Salesforce configuration saved. Ready for workflow execution.",
+        },
+      });
+    }
+
+    setSuccessMessage(
+      `Salesforce configuration saved successfully! Object: ${salesforceConfig.object_name}, Fields: ${currentSelectedFields.length} selected, Output: ${salesforceConfig.file_path}. Use 'Run' button to execute the workflow.`
+    );
+
+    console.log("Salesforce configuration saved to node:", salesforceConfig);
+  } catch (err: any) {
+    const errorMessage = err.message || "Unknown error";
+    setError(errorMessage);
+    if (selectedNodeId) {
+      updateNode(selectedNodeId, {
+        status: "error",
+        output: { error: errorMessage, success: false },
+      });
+    }
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className="space-y-4">
-      {/* Salesforce Username */}
-      {/* <div className="space-y-1">
-        <Label htmlFor="username">Salesforce Username</Label>
-        <Input
-          id="username"
-          type="text"
-          value={formData.username || ""}
-          placeholder="your_username@domain.com"
-          onChange={(e) => onChange("username", e.target.value)}
-          className={!formData.username ? "border-orange-400" : ""}
-        />
-        {!formData.username && <p className="text-xs text-orange-600">Username is required.</p>}
-      </div> */}
-
-      {/* Salesforce Password */}
-      {/* <div className="space-y-1">
-        <Label htmlFor="password">Salesforce Password</Label>
-        <Input
-          id="password"
-          type="password"
-          value={formData.password || ""}
-          placeholder="Password + Security Token"
-          onChange={(e) => onChange("password", e.target.value)}
-          className={!formData.password ? "border-orange-400" : ""}
-        />
-        {!formData.password && <p className="text-xs text-orange-600">Password is required.</p>}
-        <p className="text-xs text-gray-500">Include your security token appended to your password.</p>
-      </div> */}
 
       {/* Salesforce Object Dropdown */}
       <div className="space-y-1">
@@ -651,20 +629,6 @@ export default function SalesforceCloudNodeProperties({
       </div>
 
       <hr className="my-3" />
-
-      {/* Connection Test */}
-      {/* <div className="space-y-2 p-3 border rounded-md bg-slate-50">
-        <Label className="text-md font-semibold">Connection Test</Label>
-        <p className="text-xs text-gray-500">Test your Salesforce connection before executing queries.</p>
-        <Button
-          onClick={handleTestConnection}
-          disabled={testingConnection || !formData.username || !formData.password}
-          variant="outline"
-          className="w-full"
-        >
-          {testingConnection ? "Testing Connection..." : "Test Salesforce Connection"}
-        </Button>
-      </div> */}
 
       {/* Execute Query Button */}
       <div className="mt-5">
