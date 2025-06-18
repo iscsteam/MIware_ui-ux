@@ -982,16 +982,28 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   }, [nodes, connections, convertWorkflowToDAG, toast, getCurrentWorkflowId]);
 
+
+
   const saveWorkflow = useCallback(() => {
-    const workflowData = { nodes, connections };
-    try {
-      localStorage.setItem("workflowData", JSON.stringify(workflowData));
-      console.log("Workflow snapshot saved to localStorage.");
-    } catch (error) {
-      console.error("Failed to save workflow snapshot:", error);
-    }
-    return workflowData;
-  }, [nodes, connections]);
+  const workflowData = { nodes, connections };
+  const currentWorkflow = {
+    nodes,
+    connections,
+    metadata: {
+      name: currentWorkflowName,
+      dag_id: currentWorkflowId,
+      created_at: new Date().toISOString(),
+    },
+  };
+  try {
+    localStorage.setItem("workflowData", JSON.stringify(currentWorkflow));
+    console.log("Workflow snapshot saved to localStorage.");
+  } catch (error) {
+    console.error("Failed to save workflow snapshot:", error);
+  }
+  return workflowData;
+}, [nodes, connections, currentWorkflowName, currentWorkflowId]);
+
 
   const loadWorkflow = useCallback(
     (data: { nodes: WorkflowNode[]; connections: NodeConnection[] }) => {
