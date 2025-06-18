@@ -15,6 +15,7 @@ import {
   ActivitySquare,
   HelpCircle,
   Plus,
+  Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
@@ -45,14 +46,95 @@ export function Sidebar({
   const [workflows, setWorkflows] = useState<DAG[]>([])
   const { toast } = useToast()
 
+  // Edit workflow state variables
   const [editingWorkflow, setEditingWorkflow] = useState<DAG | null>(null)
   const [isEditWorkflowModalOpen, setIsEditWorkflowModalOpen] = useState(false)
   const [editWorkflowName, setEditWorkflowName] = useState("")
   const [editWorkflowSchedule, setEditWorkflowSchedule] = useState("")
+  const [editingCollection, setEditingCollection] = useState("")
 
   const [isCreateCollectionModalOpen, setIsCreateCollectionModalOpen] = useState(false)
   const [newCollectionName, setNewCollectionName] = useState("")
 
+  // Delete modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [itemToDelete, setItemToDelete] = useState<{
+    type: "collection" | "workflow"
+    name: string
+    id?: string
+    collectionName?: string
+  } | null>(null)
+
+  const handleOpenDeleteModal = (item: {
+    type: "collection" | "workflow"
+    name: string
+    id?: string
+    collectionName?: string
+  }) => {
+    setItemToDelete(item)
+    setIsDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return
+    setIsDeleting(true)
+
+    try {
+      if (itemToDelete.type === "collection") {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:30010"}/mongo/delete_collection/${itemToDelete.name}`,
+          { method: "DELETE" },
+        )
+
+        if (!response.ok) {
+          throw new Error(`Failed to delete collection: ${response.status}`)
+        }
+        toast({
+          title: "Success",
+          description: `Collection "${itemToDelete.name}" deleted successfully`,
+        })
+      } else if (itemToDelete.type === "workflow" && itemToDelete.id && itemToDelete.collectionName) {
+        const { collectionName, id: dagId, name: workflowName } = itemToDelete
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:30010"}/mongo/delete_data_with_dag_id/${collectionName}?dag_id=${dagId}`,
+          { method: "DELETE" },
+        )
+
+        if (!response.ok) {
+          throw new Error(`Failed to delete workflow: ${response.status}`)
+        }
+
+        const currentWorkflow = localStorage.getItem("currentWorkflow")
+        if (currentWorkflow) {
+          const workflowData = JSON.parse(currentWorkflow)
+          if (workflowData.dag_id === dagId) {
+            localStorage.removeItem("currentWorkflow")
+            localStorage.removeItem("workflowData")
+          }
+        }
+        toast({
+          title: "Success",
+          description: `Workflow "${workflowName}" deleted successfully`,
+        })
+      }
+      // Refresh collections list after any deletion
+      window.dispatchEvent(new CustomEvent("refreshCollections"))
+    } catch (error) {
+      console.error("Error deleting item:", error)
+      toast({
+        title: "Error",
+        description: `Failed to delete ${itemToDelete.type}`,
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
+      setIsDeleteModalOpen(false)
+      setItemToDelete(null)
+    }
+  }
+
+  // Update workflow function adapted for collections
   const handleUpdateWorkflow = async () => {
     if (!editingWorkflow) return
 
@@ -64,18 +146,14 @@ export function Sidebar({
       })
 
       if (updatedDAG) {
-        setWorkflows((prev) =>
-          prev.map((w) =>
-            w.dag_id === editingWorkflow.dag_id
-              ? {
-                  ...w,
-                  name: editWorkflowName.trim(),
-                  schedule: editWorkflowSchedule.trim() || null,
-                }
-              : w,
-          ),
-        )
+        // Update workflows in collection context
+        if (editingCollection) {
+          // Trigger refresh of collections to get updated data
+          const event = new CustomEvent("refreshCollections")
+          window.dispatchEvent(event)
+        }
 
+        // Update localStorage if this is the current workflow
         const currentWorkflow = localStorage.getItem("currentWorkflow")
         if (currentWorkflow) {
           const workflowData = JSON.parse(currentWorkflow)
@@ -86,10 +164,12 @@ export function Sidebar({
           }
         }
 
+        // Reset edit state
         setIsEditWorkflowModalOpen(false)
         setEditingWorkflow(null)
         setEditWorkflowName("")
         setEditWorkflowSchedule("")
+        setEditingCollection("")
 
         toast({
           title: "Success",
@@ -108,60 +188,6 @@ export function Sidebar({
     }
   }
 
-  const handleDeleteWorkflow = async (workflow: DAG) => {
-    // Show confirmation dialog
-    const confirmed = window.confirm(
-      `Are you sure you want to delete the workflow "${workflow.name}"? This action cannot be undone.`,
-    )
-
-    if (!confirmed) {
-      return
-    }
-
-    try {
-      const { deleteWorkflowFromMongoDB } = await import("@/services/workflow-position-service")
-      const success = await deleteWorkflowFromMongoDB(workflow.dag_id)
-
-      if (success) {
-        // Remove from local state
-        setWorkflows((prev) => prev.filter((w) => w.dag_id !== workflow.dag_id))
-
-        // Clear current workflow if it's the one being deleted
-        const currentWorkflow = localStorage.getItem("currentWorkflow")
-        if (currentWorkflow) {
-          const workflowData = JSON.parse(currentWorkflow)
-          if (workflowData.dag_id === workflow.dag_id) {
-            localStorage.removeItem("currentWorkflow")
-            localStorage.removeItem("workflowData")
-            // Optionally clear the canvas if this workflow is currently open
-            setActiveView("editor") // Refresh the editor view
-          }
-        }
-
-        toast({
-          title: "Success",
-          description: `Workflow "${workflow.name}" has been deleted successfully`,
-        })
-      } else {
-        throw new Error("Failed to delete workflow from database")
-      }
-    } catch (error) {
-      console.error("Error deleting workflow:", error)
-      toast({
-        title: "Error",
-        description: "Failed to delete workflow. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  // Function to truncate workflow name if longer than 12 characters
-  const truncateWorkflowName = (name: string, maxLength = 12) => {
-    if (name.length <= maxLength) {
-      return name
-    }
-    return name.substring(0, maxLength) + "..."
-  }
   useEffect(() => {
     const savedProject = localStorage.getItem("currentProject")
     if (savedProject) {
@@ -170,29 +196,11 @@ export function Sidebar({
       setProjectCreated(true)
       setIsProjectOpen(true)
     }
-    loadWorkflows()
   }, [])
 
-  const loadWorkflows = async () => {
-    const dags = await fetchDAGs()
-    if (dags) {
-      setWorkflows(dags)
-      console.log("Loaded workflows:", dags)
-    }
-  }
-
   const handleWorkflowCreated = () => {
-    loadWorkflows()
+    window.dispatchEvent(new CustomEvent("refreshCollections"))
     setIsWorkflowsOpen(true)
-  }
-
-  const openModal = () => {
-    setIsCreateCollectionModalOpen(true)
-  }
-
-  const closeModal = () => {
-    setIsModalOpen(false)
-    loadWorkflows()
   }
 
   const openProjectModal = () => {
@@ -235,21 +243,21 @@ export function Sidebar({
       <div
         className={cn(
           "border-r border-slate-200/60 bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 flex flex-col h-full shadow-xl shadow-slate-900/5 transition-all duration-500 ease-out overflow-hidden backdrop-blur-sm",
-          isCollapsed ? "w-16" : "w-72"
+          isCollapsed ? "w-16" : "w-72",
         )}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-200/60 bg-white flex-shrink-0 relative overflow-hidden">
           {/* Background glow effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-teal-600/20 blur-xl"></div>
-          
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div
                   className={cn(
                     "flex items-center gap-3 relative z-10",
-                    isCollapsed && "justify-center"
+                    isCollapsed && "justify-center",
                   )}
                 >
                   <div className="relative">
@@ -318,7 +326,7 @@ export function Sidebar({
                         onClick={() => !isCollapsed && setIsProjectOpen(!isProjectOpen)}
                         className={cn(
                           "w-full flex items-center justify-between px-4 py-3 text-slate-700 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-700 hover:shadow-lg rounded-xl transition-all duration-300 font-semibold border border-transparent hover:border-indigo-200/50 group",
-                          isCollapsed && "justify-center px-2"
+                          isCollapsed && "justify-center px-2",
                         )}
                       >
                         <span className="flex items-center gap-3">
@@ -347,15 +355,13 @@ export function Sidebar({
               {/* Project content */}
               {!isCollapsed && isProjectOpen && projectCreated && (
                 <div className="space-y-1 animate-in slide-in-from-top-2 duration-300">
-                  {/* Workflows */}
+                  {/* Projects */}
                   <Button
                     variant="ghost"
                     onClick={() => {
                       setIsWorkflowsOpen(!isWorkflowsOpen)
-                      // Force refresh collections when expanding
                       if (!isWorkflowsOpen) {
-                        const event = new CustomEvent("refreshCollections")
-                        window.dispatchEvent(event)
+                        window.dispatchEvent(new CustomEvent("refreshCollections"))
                       }
                     }}
                     className="w-full flex items-center justify-between pl-8 pr-4 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200 font-medium"
@@ -384,10 +390,18 @@ export function Sidebar({
 
                   {/* Projects content - Collections and Workflows */}
                   {isWorkflowsOpen && (
-                    <div className="pl-12 pr-2">
-                      {/* Collections section */}
-                      {/* Collections Section Component */}
-                      <CollectionsSection setActiveView={setActiveView} />
+                    <div className="pl-8 pr-2">
+                      <CollectionsSection
+                        setActiveView={setActiveView}
+                        onEditWorkflow={(workflow: DAG, collection: string) => {
+                          setEditingWorkflow(workflow)
+                          setEditWorkflowName(workflow.name)
+                          setEditWorkflowSchedule(workflow.schedule || "")
+                          setEditingCollection(collection)
+                          setIsEditWorkflowModalOpen(true)
+                        }}
+                        onDelete={handleOpenDeleteModal}
+                      />
                     </div>
                   )}
 
@@ -404,8 +418,12 @@ export function Sidebar({
                       className={`w-full flex items-center pl-8 py-3 text-slate-700 hover:bg-gradient-to-r hover:from-${item.color}-50 hover:to-${item.color}-100/50 hover:text-${item.color}-700 hover:shadow-lg rounded-xl font-medium transition-all duration-300 border border-transparent hover:border-${item.color}-200/50 group`}
                     >
                       <div className="relative">
-                        <item.icon className={`h-5 w-5 text-${item.color}-500 group-hover:text-${item.color}-600 mr-3 transition-colors duration-200`} />
-                        <div className={`absolute inset-0 bg-${item.color}-400/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+                        <item.icon
+                          className={`h-5 w-5 text-${item.color}-500 group-hover:text-${item.color}-600 mr-3 transition-colors duration-200`}
+                        />
+                        <div
+                          className={`absolute inset-0 bg-${item.color}-400/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
+                        ></div>
                       </div>
                       <span>{item.label}</span>
                     </Button>
@@ -445,8 +463,12 @@ export function Sidebar({
                           className={`w-full flex items-center pl-8 pr-4 py-2.5 text-slate-700 hover:bg-gradient-to-r hover:from-${item.color}-50 hover:to-${item.color}-100/50 hover:text-${item.color}-700 hover:shadow-md rounded-lg transition-all duration-300 group`}
                         >
                           <div className="relative">
-                            <item.icon className={`h-4 w-4 text-${item.color}-500 group-hover:text-${item.color}-600 mr-3 transition-colors duration-200`} />
-                            <div className={`absolute inset-0 bg-${item.color}-400/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+                            <item.icon
+                              className={`h-4 w-4 text-${item.color}-500 group-hover:text-${item.color}-600 mr-3 transition-colors duration-200`}
+                            />
+                            <div
+                              className={`absolute inset-0 bg-${item.color}-400/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
+                            ></div>
                           </div>
                           {item.label}
                         </Button>
@@ -534,7 +556,7 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Enhanced Collapse Button */}
+      {/* Collapse Button */}
       <div
         onClick={handleCollapse}
         className={cn(
@@ -561,32 +583,10 @@ export function Sidebar({
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="w-8 h-8"></div>
-              </TooltipTrigger>
-              <TooltipContent
-                side="right"
-                sideOffset={10}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-indigo-500 shadow-lg"
-              >
-                {isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
       </div>
 
-      {/* Enhanced Workflow Modal */}
-      <WorkflowModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          closeModal()
-          handleWorkflowCreated()
-        }}
-        collectionName="mi_ware" // Default collection
-      />
+      {/* MODALS */}
 
       {/* Enhanced Project Name Modal */}
       {isProjectModalOpen && (
@@ -596,9 +596,7 @@ export function Sidebar({
               <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
                 <Folder className="h-5 w-5 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-slate-800">
-                Create New Project
-              </h3>
+              <h3 className="text-xl font-semibold text-slate-800">Create New Project</h3>
             </div>
             <div className="mb-6">
               <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -642,9 +640,7 @@ export function Sidebar({
               <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
                 <ActivitySquare className="h-5 w-5 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-slate-800">
-                Edit Workflow
-              </h3>
+              <h3 className="text-xl font-semibold text-slate-800">Edit Workflow</h3>
             </div>
             <div className="space-y-5">
               <div>
@@ -671,8 +667,7 @@ export function Sidebar({
                   placeholder="e.g., 0 0 * * * (daily at midnight) or leave empty"
                 />
                 <p className="text-xs text-slate-500 mt-2">
-                  Leave empty for manual execution only. Use cron format for
-                  scheduled execution.
+                  Leave empty for manual execution only. Use cron format for scheduled execution.
                 </p>
               </div>
             </div>
@@ -683,6 +678,7 @@ export function Sidebar({
                   setEditingWorkflow(null)
                   setEditWorkflowName("")
                   setEditWorkflowSchedule("")
+                  setEditingCollection("")
                 }}
                 className="px-6 py-2.5 text-sm font-medium text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all duration-200 hover:shadow-sm"
               >
@@ -699,26 +695,28 @@ export function Sidebar({
           </div>
         </div>
       )}
-    
-    {/* Create Collection Modal */}
+
+      {/* Create Collection Modal */}
       {isCreateCollectionModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-96 transform transition-all">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Create New Collection</h3>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-96 transform transition-all animate-in zoom-in-95 duration-300 border border-slate-200">
+            <h3 className="text-xl font-semibold text-slate-800 mb-6">Create New Collection</h3>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Collection Name</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Collection Name
+              </label>
               <input
                 type="text"
                 value={newCollectionName}
                 onChange={(e) => setNewCollectionName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-all duration-200 shadow-sm"
                 placeholder="Enter collection name"
               />
             </div>
-            <div className="flex justify-end space-x-3">
+            <div className="flex justify-end space-x-3 mt-8">
               <button
                 onClick={() => setIsCreateCollectionModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                className="px-6 py-2.5 text-sm font-medium text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all duration-200 hover:shadow-sm"
               >
                 Cancel
               </button>
@@ -731,22 +729,16 @@ export function Sidebar({
                       `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:30010"}/mongo/create_collection/${newCollectionName.trim()}`,
                       { method: "POST" },
                     )
-
                     if (!response.ok) {
                       throw new Error(`Failed to create collection: ${response.status}`)
                     }
-
                     toast({
                       title: "Success",
                       description: `Collection "${newCollectionName}" created successfully`,
                     })
-
                     setNewCollectionName("")
                     setIsCreateCollectionModalOpen(false)
-
-                    // Refresh collections in the CollectionsSection
-                    const event = new CustomEvent("refreshCollections")
-                    window.dispatchEvent(event)
+                    window.dispatchEvent(new CustomEvent("refreshCollections"))
                   } catch (error) {
                     console.error("Error creating collection:", error)
                     toast({
@@ -757,9 +749,48 @@ export function Sidebar({
                   }
                 }}
                 disabled={!newCollectionName.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-rose-500 rounded-md hover:bg-rose-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-rose-500 to-pink-500 rounded-xl hover:from-rose-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg"
               >
                 Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced Delete Confirmation Modal */}
+      {isDeleteModalOpen && itemToDelete && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-96 transform transition-all animate-in zoom-in-95 duration-300 border border-slate-200">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-800">
+                {itemToDelete.type === "collection" ? "Delete Collection" : "Delete Workflow"}
+              </h3>
+            </div>
+            <div className="mb-6">
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {itemToDelete.type === "collection"
+                  ? `Are you sure you want to delete the collection "${itemToDelete.name}"? This will delete all workflows in this collection and cannot be undone.`
+                  : `Are you sure you want to delete the workflow "${itemToDelete.name}"? This action cannot be undone.`}
+              </p>
+            </div>
+            <div className="flex justify-end space-x-3 mt-8">
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="px-6 py-2.5 text-sm font-medium text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all duration-200 hover:shadow-sm"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-orange-500 rounded-xl hover:from-red-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none disabled:hover:shadow-lg"
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
@@ -770,7 +801,20 @@ export function Sidebar({
 }
 
 // Collections Section Component
-const CollectionsSection = ({ setActiveView }: { setActiveView: (view: string) => void }) => {
+const CollectionsSection = ({
+  setActiveView,
+  onEditWorkflow,
+  onDelete,
+}: {
+  setActiveView: (view: string) => void
+  onEditWorkflow: (workflow: DAG, collection: string) => void
+  onDelete: (item: {
+    type: "collection" | "workflow"
+    name: string
+    id?: string
+    collectionName?: string
+  }) => void
+}) => {
   const [collections, setCollections] = useState<string[]>([])
   const [expandedCollections, setExpandedCollections] = useState<Record<string, boolean>>({})
   const [collectionWorkflows, setCollectionWorkflows] = useState<Record<string, DAG[]>>({})
@@ -779,51 +823,30 @@ const CollectionsSection = ({ setActiveView }: { setActiveView: (view: string) =
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
-  // Fetch collections on component mount
+  // Fetch collections on component mount and on refresh event
   useEffect(() => {
-    fetchCollections()
-
-    // Listen for refresh events
-    const handleRefresh = () => {
-      console.log("Refresh collections event received")
-      fetchCollections()
-    }
+    const handleRefresh = () => fetchCollections()
+    handleRefresh() // Initial fetch
 
     window.addEventListener("refreshCollections", handleRefresh)
-
-    return () => {
-      window.removeEventListener("refreshCollections", handleRefresh)
-    }
+    return () => window.removeEventListener("refreshCollections", handleRefresh)
   }, [])
 
   // Fetch collections from API
   const fetchCollections = async () => {
     setIsLoading(true)
     try {
-      console.log("Fetching collections from MongoDB...")
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:30010"}/mongo/get_collections`,
       )
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch collections: ${response.status}`)
-      }
+      if (!response.ok) throw new Error(`Failed to fetch collections: ${response.status}`)
 
       const data = await response.json()
-      console.log("Raw collections response:", data)
-
-      // Handle different response formats
-      let collectionsArray = []
-      if (Array.isArray(data)) {
-        collectionsArray = data
-      } else if (data && Array.isArray(data.collections)) {
-        collectionsArray = data.collections
-      } else if (data && typeof data === "object") {
-        // If it's an object, try to extract collection names
-        collectionsArray = Object.keys(data)
-      }
-
-      console.log("Processed collections:", collectionsArray)
+      const collectionsArray = Array.isArray(data)
+        ? data
+        : data && Array.isArray(data.collections)
+          ? data.collections
+          : []
       setCollections(collectionsArray)
     } catch (error) {
       console.error("Error fetching collections:", error)
@@ -838,93 +861,37 @@ const CollectionsSection = ({ setActiveView }: { setActiveView: (view: string) =
     }
   }
 
-  // Delete a collection
-  const deleteCollection = async (collectionName: string) => {
-    // Show confirmation dialog
-    const confirmed = window.confirm(
-      `Are you sure you want to delete the collection "${collectionName}"? This will delete all workflows in this collection and cannot be undone.`,
-    )
+  // Set up deletion confirmation by calling parent
+  const deleteCollection = (collectionName: string) => {
+    onDelete({ type: "collection", name: collectionName })
+  }
 
-    if (!confirmed) return
-
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:30010"}/mongo/delete_collection/${collectionName}`,
-        { method: "DELETE" },
-      )
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete collection: ${response.status}`)
-      }
-
-      // Refresh collections list
-      fetchCollections()
-
-      // Remove from expanded state
-      const newExpandedCollections = { ...expandedCollections }
-      delete newExpandedCollections[collectionName]
-      setExpandedCollections(newExpandedCollections)
-
-      // Remove from workflows state
-      const newCollectionWorkflows = { ...collectionWorkflows }
-      delete newCollectionWorkflows[collectionName]
-      setCollectionWorkflows(newCollectionWorkflows)
-
-      toast({
-        title: "Success",
-        description: `Collection "${collectionName}" deleted successfully`,
-      })
-    } catch (error) {
-      console.error("Error deleting collection:", error)
-      toast({
-        title: "Error",
-        description: "Failed to delete collection",
-        variant: "destructive",
-      })
-    }
+  const deleteWorkflow = (collectionName: string, dagId: string, workflowName: string) => {
+    onDelete({ type: "workflow", name: workflowName, id: dagId, collectionName })
   }
 
   // Toggle collection expansion
   const toggleCollection = async (collectionName: string) => {
-    const newExpandedState = !expandedCollections[collectionName]
-    setExpandedCollections({
-      ...expandedCollections,
-      [collectionName]: newExpandedState,
-    })
+    const isCurrentlyExpanded = !!expandedCollections[collectionName]
+    const newExpandedState = { ...expandedCollections, [collectionName]: !isCurrentlyExpanded }
+    setExpandedCollections(newExpandedState)
 
-    // Set current collection context when expanding
-    if (newExpandedState) {
+    if (!isCurrentlyExpanded) {
       localStorage.setItem("currentCollection", collectionName)
-      console.log(`[Sidebar] Set current collection to: ${collectionName}`)
-    }
-
-    // Fetch workflows for this collection if expanding
-    if (newExpandedState && !collectionWorkflows[collectionName]) {
       try {
-        console.log(`Fetching workflows for collection: ${collectionName}`)
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:30010"}/mongo/get_data_from_collection_with_dag_id/${collectionName}`,
         )
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch workflows: ${response.status}`)
-        }
+        if (!response.ok) throw new Error(`Failed to fetch workflows: ${response.status}`)
 
         const data = await response.json()
-        console.log(`Workflows for ${collectionName}:`, data)
-
-        // Extract workflow data from MongoDB documents
         const workflows = data.map((item: any) => ({
           name: item.metadata?.name || "Unnamed Workflow",
           dag_id: item.metadata?.dag_id || "",
           created_at: item.metadata?.created_at || new Date().toISOString(),
           schedule: item.metadata?.schedule || null,
         }))
-
-        setCollectionWorkflows({
-          ...collectionWorkflows,
-          [collectionName]: workflows,
-        })
+        setCollectionWorkflows((prev) => ({ ...prev, [collectionName]: workflows }))
       } catch (error) {
         console.error(`Error fetching workflows for collection ${collectionName}:`, error)
         toast({
@@ -936,69 +903,16 @@ const CollectionsSection = ({ setActiveView }: { setActiveView: (view: string) =
     }
   }
 
-  // Delete a workflow from a collection
-  const deleteWorkflow = async (collectionName: string, dagId: string, workflowName: string) => {
-    // Show confirmation dialog
-    const confirmed = window.confirm(
-      `Are you sure you want to delete the workflow "${workflowName}"? This action cannot be undone.`,
-    )
-
-    if (!confirmed) return
-
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:30010"}/mongo/delete_data_with_dag_id/${collectionName}?dag_id=${dagId}`,
-        { method: "DELETE" },
-      )
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete workflow: ${response.status}`)
-      }
-
-      // Update workflows list for this collection
-      if (collectionWorkflows[collectionName]) {
-        setCollectionWorkflows({
-          ...collectionWorkflows,
-          [collectionName]: collectionWorkflows[collectionName].filter((w) => w.dag_id !== dagId),
-        })
-      }
-
-      // Clear current workflow if it's the one being deleted
-      const currentWorkflow = localStorage.getItem("currentWorkflow")
-      if (currentWorkflow) {
-        const workflowData = JSON.parse(currentWorkflow)
-        if (workflowData.dag_id === dagId) {
-          localStorage.removeItem("currentWorkflow")
-          localStorage.removeItem("workflowData")
-        }
-      }
-
-      toast({
-        title: "Success",
-        description: `Workflow "${workflowName}" deleted successfully`,
-      })
-    } catch (error) {
-      console.error("Error deleting workflow:", error)
-      toast({
-        title: "Error",
-        description: "Failed to delete workflow",
-        variant: "destructive",
-      })
-    }
-  }
-
   // Open create workflow modal for a specific collection
   const openCreateWorkflowModal = (collectionName: string) => {
     setCurrentCollection(collectionName)
     localStorage.setItem("currentCollection", collectionName)
-    console.log(`[Sidebar] Set current collection for new workflow: ${collectionName}`)
     setIsCreateWorkflowModalOpen(true)
   }
 
   // Load a workflow from a collection
   const loadWorkflow = async (collectionName: string, workflow: DAG) => {
     try {
-      // Store the collection name with the workflow data
       const workflowData = {
         name: workflow.name,
         dag_id: workflow.dag_id,
@@ -1006,52 +920,28 @@ const CollectionsSection = ({ setActiveView }: { setActiveView: (view: string) =
         collection: collectionName,
       }
       localStorage.setItem("currentWorkflow", JSON.stringify(workflowData))
-
-      // Set the current collection context
       localStorage.setItem("currentCollection", collectionName)
-      console.log(`[Sidebar] Set current collection to: ${collectionName}`)
 
-      // Try to load from MongoDB
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:30010"}/mongo/get_data_from_collection_with_dag_id/${collectionName}?dag_id=${workflow.dag_id}`,
       )
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch workflow: ${response.status}`)
-      }
+      if (!response.ok) throw new Error(`Failed to fetch workflow: ${response.status}`)
 
       const data = await response.json()
       if (data && data.length > 0) {
-        const workflowDoc = data[0]
-
-        // Create a custom event with MongoDB data
         const event = new CustomEvent("workflowSelected", {
-          detail: {
-            name: workflow.name,
-            dag_id: workflow.dag_id,
-            schedule: workflow.schedule,
-            created_at: workflow.created_at,
-            collection: collectionName,
-            mongoData: workflowDoc,
-          },
+          detail: { ...workflow, collection: collectionName, mongoData: data[0] },
         })
         window.dispatchEvent(event)
-
         toast({
           title: "Workflow Loaded",
           description: `${workflow.name} has been loaded from ${collectionName}`,
         })
-
-        // Set active view to editor
         setActiveView("editor")
       }
     } catch (error) {
       console.error("Error loading workflow:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load workflow",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Failed to load workflow", variant: "destructive" })
     }
   }
 
@@ -1069,15 +959,13 @@ const CollectionsSection = ({ setActiveView }: { setActiveView: (view: string) =
     )
   }
 
-  console.log("CollectionsSection render - collections state:", collections, "length:", collections.length)
-
   return (
     <>
       {collections.length > 0 ? (
-        <ScrollArea className="h-80">
+        <ScrollArea className="max-h-80">
           <div className="space-y-1 py-2 pr-4">
             {collections.map((collection) => (
-              <div key={collection} className="mb-2">
+              <div key={collection} className="mb-1">
                 {/* Collection item */}
                 <div className="group relative flex items-center">
                   <Button
@@ -1089,56 +977,45 @@ const CollectionsSection = ({ setActiveView }: { setActiveView: (view: string) =
                       <Folder className="h-4 w-4 text-rose-500" />
                       <span className="font-medium">{collection}</span>
                     </span>
-                    <div className="flex items-center">
-                      <ChevronDown
-                        className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-                          expandedCollections[collection] ? "rotate-180" : ""
-                        }`}
-                      />
-                    </div>
+                    <ChevronDown
+                      className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
+                        expandedCollections[collection] ? "rotate-180" : ""
+                      }`}
+                    />
                   </Button>
 
                   {/* Collection action buttons */}
-                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    {/* Add workflow button */}
+                  <div className="absolute right-8 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="p-1 h-6 w-6 hover:bg-green-100"
+                      size="icon"
+                      className="p-1 h-6 w-6 hover:bg-green-100 rounded-full"
                       onClick={(e) => {
                         e.stopPropagation()
                         openCreateWorkflowModal(collection)
                       }}
                     >
-                      <Plus className="h-3 w-3 text-green-600" />
+                      <Plus className="h-4 w-4 text-green-600" />
                     </Button>
-
-                    {/* Delete collection button */}
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="p-1 h-6 w-6 hover:bg-red-100"
+                      size="icon"
+                      className="p-1 h-6 w-6 hover:bg-red-100 rounded-full"
                       onClick={(e) => {
                         e.stopPropagation()
                         deleteCollection(collection)
                       }}
                     >
-                      <svg className="h-3 w-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
+                      <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>
                   </div>
                 </div>
 
                 {/* Workflows in collection */}
                 {expandedCollections[collection] && (
-                  <div className="ml-6 pl-2 border-l border-rose-100">
-                    {collectionWorkflows[collection] && collectionWorkflows[collection].length > 0 ? (
+                  <div className="pl-4 mt-1 border-l border-rose-200 ml-2">
+                    {collectionWorkflows[collection] &&
+                    collectionWorkflows[collection].length > 0 ? (
                       collectionWorkflows[collection].map((workflow) => (
                         <div key={workflow.dag_id} className="group relative mt-1">
                           <Button
@@ -1151,7 +1028,9 @@ const CollectionsSection = ({ setActiveView }: { setActiveView: (view: string) =
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <span className="truncate max-w-[120px]">{truncateText(workflow.name)}</span>
+                                    <span className="truncate max-w-[120px]">
+                                      {truncateText(workflow.name)}
+                                    </span>
                                   </TooltipTrigger>
                                   {workflow.name.length > 12 && (
                                     <TooltipContent side="right" sideOffset={5}>
@@ -1162,21 +1041,18 @@ const CollectionsSection = ({ setActiveView }: { setActiveView: (view: string) =
                               </TooltipProvider>
                             </div>
                           </Button>
-
-                          {/* Workflow action buttons */}
                           <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            {/* Delete workflow button */}
                             <Button
                               variant="ghost"
-                              size="sm"
-                              className="p-1 h-5 w-5 hover:bg-red-100"
+                              size="icon"
+                              className="p-1 h-5 w-5 hover:bg-blue-100 rounded-full"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                deleteWorkflow(collection, workflow.dag_id, workflow.name)
+                                onEditWorkflow(workflow, collection)
                               }}
                             >
                               <svg
-                                className="h-2.5 w-2.5 text-red-600"
+                                className="h-3 w-3 text-blue-600"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -1185,15 +1061,28 @@ const CollectionsSection = ({ setActiveView }: { setActiveView: (view: string) =
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                                 />
                               </svg>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="p-1 h-5 w-5 hover:bg-red-100 rounded-full"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                deleteWorkflow(collection, workflow.dag_id, workflow.name)
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3 text-red-600" />
                             </Button>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-sm text-gray-500 py-2 px-3">No workflows in this collection</div>
+                      <div className="text-sm text-gray-500 py-2 px-3">
+                        No workflows in this collection
+                      </div>
                     )}
                   </div>
                 )}
@@ -1217,14 +1106,11 @@ const CollectionsSection = ({ setActiveView }: { setActiveView: (view: string) =
           isOpen={isCreateWorkflowModalOpen}
           onClose={() => {
             setIsCreateWorkflowModalOpen(false)
-            // Refresh workflows for the collection
-            if (expandedCollections[currentCollection]) {
-              toggleCollection(currentCollection)
-            }
+            window.dispatchEvent(new CustomEvent("refreshCollections"))
           }}
           collectionName={currentCollection}
         />
       )}
     </>
-  );
+  )
 }
