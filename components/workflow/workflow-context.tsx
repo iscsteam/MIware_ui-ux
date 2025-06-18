@@ -132,6 +132,8 @@ export interface WorkflowNode {
   status?: NodeStatus
   output?: any
   error?: string
+  
+  
 }
 
 export interface NodeConnection {

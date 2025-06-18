@@ -106,7 +106,7 @@ export function mapNodeToInputConfig(node: WorkflowNode) {
     return {
       provider: node.data.provider || "postgresql",
       format: "sql",
-      path: node.data.connectionString,
+      path: node.data.connectionString || "",
       options: {
         query: node.data.query,
         table: node.data.table,
@@ -138,9 +138,9 @@ export function mapNodeToOutputConfig(node: WorkflowNode) {
 
   if (node.type === "database") {
     return {
-      provider: node.data.provider === "local" ? "local" : node.data.provider,
+      provider: node.data.provider || "postgresql",
       format: "sql",
-      path: node.data.connectionString, // Use path instead of connectionString
+      path: node.data.connectionString || "", // Use path instead of connectionString
       mode: node.data.writeMode || "overwrite",
       type: "database",
       options: {
@@ -161,14 +161,10 @@ export function mapNodeToOutputConfig(node: WorkflowNode) {
 // Filter Node Mapping
 export function mapFilterNodeToTransformationConfig(filterNode: WorkflowNode | null) {
   const result: {
-    filter: FilterGroup | null
-    order_by: OrderByClauseBackend[] | null
-    aggregation: AggregationConfigBackend | null
-  } = {
-    filter: null,
-    order_by: null,
-    aggregation: null,
-  }
+    filter?: FilterGroup
+    order_by?: OrderByClauseBackend[]
+    aggregation?: AggregationConfigBackend
+  } = {}
 
   if (!filterNode || !filterNode.data) {
     console.log("DEBUG(schema-mapper): No filter node or data found. Returning:", JSON.stringify(result))
@@ -191,8 +187,7 @@ export function mapFilterNodeToTransformationConfig(filterNode: WorkflowNode | n
     } as FilterGroup
     console.log("DEBUG(schema-mapper): Filter conditions found:", JSON.stringify(result.filter))
   } else {
-    result.filter = null
-    console.log("DEBUG(schema-mapper): No valid filter conditions. Setting filter to null.")
+    console.log("DEBUG(schema-mapper): No valid filter conditions. 'filter' property will be omitted.")
   }
 
   // Order By Logic
@@ -200,8 +195,7 @@ export function mapFilterNodeToTransformationConfig(filterNode: WorkflowNode | n
     result.order_by = filterNode.data.order_by
     console.log("DEBUG(schema-mapper): Order by found:", JSON.stringify(result.order_by))
   } else {
-    result.order_by = null
-    console.log("DEBUG(schema-mapper): No order by found. Setting order_by to null.")
+    console.log("DEBUG(schema-mapper): No order by found. 'order_by' property will be omitted.")
   }
 
   // Aggregation Logic
@@ -210,8 +204,7 @@ export function mapFilterNodeToTransformationConfig(filterNode: WorkflowNode | n
     result.aggregation = agg
     console.log("DEBUG(schema-mapper): Aggregation found:", JSON.stringify(result.aggregation))
   } else {
-    result.aggregation = null
-    console.log("DEBUG(schema-mapper): No aggregation found. Setting aggregation to null.")
+    console.log("DEBUG(schema-mapper): No aggregation found. 'aggregation' property will be omitted.")
   }
 
   console.log("DEBUG(schema-mapper): Final return result:", JSON.stringify(result, null, 2))

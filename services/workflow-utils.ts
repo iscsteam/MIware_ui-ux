@@ -111,7 +111,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
         sequences.push({
           readNode,
           writeNode,
-          filterNode,
+          filterNode: filterNode || undefined,
           sequenceIndex: sequenceIndex++,
           type: "file-to-file",
         })
@@ -129,7 +129,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
         sequences.push({
           readNode,
           writeNode,
-          filterNode,
+          filterNode: filterNode || undefined,
           sequenceIndex: sequenceIndex++,
           type: "file-to-database",
         })
@@ -168,7 +168,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
         sequences.push({
           readNode: dbSourceNode,
           writeNode,
-          filterNode,
+          filterNode:filterNode || undefined,
           sequenceIndex: sequenceIndex++,
           type: "database-to-file",
         })
