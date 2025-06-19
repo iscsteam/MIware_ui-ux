@@ -16,6 +16,7 @@ import { ClientsPage } from "@/components/workflow/clients-page"
 interface User {
   name: string
 }
+import '@/services/consolelog';
 
 export default function WorkflowAutomationDashboard() {
   // State to track active view: 'editor' for Studio, 'executions' for History, 'clients' for Clients

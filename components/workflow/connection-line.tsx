@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { WorkflowNode, NodeConnection } from "./workflow-context";
 import { Plus, Trash } from "lucide-react";
 
-interface ConnectionLineProps {
+export interface ConnectionLineProps {
   connection: NodeConnection;
   sourceNode: WorkflowNode;
   targetNode: WorkflowNode;

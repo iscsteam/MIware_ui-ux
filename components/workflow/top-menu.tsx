@@ -51,7 +51,7 @@ export function TopMenu({
   const [workflowIdAvailable, setWorkflowIdAvailable] = useState(false)
   const [userPopoverOpen, setUserPopoverOpen] = useState(false)
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false)
-
+//const workflowIdAvailable = Boolean(currentWorkflowId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -77,46 +77,33 @@ export function TopMenu({
         localStorage.setItem("currentClient", JSON.stringify(clientDataToStore))
         const workflowDataString = localStorage.getItem("currentWorkflow")
         if (workflowDataString) {
-          const parsedWorkflow = JSON.parse(workflowDataString);
-          parsedWorkflow.client_id = String(created.id);
-          localStorage.setItem("currentWorkflow", JSON.stringify(parsedWorkflow));
+          try {
+            const parsedWorkflow = JSON.parse(workflowDataString);
+            parsedWorkflow.client_id = String(created.id);
+            localStorage.setItem( "currentWorkflow", JSON.stringify(parsedWorkflow) );
+          } catch (e) { console.error( "TopMenu: Failed to parse/update 'currentWorkflow' for new client_id", e ); }
         }
-      } catch (storageError) {
-        setErrorMessage("Client created, but failed to set as active locally. Please try selecting the client manually.")
-      }
+      } catch (storageError) { console.error( "TopMenu: Failed to save client to localStorage:", storageError ); setErrorMessage( "Client created, but failed to set as active locally. Please try selecting the client manually." ); }
     } catch (error: unknown) {
-      if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
-        setErrorMessage("Cannot connect to the API server. Please ensure the backend service is accessible.");
-      } else if (error instanceof Error) {
-        setErrorMessage(`Error: ${error.message}`)
-      } else {
-        setErrorMessage("An unknown error occurred.")
-      }
-    } finally {
-      setIsSubmitting(false)
-    }
+      console.error("Failed to create client:", error);
+      if ( error instanceof TypeError && error.message.includes("Failed to fetch") ) { setErrorMessage( "Cannot connect to the API server. Please ensure the backend service is accessible." ); }
+      else if (error instanceof Error) { setErrorMessage(`Error: ${error.message}`) }
+      else { setErrorMessage("An unknown error occurred.") }
+    } finally { setIsSubmitting(false) }
   }
 
   const handleSave = async () => {
     setIsSaving(true);
-    try {
-      await saveWorkflowToBackend();
-    } catch (error) {
-      console.error("Failed to save workflow:", error);
-    } finally {
-      setIsSaving(false);
-    }
+    try { await saveWorkflowToBackend(); }
+    catch (error) { console.error("Failed to save workflow:", error); }
+    finally { setIsSaving(false); }
   };
 
   const handleRun = async () => {
     setIsRunning(true);
-    try {
-      await saveAndRunWorkflow()
-    } catch (error) {
-      console.error("Failed to run workflow:", error);
-    } finally {
-      setIsRunning(false);
-    }
+    try { await saveAndRunWorkflow() }
+    catch (error) { console.error("Failed to run workflow:", error); }
+    finally { setIsRunning(false); }
   }
 
   const handleStop = async () => {
@@ -220,9 +207,7 @@ export function TopMenu({
               )}
             >
               {tab}
-              {activeTab === tab && (
-                <span className="absolute left-0 bottom-0 h-1 w-full bg-purple-600 rounded-sm" />
-              )}
+              {activeTab === tab && ( <span className="absolute left-0 bottom-0 h-1 w-full bg-purple-600 rounded-sm" /> )}
             </button>
           ))}
         </div>
@@ -360,18 +345,9 @@ export function TopMenu({
         </Tabs>
       </div>
 
-      {errorMessage && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{errorMessage}</p>
-            </div>
-            <button onClick={() => setErrorMessage("")} className="ml-auto text-red-400 hover:text-red-600">×</button>
-          </div>
-        </div>
-      )}
-
+      {errorMessage && ( /* ... Error message JSX ... */ <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4"> <div className="flex"> <div className="ml-3"> <p className="text-sm text-red-700">{errorMessage}</p> </div> <button onClick={() => setErrorMessage("")} className="ml-auto text-red-400 hover:text-red-600">×</button> </div> </div> )}
       <Dialog open={createClientDialogOpen} onOpenChange={setCreateClientDialogOpen}>
+        {/* ... Dialog JSX remains the same ... */}
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create New Client</DialogTitle>
@@ -381,19 +357,9 @@ export function TopMenu({
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="client-name" className="text-right">Client Name</Label>
-                <Input
-                  id="client-name"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  className="col-span-3"
-                  placeholder="Enter client name"
-                />
+                <Input id="client-name" value={clientName} onChange={(e) => setClientName(e.target.value)} className="col-span-3" placeholder="Enter client name"/>
               </div>
-              {errorMessage && (
-                <div className="col-span-4 bg-red-50 border border-red-200 text-red-800 rounded-md p-3 text-sm">
-                  {errorMessage}
-                </div>
-              )}
+              {errorMessage && ( <div className="col-span-4 bg-red-50 border border-red-200 text-red-800 rounded-md p-3 text-sm">{errorMessage}</div> )}
             </div>
           ) : (
             <div className="grid gap-4 py-4">

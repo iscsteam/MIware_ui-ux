@@ -70,6 +70,7 @@ export interface DAG {
   dag_sequence: object[];
   active_dag_run?: number | null;
   client_id?: number;
+  type?: string
 }
 
 export type MappingSourceInfo = {
@@ -279,6 +280,15 @@ export interface DagRunMapEntry {
   stage_details: any; // Define more specifically if possible
 }
 
+// export interface DAGStatusResponse {
+//   dag_id: string;
+//   trigger_id: string;
+//   status: string; // e.g., "success", "running", "failed"
+//   started_at?: string;
+//   ended_at?: string;
+//   logs?: string;
+// }
+
 export interface DAGStatusResponse {
   dag_id: string;
   trigger_id: string;
@@ -286,8 +296,12 @@ export interface DAGStatusResponse {
   started_at?: string;
   ended_at?: string;
   logs?: string;
+  
+  // FIX: Added missing properties to align with component usage in `bottom-panel.tsx`
+  canShowOutput?: boolean;
+  data?: any | null;
+  isRunning?: boolean;
 }
-
 export interface UploadedFileItem {
   name: string; // Mapped from API's `filename`
   type: "file" | "directory"; // Defaulted to "file"
@@ -296,33 +310,4 @@ export interface UploadedFileItem {
   original_filename?: string;
   size_bytes?: number;
   last_modified?: string;
-}
-
-
-
-export interface SalesforceReadConfig {
-  object_name: string;
-  query: string;
-  fields?: string[];
-  where?: string;
-  limit?: number;
-  use_bulk_api: boolean;
-  file_path: string;
-}
-
-export interface SalesforceReadConfigResponse extends SalesforceReadConfig {
-  id: number;
-  client_id: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SalesforceReadConfigCreate {
-  object_name: string;
-  query: string;
-  fields?: string[];
-  where?: string;
-  limit?: number;
-  use_bulk_api: boolean;
-  file_path: string;
 }

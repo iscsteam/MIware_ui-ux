@@ -1,10 +1,9 @@
 "use client";
 
 import type React from "react";
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import {
   useWorkflow,
-  
   type WorkflowNode,
   type NodeConnection,
 } from "./workflow-context";
@@ -13,47 +12,38 @@ import { ConnectionLine } from "./connection-line";
 import { NodeModal } from "./node-modal";
 import { ExecutionModal } from "./execution-modal";
 import { SideModal } from "./sidemodal";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import SchemaModal from "./SchemaModal";
 import { getNodeSchema } from "./nodeSchemas";
 import {
-  SchemaModalProps,
-  SchemaItem,
-  SchemaModalData,
-  NodeType
+  type SchemaItem,
+  type SchemaModalData,
+  NodeType,
 } from "@/services/interface";
 
-// Define SchemaItem interface which was missing
-// interface SchemaItem {
-//   name: string
-//   type?: string
-//   description?: string
-//   required?: boolean
-//   originalName?: string
-//   sourceNodeId?: string
-// }
+// Lucide Icons for UI controls
+import {
+  Plus,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Maximize2,
+  Grid3X3,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+// Assuming UI components from a library like shadcn/ui
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-// interface SchemaModalData {
-//   nodeType: NodeType
-//   baseInputSchema: SchemaItem[]
-//   baseOutputSchema: SchemaItem[]
-//   availableInputsFromPrevious: SchemaItem[] // Outputs from connected source nodes
-//   nodeLabel?: string // Optional: Pass the specific node's label
-// }
-
-// Define NodeComponentProps interface to fix TypeScript error
-// interface NodeComponentProps {
-//   key: string;
-//   node: WorkflowNode;
-//   selected: boolean;
-//   isConnecting: boolean;
-//   onSelect: () => void;
-//   onDragStart: (nodeId: string, e: React.MouseEvent) => void;
-//   onExecuteNode: (nodeId: string) => void;
-//   onOpenProperties: (nodeId: string) => void;
-//   onOpenSchemaModal: (nodeId: string) => void;
-// }
+// Define representative node dimensions (adjust if necessary)
+const NODE_WIDTH = 100;
+const NODE_HEIGHT = 100; // NodeComponent port is at Y=50, implying height could be 100
 
 export function WorkflowEditor() {
   const {
@@ -73,7 +63,7 @@ export function WorkflowEditor() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
+  const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 }); // In content coordinates (pre-scale)
   const [canvasScale, setCanvasScale] = useState(1);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [sideModalOpen, setSideModalOpen] = useState(false);
@@ -85,18 +75,70 @@ export function WorkflowEditor() {
     useState<NodeConnection | null>(null);
   const [executionModalOpen, setExecutionModalOpen] = useState(false);
   const [executingNodeId, setExecutingNodeId] = useState<string | null>(null);
-  const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
+  // const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false); // Not used directly in new controls
   const [activeNodeForModal, setActiveNodeForModal] =
     useState<WorkflowNode | null>(null);
 
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
-  const [nodeTypeForSchemaModal, setNodeTypeForSchemaModal] =
-    useState<NodeType | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  // const [nodeTypeForSchemaModal, setNodeTypeForSchemaModal] = useState<NodeType | null>(null); // Not used
+  const [modalOpen, setModalOpen] = useState(false); // For NodeModal (properties)
   const [schemaModalData, setSchemaModalData] =
     useState<SchemaModalData | null>(null);
 
-  const handleOpenSchemaModal = useCallback(
+  // Grid and Minimap State
+  const [gridSize] = useState(20); // Base grid size in pixels at 1x zoom
+  const [showGrid, setShowGrid] = useState(true);
+  const [showMinimap, setShowMinimap] = useState(true);
+
+  const dynamicGridSize = useMemo(() => {
+    const baseSize = gridSize;
+    if (canvasScale < 0.5) return baseSize * 4;
+    if (canvasScale < 0.75) return baseSize * 2;
+    if (canvasScale > 2) return baseSize / 2; // For scales up to 2.5
+    return baseSize;
+  }, [gridSize, canvasScale]);
+
+  const canvasBackgroundStyle = useMemo(() => {
+    const plainBgColor = "hsl(var(--background))"; // Example: using CSS var for background
+                                                  // or specific: '#f0f4f8' (light blueish gray)
+
+    if (!showGrid) {
+      return { backgroundColor: plainBgColor };
+    }
+
+    const smallGrid = dynamicGridSize;
+    const largeGrid = smallGrid * 5;
+    const baseOpacity = 0.4; // Adjusted for better visibility
+    const lineOpacity = Math.min(1, canvasScale * 0.6) * baseOpacity;
+
+    return {
+      backgroundImage: `
+            linear-gradient(rgba(200, 200, 200, ${
+              lineOpacity * 0.5
+            }) 0.5px, transparent 0.5px),
+            linear-gradient(90deg, rgba(200, 200, 200, ${
+              lineOpacity * 0.5
+            }) 0.5px, transparent 0.5px),
+            linear-gradient(rgba(180, 180, 180, ${lineOpacity}) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(180, 180, 180, ${lineOpacity}) 1px, transparent 1px)
+        `,
+      backgroundSize: `
+            ${smallGrid}px ${smallGrid}px,
+            ${smallGrid}px ${smallGrid}px,
+            ${largeGrid}px ${largeGrid}px,
+            ${largeGrid}px ${largeGrid}px
+        `,
+      backgroundPosition: `
+            ${canvasOffset.x * canvasScale}px ${canvasOffset.y * canvasScale}px,
+            ${canvasOffset.x * canvasScale}px ${canvasOffset.y * canvasScale}px,
+            ${canvasOffset.x * canvasScale}px ${canvasOffset.y * canvasScale}px,
+            ${canvasOffset.x * canvasScale}px ${canvasOffset.y * canvasScale}px
+        `,
+      backgroundColor: plainBgColor,
+    };
+  }, [canvasOffset, canvasScale, dynamicGridSize, showGrid]);
+
+  const handleOpenSchemaModal = useCallback(/* ... as in your original code ... */
     (nodeId: string) => {
       const targetNode = nodes.find((n) => n.id === nodeId);
       if (!targetNode) {
@@ -108,7 +150,7 @@ export function WorkflowEditor() {
       const baseSchema = getNodeSchema(nodeType);
 
       if (!baseSchema) {
-        console.error("Schema not found for node type:", nodeType);
+        console.warn("Schema not found for node type:", nodeType, "- using empty schema.");
         setSchemaModalData({
            nodeId,
           nodeType,
@@ -117,11 +159,9 @@ export function WorkflowEditor() {
           availableInputsFromPrevious: [],
           nodeLabel: targetNode.data?.label || nodeType,
         });
-        setIsSchemaModalOpen(true); // Make sure to open the modal
+        setIsSchemaModalOpen(true);
         return;
       }
-
-      // Recursive function to collect outputs from all upstream nodes
       const findAllUpstreamOutputs = (
         currentNodeId: string,
         visited = new Set<string>()
@@ -132,14 +172,11 @@ export function WorkflowEditor() {
         const incomingConnections = connections.filter(
           (conn) => conn.targetId === currentNodeId
         );
-
         let collectedOutputs: SchemaItem[] = [];
-
         for (const conn of incomingConnections) {
           const sourceNode = nodes.find((n) => n.id === conn.sourceId);
           if (sourceNode) {
             const sourceSchema = getNodeSchema(sourceNode.type);
-
             if (sourceSchema?.outputSchema) {
               sourceSchema.outputSchema.forEach((outputItem) => {
                 const uniqueName = `${
@@ -156,8 +193,6 @@ export function WorkflowEditor() {
                 });
               });
             }
-
-            // Recursively collect outputs from further upstream
             const upstreamOutputs = findAllUpstreamOutputs(
               sourceNode.id,
               visited
@@ -165,12 +200,9 @@ export function WorkflowEditor() {
             collectedOutputs = collectedOutputs.concat(upstreamOutputs);
           }
         }
-
         return collectedOutputs;
       };
-
       const availableInputs = findAllUpstreamOutputs(nodeId);
-
       setSchemaModalData({
         nodeId,
         nodeType,
@@ -179,7 +211,7 @@ export function WorkflowEditor() {
         availableInputsFromPrevious: availableInputs,
         nodeLabel: targetNode.data?.label || nodeType,
       });
-      setIsSchemaModalOpen(true); // Make sure to open the modal
+      setIsSchemaModalOpen(true);
     },
     [nodes, connections]
   );
@@ -189,115 +221,88 @@ export function WorkflowEditor() {
     setIsSchemaModalOpen(false);
   };
 
-  // Handle node drop from palette
-  const handleDrop = useCallback(
+  const handleDrop = useCallback(/* ... as in your original code ... */
     (e: React.DragEvent) => {
       e.preventDefault();
-
       const nodeType = e.dataTransfer.getData("nodeType") as NodeType;
       if (!nodeType) return;
-
       const canvasRect = canvasRef.current?.getBoundingClientRect();
       if (!canvasRect) return;
-
-      // Calculate position relative to canvas, accounting for scroll and zoom
       const x = (e.clientX - canvasRect.left) / canvasScale - canvasOffset.x;
       const y = (e.clientY - canvasRect.top) / canvasScale - canvasOffset.y;
-
       addNode(nodeType, { x, y });
     },
     [addNode, canvasScale, canvasOffset]
   );
 
-  // Handle drag over for drop target
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
+  const handleDragOver = useCallback((e: React.DragEvent) => e.preventDefault(), []);
 
-  // start node dragging
-  const startNodeDrag = useCallback(
+  const startNodeDrag = useCallback(/* ... as in your original code ... */
     (nodeId: string, e: React.MouseEvent) => {
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
-
       setIsDragging(true);
       selectNode(nodeId);
-
       const canvasRect = canvasRef.current?.getBoundingClientRect();
       if (!canvasRect) return;
-
-      // Calculate offset between mouse and node position
-      const x = e.clientX - canvasRect.left - node.position.x * canvasScale;
-      const y = e.clientY - canvasRect.top - node.position.y * canvasScale;
-
-      setDragOffset({ x, y });
+      // Offset is mouse position relative to top-left of node, scaled by current zoom
+      const scaledNodeX = node.position.x * canvasScale + canvasOffset.x * canvasScale;
+      const scaledNodeY = node.position.y * canvasScale + canvasOffset.y * canvasScale;
+      setDragOffset({
+        x: e.clientX - canvasRect.left - scaledNodeX,
+        y: e.clientY - canvasRect.top - scaledNodeY,
+      });
     },
-    [nodes, selectNode, canvasScale]
+    [nodes, selectNode, canvasScale, canvasOffset]
   );
 
-  // Handle mouse move for node dragging and pending connection
-  const handleMouseMove = useCallback(
+  const handleMouseMove = useCallback(/* ... as in your original code ... */
     (e: MouseEvent) => {
       const canvasRect = canvasRef.current?.getBoundingClientRect();
       if (!canvasRect) return;
 
-      // Update mouse position for pending connection line
-      const x = (e.clientX - canvasRect.left) / canvasScale;
-      const y = (e.clientY - canvasRect.top) / canvasScale;
-      setMousePosition({ x, y });
+      const currentMouseX = (e.clientX - canvasRect.left);
+      const currentMouseY = (e.clientY - canvasRect.top);
 
-      // Handle node dragging
+      setMousePosition({
+        x: (currentMouseX / canvasScale) - canvasOffset.x,
+        y: (currentMouseY / canvasScale) - canvasOffset.y,
+      });
+
       if (isDragging && selectedNodeId) {
-        // Calculate new position, accounting for scale and offset
-        const x = (e.clientX - canvasRect.left - dragOffset.x) / canvasScale;
-        const y = (e.clientY - canvasRect.top - dragOffset.y) / canvasScale;
-
-        updateNode(selectedNodeId, {
-          position: { x, y },
-        });
+        const newX = (currentMouseX - dragOffset.x) / canvasScale - canvasOffset.x;
+        const newY = (currentMouseY - dragOffset.y) / canvasScale - canvasOffset.y;
+        updateNode(selectedNodeId, { position: { x: newX, y: newY } });
       }
     },
-    [isDragging, selectedNodeId, dragOffset, updateNode, canvasScale]
+    [isDragging, selectedNodeId, dragOffset, updateNode, canvasScale, canvasOffset]
   );
 
-  // Handle mouse up to end dragging
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+  const handleMouseUp = useCallback(() => setIsDragging(false), []);
 
-  // Handle canvas click to cancel pending connection
   const handleCanvasClick = useCallback(() => {
     if (pendingConnection) {
       setPendingConnection(null);
     } else {
       selectNode(null);
-      setModalOpen(false);
+      setModalOpen(false); // Close NodeModal (properties)
     }
   }, [pendingConnection, setPendingConnection, selectNode]);
 
-  // Set up event listeners
-  useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      handleMouseMove(e);
-    };
-
-    const handleGlobalMouseUp = () => {
-      handleMouseUp();
-    };
-
+  useEffect(() => { /* ... event listeners as in your original code ... */
+    const handleGlobalMouseMove = (e: MouseEvent) => handleMouseMove(e);
+    const handleGlobalMouseUp = () => handleMouseUp();
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setPendingConnection(null);
         setSideModalOpen(false);
-        setModalOpen(false);
-        setIsSchemaModalOpen(false);
+        setModalOpen(false); // Close NodeModal
+        setIsSchemaModalOpen(false); // Close SchemaModal
       }
     };
-
     window.addEventListener("mousemove", handleGlobalMouseMove);
     window.addEventListener("mouseup", handleGlobalMouseUp);
     window.addEventListener("keydown", handleKeyDown);
-
     return () => {
       window.removeEventListener("mousemove", handleGlobalMouseMove);
       window.removeEventListener("mouseup", handleGlobalMouseUp);
@@ -305,27 +310,23 @@ export function WorkflowEditor() {
     };
   }, [handleMouseMove, handleMouseUp, setPendingConnection]);
 
-  // Handle zoom with mouse wheel
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.preventDefault();
+      const scrollSensitivity = 0.1; // Make it consistent with first example
+      const deltaFactor = e.deltaY > 0 ? 1 - scrollSensitivity : 1 + scrollSensitivity;
+      const newScale = Math.max(0.2, Math.min(2.5, canvasScale * deltaFactor));
 
-      // Calculate zoom factor
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      const newScale = Math.max(0.5, Math.min(2, canvasScale * delta));
-
-      // Calculate mouse position relative to canvas
       const canvasRect = canvasRef.current?.getBoundingClientRect();
       if (!canvasRect) return;
 
-      const mouseX = e.clientX - canvasRect.left;
+      const mouseX = e.clientX - canvasRect.left; // Mouse position relative to viewport
       const mouseY = e.clientY - canvasRect.top;
 
-      // Calculate new offset to zoom toward mouse position
-      const newOffsetX =
-        mouseX / newScale - (mouseX / canvasScale - canvasOffset.x);
-      const newOffsetY =
-        mouseY / newScale - (mouseY / canvasScale - canvasOffset.y);
+      // Calculate new offset to zoom towards mouse position
+      // Tx_new = (MouseX_vp / S_new) - (MouseX_vp / S_old - Tx_old)
+      const newOffsetX = mouseX / newScale - (mouseX / canvasScale - canvasOffset.x);
+      const newOffsetY = mouseY / newScale - (mouseY / canvasScale - canvasOffset.y);
 
       setCanvasScale(newScale);
       setCanvasOffset({ x: newOffsetX, y: newOffsetY });
@@ -333,110 +334,121 @@ export function WorkflowEditor() {
     [canvasScale, canvasOffset]
   );
 
-  // Find source node for pending connection
   const getPendingConnectionSourceNode = useCallback(() => {
     if (!pendingConnection) return null;
-    return nodes.find((node) => node.id === pendingConnection.sourceId);
+    return nodes.find((node) => node.id === pendingConnection.sourceId) || null;
   }, [pendingConnection, nodes]);
 
-  // Handle inserting a node into a connection
-  const handleInsertNode = useCallback(
+  const handleInsertNode = useCallback(/* ... as in your original code ... */
     (connection: NodeConnection, position: { x: number; y: number }) => {
       setConnectionToSplit(connection);
       setInsertPosition(position);
       setSideModalOpen(true);
-    },
-    []
+    }, []
   );
 
-  // Handle node selection from palette for insertion
-  const handleNodeTypeSelect = useCallback(
+  const handleNodeTypeSelect = useCallback(/* ... as in your original code ... */
     (nodeType: NodeType) => {
       if (connectionToSplit) {
-        // Create the new node
         const newNodeId = addNode(nodeType, insertPosition);
-
-        // Create connections from source to new node and from new node to target
-        addConnection(connectionToSplit.sourceId, newNodeId);
-        addConnection(newNodeId, connectionToSplit.targetId);
-
-        // Remove the original connection
-        removeConnection(connectionToSplit.id);
-
-        // Reset state
+        if (newNodeId) { // Check if addNode returned an ID
+          addConnection(connectionToSplit.sourceId, newNodeId);
+          addConnection(newNodeId, connectionToSplit.targetId);
+          removeConnection(connectionToSplit.id);
+        }
         setConnectionToSplit(null);
       } else {
-        // Add node in the center of the canvas if no position specified
         const canvasRect = canvasRef.current?.getBoundingClientRect();
         if (canvasRect) {
-          const centerX = canvasRect.width / 2 / canvasScale - canvasOffset.x;
-          const centerY = canvasRect.height / 2 / canvasScale - canvasOffset.y;
+          const centerX = (canvasRect.width / 2 / canvasScale) - canvasOffset.x;
+          const centerY = (canvasRect.height / 2 / canvasScale) - canvasOffset.y;
           addNode(nodeType, { x: centerX, y: centerY });
         }
       }
-
-      // Close the side modal
       setSideModalOpen(false);
     },
-    [
-      connectionToSplit,
-      insertPosition,
-      addNode,
-      addConnection,
-      removeConnection,
-      canvasScale,
-      canvasOffset,
-    ]
+    [connectionToSplit, insertPosition, addNode, addConnection, removeConnection, canvasScale, canvasOffset]
   );
 
-  // Handle executing a single node
-  const handleExecuteNode = useCallback(
+  const handleExecuteNode = useCallback(/* ... as in your original code ... */
     (nodeId: string) => {
       setExecutingNodeId(nodeId);
       setExecutionModalOpen(true);
-
-      // Execute the node
       executeNode(nodeId);
-    },
-    [executeNode]
+    }, [executeNode]
   );
 
-  // Toggle Side Modal
   const toggleSideModal = useCallback(() => {
     setSideModalOpen((prev) => !prev);
   }, []);
 
-  // Open properties panel when double-clicking on node icon
-  const handleOpenProperties = useCallback(
-    (nodeId: string) => {
-      selectNode(nodeId);
-      setModalOpen(true);
-    },
-    [selectNode]
-  );
+  const handleOpenProperties = useCallback((nodeId: string) => {
+    selectNode(nodeId);
+    setModalOpen(true); // This opens NodeModal
+  }, [selectNode]);
 
-  // Close properties panel
-  const handleCloseProperties = useCallback(() => {
-    setModalOpen(false);
+  const handleCloseProperties = useCallback(() => setModalOpen(false), []);
+
+  // New UI Control Handlers
+  const handleZoomIn = () => setCanvasScale((prev) => Math.min(2.5, prev * 1.2));
+  const handleZoomOut = () => setCanvasScale((prev) => Math.max(0.2, prev / 1.2));
+  const handleResetView = () => {
+    setCanvasScale(1);
+    setCanvasOffset({ x: 0, y: 0 }); // Reset to origin of content space
+  };
+
+  const handleFitToScreen = () => {
+    if (nodes.length === 0 || !canvasRef.current) {
+      handleResetView();
+      return;
+    }
+    const padding = 50; // Screen pixels padding
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    nodes.forEach(n => {
+      minX = Math.min(minX, n.position.x);
+      minY = Math.min(minY, n.position.y);
+      maxX = Math.max(maxX, n.position.x + NODE_WIDTH);
+      maxY = Math.max(maxY, n.position.y + NODE_HEIGHT);
+    });
+
+    if (maxX === -Infinity) { handleResetView(); return; }
+
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    if (canvasRect.width <= 0 || canvasRect.height <= 0 || contentWidth <=0 || contentHeight <=0) {
+        handleResetView();
+        return;
+    }
+
+    const scaleX = (canvasRect.width - 2 * padding) / contentWidth;
+    const scaleY = (canvasRect.height - 2 * padding) / contentHeight;
+    const newScale = Math.min(scaleX, scaleY, 2.5); // Cap at max zoom
+
+    setCanvasScale(newScale);
+    // New offset to center the content bounding box (with padding)
+    const newOffsetX = (padding / newScale) - minX;
+    const newOffsetY = (padding / newScale) - minY;
+    setCanvasOffset({ x: newOffsetX, y: newOffsetY });
+  };
+
+  // Minimap click handler
+  const handleMinimapClick = useCallback((newContentOffset: { x: number; y: number }) => {
+    setCanvasOffset(newContentOffset);
   }, []);
 
-  function DotsBackground() {
+
+  function DotsBackground() { /* ... as in your original code ... */
     return (
       <svg
         className="absolute inset-0 pointer-events-none"
         xmlns="http://www.w3.org/2000/svg"
-        style={{
-          width: "100%",
-          height: "100%",
-        }}
+        style={{ width: "100%", height: "100%" }}
       >
         <defs>
-          <pattern
-            id="dot-grid"
-            width="20"
-            height="20"
-            patternUnits="userSpaceOnUse"
-          >
+          <pattern id="dot-grid" width="20" height="20" patternUnits="userSpaceOnUse">
             <circle cx="1" cy="1" r="1.2" fill="rgba(38, 37, 37, 0.2)" />
           </pattern>
         </defs>
@@ -446,51 +458,113 @@ export function WorkflowEditor() {
   }
 
   return (
-    <div className="relative flex-1 overflow-hidden bg-blue">
-      {/* Add Button in top-right corner */}
-      <div className="absolute top-4 right-4 z-10">
-        <Button
-          onClick={toggleSideModal}
-          variant="outline"
-          size="icon"
-          className=" bg-white shadow-md hover:bg-gray-100"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
+    // Use a general background color for the editor area, canvas gets its own specific BG
+    <div className="relative flex-1 overflow-hidden bg-background dark:bg-background">
+      <TooltipProvider>
+        {/* Toolbar */}
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-card dark:bg-card p-1.5 rounded-md shadow-lg border">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleSideModal}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Add Node</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomOut}>
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Zoom Out</TooltipContent>
+          </Tooltip>
+          <Badge variant="outline" className="px-2 py-0.5 text-xs min-w-[50px] text-center h-7 flex items-center select-none">
+            {Math.round(canvasScale * 100)}%
+          </Badge>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomIn}>
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Zoom In</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleResetView}>
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Reset View</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleFitToScreen}>
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Fit to Screen</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant={showGrid ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setShowGrid(s => !s)}>
+                <Grid3X3 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Toggle Grid</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant={showMinimap ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setShowMinimap(s => !s)}>
+                {showMinimap ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Toggle Minimap</TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
+
+      {/* Minimap */}
+      {showMinimap && canvasRef.current && (
+          <div className="absolute top-2 right-2 z-10 bg-card dark:bg-card rounded-md shadow-lg border dark:border-border overflow-hidden">
+              <Minimap
+                  nodes={nodes}
+                  connections={connections}
+                  canvasOffset={canvasOffset}
+                  canvasScale={canvasScale}
+                  viewportWidth={canvasRef.current.clientWidth}
+                  viewportHeight={canvasRef.current.clientHeight}
+                  onMinimapClick={handleMinimapClick}
+                  nodeWidth={NODE_WIDTH}
+                  nodeHeight={NODE_HEIGHT}
+              />
+          </div>
+      )}
 
       <div
         ref={canvasRef}
-        className="h-full w-full overflow-hidden"
+        className="h-full w-full overflow-hidden" // Removed cursor-grab, let specific interactions handle cursors
+        style={canvasBackgroundStyle} // Apply dynamic grid or plain background
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onWheel={handleWheel}
         onClick={handleCanvasClick}
       >
-        <DotsBackground />
+        {!showGrid && <DotsBackground />} {/* Show dots if grid is off */}
         <div
-          className="h-full w-full"
+          className="h-full w-full" // transformOrigin is default 0 0
           style={{
             transform: `scale(${canvasScale}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
-            transformOrigin: "0 0",
+            transformOrigin: "0 0", // Explicitly set
           }}
         >
           {/* Connections */}
-          <svg className="absolute h-full w-full pointer-events-none">
+          <svg className="absolute h-full w-full pointer-events-none overflow-visible">
             {connections.map((connection) => {
               const source = nodes.find((n) => n.id === connection.sourceId);
               const target = nodes.find((n) => n.id === connection.targetId);
-
-              if (!source || !target) return null;
-
-              // Skip connections to/from inactive nodes
-              if (
-                source.data?.active === false ||
-                target.data?.active === false
-              ) {
-                return null;
-              }
-
+              if (!source || !target || source.data?.active === false || target.data?.active === false) return null;
               return (
                 <ConnectionLine
                   key={connection.id}
@@ -502,11 +576,9 @@ export function WorkflowEditor() {
                 />
               );
             })}
-
-            {/* Pending connection line */}
             {pendingConnection && (
               <PendingConnectionLine
-                sourceNode={getPendingConnectionSourceNode() ?? null}
+                sourceNode={getPendingConnectionSourceNode()}
                 mousePosition={mousePosition}
               />
             )}
@@ -518,80 +590,55 @@ export function WorkflowEditor() {
               key={node.id}
               node={node}
               selected={node.id === selectedNodeId}
-              isConnecting={
-                !!pendingConnection && pendingConnection.sourceId === node.id
-              }
-              // Pass down callbacks
+              isConnecting={!!pendingConnection && pendingConnection.sourceId === node.id}
               onSelect={() => {
-                // Prevent select if modal open
-                if (
-                  isSchemaModalOpen ||
-                  propertiesPanelOpen ||
-                  sideModalOpen ||
-                  executionModalOpen
-                )
-                  return;
+                if (isSchemaModalOpen || modalOpen || sideModalOpen || executionModalOpen) return;
                 selectNode(node.id);
               }}
-              onDragStart={startNodeDrag} // Already checks for modals
-              onExecuteNode={handleExecuteNode} // Already checks for modals
-              onOpenProperties={handleOpenProperties} // Already checks for modals
-              onOpenSchemaModal={handleOpenSchemaModal} // Pass the handler
+              onDragStart={startNodeDrag}
+              onExecuteNode={handleExecuteNode}
+              onOpenProperties={handleOpenProperties}
+              onOpenSchemaModal={handleOpenSchemaModal}
             />
           ))}
         </div>
       </div>
 
-      {/* Connection helper text */}
-      {pendingConnection && (
+      {pendingConnection && ( /* ... Connection helper text ... */
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm z-50">
           Click on an input port to complete connection • Press ESC to cancel
         </div>
       )}
-
-      {/* Node Modal */}
-      {selectedNodeId && (
-        <NodeModal
-          nodeId={selectedNodeId}
-          isOpen={modalOpen}
-          onClose={handleCloseProperties}
-        />
+      {selectedNodeId && ( /* ... Node Modal ... */
+        <NodeModal nodeId={selectedNodeId} isOpen={modalOpen} onClose={handleCloseProperties} />
       )}
-
-      {/* Side modal for adding nodes */}
-      <SideModal
+      <SideModal /* ... Side modal ... */
         isOpen={sideModalOpen}
         onClose={() => setSideModalOpen(false)}
         onSelectNodeType={handleNodeTypeSelect}
       />
-
-      {/* Execution modal */}
-      <ExecutionModal
+      <ExecutionModal /* ... Execution modal ... */
         isOpen={executionModalOpen}
         onClose={() => setExecutionModalOpen(false)}
         nodeId={executingNodeId}
       />
-
-      {/* Schema Modal */}
-      {schemaModalData && (
+      {schemaModalData && ( /* ... Schema Modal ... */
         <SchemaModal
           nodeId={schemaModalData.nodeId}
           nodeType={schemaModalData.nodeType}
           nodeLabel={schemaModalData.nodeLabel}
           baseInputSchema={schemaModalData.baseInputSchema}
           baseOutputSchema={schemaModalData.baseOutputSchema}
-          availableInputsFromPrevious={
-            schemaModalData.availableInputsFromPrevious
-          }
+          availableInputsFromPrevious={schemaModalData.availableInputsFromPrevious}
           onClose={handleCloseSchemaModal}
+          // Assuming SchemaModal has an onSave or similar prop if needed
         />
       )}
     </div>
   );
 }
 
-// Component for rendering the pending connection line
-function PendingConnectionLine({
+function PendingConnectionLine({ /* ... as in your original code ... */
   sourceNode,
   mousePosition,
 }: {
@@ -599,25 +646,145 @@ function PendingConnectionLine({
   mousePosition: { x: number; y: number };
 }) {
   if (!sourceNode) return null;
+  const sourceX = sourceNode.position.x + NODE_WIDTH; // Node width
+  const sourceY = sourceNode.position.y + NODE_HEIGHT / 2; // Port at middle-right
 
-  // Calculate the starting point of the connection
-  const sourceX = sourceNode.position.x + 100; // Node width is 100px
-  const sourceY = sourceNode.position.y + 50; // Node height is 100px, port at middle
-
-  // Create a bezier curve path from source to mouse position
-  const controlPointOffset = 60;
-  const sourceControlX = sourceX + controlPointOffset;
-  const targetControlX = mousePosition.x - controlPointOffset;
-
-  const path = `M ${sourceX} ${sourceY} C ${sourceControlX} ${sourceY}, ${targetControlX} ${mousePosition.y}, ${mousePosition.x} ${mousePosition.y}`;
-
-  return (
-    <path
-      d={path}
-      stroke="#3b82f6"
-      strokeWidth="2"
-      strokeDasharray="5,5"
-      fill="none"
-    />
-  );
+  const controlPointOffset = Math.max(50, Math.abs(mousePosition.x - sourceX) * 0.3);
+  const path = `M ${sourceX} ${sourceY} C ${sourceX + controlPointOffset} ${sourceY}, ${mousePosition.x - controlPointOffset} ${mousePosition.y}, ${mousePosition.x} ${mousePosition.y}`;
+  return <path d={path} stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" fill="none" />;
 }
+
+
+// Minimap Component
+interface MinimapProps {
+    nodes: WorkflowNode[];
+    connections: NodeConnection[]; // Included for future connection drawing
+    canvasOffset: { x: number; y: number }; // Content offset (pre-scale)
+    canvasScale: number; // Main canvas zoom
+    viewportWidth: number; // Main canvas clientWidth
+    viewportHeight: number; // Main canvas clientHeight
+    onMinimapClick: (newContentOffset: { x: number; y: number }) => void;
+    nodeWidth: number;
+    nodeHeight: number;
+}
+
+const MINIMAP_WIDTH = 200; // Fixed minimap size in pixels
+const MINIMAP_HEIGHT = 150;
+const MINIMAP_NODE_COLOR = "rgba(96, 165, 250, 0.7)"; // tailwind blue-400 with opacity
+const MINIMAP_VIEWPORT_BORDER_COLOR = "rgba(0, 0, 0, 0.3)";
+const MINIMAP_PADDING = 20; // Content padding within minimap scale calculation
+
+const Minimap: React.FC<MinimapProps> = ({
+    nodes,
+    // connections, // For later
+    canvasOffset,
+    canvasScale,
+    viewportWidth,
+    viewportHeight,
+    onMinimapClick,
+    nodeWidth,
+    nodeHeight,
+}) => {
+    const minimapRef = useRef<HTMLDivElement>(null);
+
+    const { minX, minY, contentWidth, contentHeight } = useMemo(() => {
+        if (nodes.length === 0) {
+            // Default bounds if no nodes, e.g., showing one screen worth of content
+            return { minX: 0, minY: 0, contentWidth: viewportWidth / canvasScale, contentHeight: viewportHeight / canvasScale };
+        }
+        let nMinX = Infinity, nMinY = Infinity, nMaxX = -Infinity, nMaxY = -Infinity;
+        nodes.forEach(node => {
+            nMinX = Math.min(nMinX, node.position.x);
+            nMinY = Math.min(nMinY, node.position.y);
+            nMaxX = Math.max(nMaxX, node.position.x + nodeWidth);
+            nMaxY = Math.max(nMaxY, node.position.y + nodeHeight);
+        });
+        // Add padding to the effective content for scaling
+        nMinX -= MINIMAP_PADDING;
+        nMinY -= MINIMAP_PADDING;
+        nMaxX += MINIMAP_PADDING;
+        nMaxY += MINIMAP_PADDING;
+        return { minX: nMinX, minY: nMinY, contentWidth: Math.max(1, nMaxX - nMinX), contentHeight: Math.max(1, nMaxY - nMinY) };
+    }, [nodes, nodeWidth, nodeHeight, viewportWidth, canvasScale, viewportHeight]);
+
+    const minimapScale = useMemo(() => {
+        return Math.min(MINIMAP_WIDTH / contentWidth, MINIMAP_HEIGHT / contentHeight);
+    }, [contentWidth, contentHeight]);
+
+    const handleMinimapInteraction = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!minimapRef.current) return;
+        const rect = minimapRef.current.getBoundingClientRect();
+        const clickXInMinimap = e.clientX - rect.left; // Click relative to minimap div
+        const clickYInMinimap = e.clientY - rect.top;
+
+        // Convert minimap click position to content coordinates
+        const clickedContentX = (clickXInMinimap / minimapScale) + minX;
+        const clickedContentY = (clickYInMinimap / minimapScale) + minY;
+
+        // Calculate new canvasOffset to center the main viewport over the clicked content point
+        // Target content offset Tx, Ty: (clickedContentX + Tx) * mainScale = mainViewportWidth / 2
+        // Tx = (mainViewportWidth / (2 * mainScale)) - clickedContentX
+        const newContentOffsetX = (viewportWidth / (2 * canvasScale)) - clickedContentX;
+        const newContentOffsetY = (viewportHeight / (2 * canvasScale)) - clickedContentY;
+
+        onMinimapClick({ x: newContentOffsetX, y: newContentOffsetY });
+    };
+
+    // Calculate viewport rectangle position and size on the minimap
+    // Viewport top-left in content coordinates:
+    const viewTopLeftInContentX = -canvasOffset.x;
+    const viewTopLeftInContentY = -canvasOffset.y;
+    // Viewport dimensions in content coordinates:
+    const viewWidthInContent = viewportWidth / canvasScale;
+    const viewHeightInContent = viewportHeight / canvasScale;
+
+    // Viewport rectangle in minimap pixel coordinates:
+    const minimapViewRectX = (viewTopLeftInContentX - minX) * minimapScale;
+    const minimapViewRectY = (viewTopLeftInContentY - minY) * minimapScale;
+    const minimapViewRectW = viewWidthInContent * minimapScale;
+    const minimapViewRectH = viewHeightInContent * minimapScale;
+
+    return (
+        <div
+            ref={minimapRef}
+            style={{
+                width: MINIMAP_WIDTH,
+                height: MINIMAP_HEIGHT,
+                backgroundColor: "var(--minimap-bg, hsla(var(--card)/0.8))", // Slightly transparent card
+                position: "relative",
+                overflow: "hidden",
+                cursor: "pointer",
+                userSelect: "none",
+            }}
+            onMouseDown={handleMinimapInteraction} // Allow dragging later by changing this
+        >
+            {/* Render nodes scaled to minimap */}
+            {nodes.map(node => (
+                <div
+                    key={`minimap-${node.id}`}
+                    style={{
+                        position: 'absolute',
+                        left: (node.position.x - minX) * minimapScale,
+                        top: (node.position.y - minY) * minimapScale,
+                        width: Math.max(1, nodeWidth * minimapScale), // Ensure min 1px width
+                        height: Math.max(1, nodeHeight * minimapScale), // Ensure min 1px height
+                        backgroundColor: MINIMAP_NODE_COLOR,
+                    }}
+                />
+            ))}
+            {/* Render viewport rectangle */}
+            <div
+                style={{
+                    position: 'absolute',
+                    left: minimapViewRectX,
+                    top: minimapViewRectY,
+                    width: minimapViewRectW,
+                    height: minimapViewRectH,
+                    border: `1px solid ${MINIMAP_VIEWPORT_BORDER_COLOR}`,
+                    backgroundColor: 'rgba(0,0,0,0.05)',
+                    pointerEvents: 'none', // Important: let clicks pass to the parent for navigation
+                }}
+            />
+        </div>
+    );
+};

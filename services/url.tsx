@@ -30,7 +30,6 @@ export const URLS = {
   listuploadfile: (filename: string) => `uploads/readfile/${filename}`,
 
   mangeuploadfile: (filename: string) => `uploads/readfile/${filename}`,
-  // <<<<<<< feature/saleforce
 
   // Saleforce Read
   listCreateSaleforceReadConfigs: (clientId: number | string) =>
