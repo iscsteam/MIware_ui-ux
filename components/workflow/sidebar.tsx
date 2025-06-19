@@ -22,7 +22,6 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/comp
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import WorkflowModal from "@/components/Model"
-import { fetchDAGs } from "@/services/dagService"
 import type { DAG } from "@/services/dagService"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -240,6 +239,65 @@ export function Sidebar({
 
   return (
     <div className="relative h-full">
+      {/* Custom Scrollbar Styles */}
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(148, 163, 184, 0.3);
+          border-radius: 3px;
+          transition: all 0.2s ease;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(148, 163, 184, 0.5);
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:active {
+          background: rgba(148, 163, 184, 0.7);
+        }
+        
+        /* Firefox scrollbar styling */
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+        }
+        
+        /* Nested scrollbar for workflows */
+        .workflow-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        
+        .workflow-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        .workflow-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(239, 68, 68, 0.2);
+          border-radius: 2px;
+          transition: all 0.2s ease;
+        }
+        
+        .workflow-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(239, 68, 68, 0.4);
+        }
+        
+        .workflow-scrollbar::-webkit-scrollbar-thumb:active {
+          background: rgba(239, 68, 68, 0.6);
+        }
+        
+        .workflow-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(239, 68, 68, 0.2) transparent;
+        }
+      `}</style>
+
       <div
         className={cn(
           "border-r border-slate-200/60 bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 flex flex-col h-full shadow-xl shadow-slate-900/5 transition-all duration-500 ease-out overflow-hidden backdrop-blur-sm",
@@ -254,12 +312,7 @@ export function Sidebar({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div
-                  className={cn(
-                    "flex items-center gap-3 relative z-10",
-                    isCollapsed && "justify-center",
-                  )}
-                >
+                <div className={cn("flex items-center gap-3 relative z-10", isCollapsed && "justify-center")}>
                   <div className="relative">
                     <div className="absolute inset-0 bg-white/20 rounded-xl blur-md"></div>
                     <svg
@@ -278,9 +331,7 @@ export function Sidebar({
                   </div>
                   {!isCollapsed && (
                     <div className="relative z-10">
-                      <div className="font-bold text-xl tracking-wide drop-shadow-lg text-black">
-                        MI-WARE
-                      </div>
+                      <div className="font-bold text-xl tracking-wide drop-shadow-lg text-black">MI-WARE</div>
                     </div>
                   )}
                 </div>
@@ -315,7 +366,7 @@ export function Sidebar({
         {/* Sidebar Body */}
         <div className="flex-1 flex flex-col min-h-0">
           <ScrollArea className="flex-1">
-            <div className="pt-6 pb-4 px-4 space-y-2">
+            <div className="pt-6 pb-4 px-4 space-y-2 custom-scrollbar">
               {/* Project Name section */}
               {projectCreated && (
                 <TooltipProvider>
@@ -599,9 +650,7 @@ export function Sidebar({
               <h3 className="text-xl font-semibold text-slate-800">Create New Project</h3>
             </div>
             <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Project Name
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Project Name</label>
               <input
                 type="text"
                 id="projectName"
@@ -644,9 +693,7 @@ export function Sidebar({
             </div>
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Workflow Name
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Workflow Name</label>
                 <input
                   type="text"
                   value={editWorkflowName}
@@ -656,9 +703,7 @@ export function Sidebar({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Schedule (Cron Expression)
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Schedule (Cron Expression)</label>
                 <input
                   type="text"
                   value={editWorkflowSchedule}
@@ -702,9 +747,7 @@ export function Sidebar({
           <div className="bg-white rounded-2xl shadow-2xl p-8 w-96 transform transition-all animate-in zoom-in-95 duration-300 border border-slate-200">
             <h3 className="text-xl font-semibold text-slate-800 mb-6">Create New Collection</h3>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Collection Name
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Collection Name</label>
               <input
                 type="text"
                 value={newCollectionName}
@@ -960,64 +1003,63 @@ const CollectionsSection = ({
   }
 
   return (
-    <>
+    <div>
       {collections.length > 0 ? (
-        <ScrollArea className="max-h-80">
-          <div className="space-y-1 py-2 pr-4">
-            {collections.map((collection) => (
-              <div key={collection} className="mb-1">
-                {/* Collection item */}
-                <div className="group relative flex items-center">
+        <div className="space-y-1 py-2 pr-4 max-h-80 overflow-y-auto custom-scrollbar">
+          {collections.map((collection) => (
+            <div key={collection} className="mb-1">
+              {/* Collection item */}
+              <div className="group relative flex items-center">
+                <Button
+                  variant="ghost"
+                  onClick={() => toggleCollection(collection)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200"
+                >
+                  <span className="flex items-center gap-2">
+                    <Folder className="h-4 w-4 text-rose-500" />
+                    <span className="font-medium">{collection}</span>
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
+                      expandedCollections[collection] ? "rotate-180" : ""
+                    }`}
+                  />
+                </Button>
+
+                {/* Collection action buttons */}
+                <div className="absolute right-8 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   <Button
                     variant="ghost"
-                    onClick={() => toggleCollection(collection)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200"
+                    size="icon"
+                    className="p-1 h-6 w-6 hover:bg-green-100 rounded-full"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      openCreateWorkflowModal(collection)
+                    }}
                   >
-                    <span className="flex items-center gap-2">
-                      <Folder className="h-4 w-4 text-rose-500" />
-                      <span className="font-medium">{collection}</span>
-                    </span>
-                    <ChevronDown
-                      className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-                        expandedCollections[collection] ? "rotate-180" : ""
-                      }`}
-                    />
+                    <Plus className="h-4 w-4 text-green-600" />
                   </Button>
-
-                  {/* Collection action buttons */}
-                  <div className="absolute right-8 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="p-1 h-6 w-6 hover:bg-green-100 rounded-full"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        openCreateWorkflowModal(collection)
-                      }}
-                    >
-                      <Plus className="h-4 w-4 text-green-600" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="p-1 h-6 w-6 hover:bg-red-100 rounded-full"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteCollection(collection)
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="p-1 h-6 w-6 hover:bg-red-100 rounded-full"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      deleteCollection(collection)
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-600" />
+                  </Button>
                 </div>
+              </div>
 
-                {/* Workflows in collection */}
-                {expandedCollections[collection] && (
-                  <div className="pl-4 mt-1 border-l border-rose-200 ml-2">
-                    {collectionWorkflows[collection] &&
-                    collectionWorkflows[collection].length > 0 ? (
-                      collectionWorkflows[collection].map((workflow) => (
-                        <div key={workflow.dag_id} className="group relative mt-1">
+              {/* Workflows in collection */}
+              {expandedCollections[collection] && (
+                <div className="pl-4 mt-1 border-l border-rose-200 ml-2">
+                  {collectionWorkflows[collection] && collectionWorkflows[collection].length > 0 ? (
+                    <div className="space-y-1 max-h-40 overflow-y-auto workflow-scrollbar">
+                      {collectionWorkflows[collection].map((workflow) => (
+                        <div key={workflow.dag_id} className="group relative">
                           <Button
                             variant="ghost"
                             className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200 text-sm"
@@ -1028,9 +1070,7 @@ const CollectionsSection = ({
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <span className="truncate max-w-[120px]">
-                                      {truncateText(workflow.name)}
-                                    </span>
+                                    <span className="truncate max-w-[120px]">{truncateText(workflow.name)}</span>
                                   </TooltipTrigger>
                                   {workflow.name.length > 12 && (
                                     <TooltipContent side="right" sideOffset={5}>
@@ -1078,18 +1118,16 @@ const CollectionsSection = ({
                             </Button>
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-sm text-gray-500 py-2 px-3">
-                        No workflows in this collection
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 py-2 px-3">No workflows in this collection</div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
           <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center mb-3">
@@ -1111,6 +1149,6 @@ const CollectionsSection = ({
           collectionName={currentCollection}
         />
       )}
-    </>
+    </div>
   )
 }
