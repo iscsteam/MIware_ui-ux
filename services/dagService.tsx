@@ -212,6 +212,24 @@ export function getCurrentWorkflowId(): string | null {
   }
 }
 
+
+// export function getCurrentWorkflowId(): string | null {
+//   try {
+//     const workflowData = localStorage.getItem("currentWorkflow");
+//     if (workflowData) {
+//       const workflow = JSON.parse(workflowData);
+//       // return workflow.dag_id || null
+//       return workflow.dag_id || workflow.id || null;
+//     }
+//     return null;
+//   } catch (error) {
+//     console.error("Error getting current workflow ID:", error);
+//     return null;
+//   }
+// }
+
+
+
 /**
  * Stop the currently active workflow (gets ID from localStorage)
  * @returns Promise<StopDAGResponse | null>

@@ -217,7 +217,11 @@ interface WorkflowContextType {
   saveWorkflow: () => { nodes: WorkflowNode[]; connections: NodeConnection[] }
   saveWorkflowToBackend: () => Promise<void>
   getWorkflowExportData: () => WorkflowExportData
-  loadWorkflow: (data: WorkflowExportData) => void
+  // loadWorkflow: (data: WorkflowExportData) => void
+    loadWorkflow: (data: {
+    nodes: WorkflowNode[];
+    connections: NodeConnection[];
+  }) => void;
   loadWorkflowFromDAG: (dagData: DAG) => Promise<void>
   runWorkflow: () => Promise<void>
   executeNode: (nodeId: string, inputData?: any) => Promise<any>
@@ -230,6 +234,27 @@ interface WorkflowContextType {
   syncWorkflowWithAirflow: (workflowName: string, frontendDagId: string) => Promise<string>
   setCurrentWorkflowMeta: (id: string, name: string) => void; // Added as per fix
 }
+
+export interface StoredExecutionRun {
+  id: string; // Unique ID for this specific execution run
+  dag_id: string; // The ID of the DAG/workflow definition
+  workflowId: string; // Can be same as dag_id or a frontend-specific ID
+  workflowName: string; // Human-readable name
+  status: "running" | "completed" | "failed" | "cancelled";
+  startTime: string; // ISO String for localStorage
+  endTime?: string; // ISO String for localStorage
+  duration?: number;
+  triggeredBy: "manual" | "schedule" | "api";
+  nodeResults: Array<{
+    nodeId: string;
+    nodeName: string;
+    status: "success" | "error" | "skipped";
+    duration: number;
+    output?: any;
+    error?: string;
+  }>;
+}
+
 
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined)
 
@@ -494,6 +519,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
       const newNodes: WorkflowNode[] = []
       const newConnections: NodeConnection[] = []
+       const nodePositions = new Map<string, NodePosition>();
       const calculatedNodePositions = new Map<string, NodePosition>()
 
       const calculateNodePositions = (dagSequence: any[]) => {
@@ -551,7 +577,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           console.log("  Config content:", dagNode.config)
         }
 
-        const defaultPosition = calculatedNodePositions.get(dagNode.id) || { x: 100, y: 100 }
+        const defaultPosition = nodePositions.get(dagNode.id) || { x: 100, y: 100 }
 
         if (dagNode.type === "start" || dagNode.type === "end") {
           console.log("Creating start/end node:", dagNode.id, dagNode.type)
@@ -1027,10 +1053,10 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         const parsed = JSON.parse(workflowData)
         console.log("[WorkflowContext] Parsed workflow data:", parsed)
 
-        if (parsed?.dag_id && String(parsed.dag_id).trim() !== "") {
-          const dagId = String(parsed.dag_id)
-          console.log("[WorkflowContext] Returning dag_id from localStorage:", dagId)
-          return dagId
+        if (parsed?.id && String(parsed.id).trim() !== "") {
+          const id = String(parsed.id)
+          console.log("[WorkflowContext] Returning id from localStorage:", id)
+          return id
         }
       }
     } catch (error) {
@@ -1174,51 +1200,28 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   }, [nodes, connections, currentWorkflowName, currentWorkflowId])
 
 
-  const loadWorkflow = useCallback(
-    (data: WorkflowExportData) => {
-      if (data?.nodes && Array.isArray(data.nodes) && data.connections && Array.isArray(data.connections)) {
-        setNodes(data.nodes)
-        setConnections(data.connections)
-        setSelectedNodeId(null)
-        setPropertiesModalNodeId(null)
-        setPendingConnection(null)
-        setDraggingNodeInfo(null)
-
-        if (data.metadata) {
-          setCurrentWorkflowName(data.metadata.name || "")
-          setCurrentWorkflowId(data.metadata.dag_id || null)
-          localStorage.setItem(
-            "currentWorkflow",
-            JSON.stringify({
-              client_id: getCurrentClientId(),
-              dag_id: data.metadata.dag_id,
-              name: data.metadata.name,
-              schedule: data.metadata.schedule || null,
-            }),
-          )
-        } else {
-          setCurrentWorkflowName("")
-          setCurrentWorkflowId(null)
-          localStorage.removeItem("currentWorkflow")
-        }
-        localStorage.setItem("workflowData", JSON.stringify(data))
-
-        console.log("Workflow loaded from data.")
-        toast({
-          description: `Workflow "${data.metadata?.name || "Untitled"}" loaded successfully.`,
-          title: "Workflow Loaded",
-        })
+   const loadWorkflow = useCallback(
+    (data: { nodes: WorkflowNode[]; connections: NodeConnection[] }) => {
+      if (
+        data?.nodes &&
+        Array.isArray(data.nodes) &&
+        data.connections &&
+        Array.isArray(data.connections)
+      ) {
+        setNodes(data.nodes);
+        setConnections(data.connections);
+        setSelectedNodeId(null);
+        setPropertiesModalNodeId(null);
+        setPendingConnection(null);
+        setDraggingNodeInfo(null);
+        console.log("Workflow loaded from data.");
       } else {
-        console.error("Invalid data format for loading workflow.")
-        toast({
-          description: "Invalid workflow file format.",
-          title: "Error",
-          variant: "destructive",
-        })
+        console.error("Invalid data format for loading workflow.");
       }
     },
-    [toast],
-  )
+    []
+  );
+
 
   const getNodeById = useCallback((id: string) => nodes.find((node) => node.id === id), [nodes])
 
@@ -1521,7 +1524,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     if (nodes.length === 0) {
       toast({
         title: "Error",
-        description: "Cannot run an empty workflow. Please add nodes first.",
+         description: "Cannot run an empty workflow. Please add nodes first.",
         variant: "destructive",
       })
       return
@@ -1648,6 +1651,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       console.log("=== Save and Run Workflow Process Complete ===")
     }
   }, [nodes, connections, getCurrentWorkflowId, toast, saveWorkflowToBackend, isRunning, addLog])
+
 
   const createNewWorkflow = useCallback(
     (workflowName: string, airflowDagId: string) => {

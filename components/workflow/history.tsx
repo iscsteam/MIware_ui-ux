@@ -1,6 +1,6 @@
 "use client"
-import { useState, useEffect } from "react"
-import { useWorkflow } from "./workflow-context"
+import { useState, useEffect, useCallback } from "react"
+import { useWorkflow } from "./workflow-context" // Ensure this path is correct
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -24,13 +24,13 @@ import {
 import { format } from "date-fns"
 
 interface ExecutionRun {
-  id: string
-  dag_id: string
-  workflowId: string
-  workflowName: string
+  id: string // Unique ID for this specific execution run
+  dag_id: string // The ID of the DAG/workflow definition
+  workflowId: string // Can be same as dag_id or a frontend-specific ID
+  workflowName: string // Human-readable name
   status: "running" | "completed" | "failed" | "cancelled"
-  startTime: Date
-  endTime?: Date
+  startTime: Date // Expecting Date object after parsing
+  endTime?: Date // Expecting Date object after parsing
   duration?: number
   triggeredBy: "manual" | "schedule" | "api"
   nodeResults: Array<{
@@ -43,167 +43,137 @@ interface ExecutionRun {
   }>
 }
 
-export function History() {
-  const { logs, clearLogs, currentWorkflowName } = useWorkflow()
-  const [executions, setExecutions] = useState<ExecutionRun[]>([])
-  const [selectedExecution, setSelectedExecution] = useState<ExecutionRun | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [triggerFilter, setTriggerFilter] = useState<string>("all")
-  const [isLoading, setIsLoading] = useState(false)
+// Type for the data structure as it's stored in localStorage (dates as strings)
+interface StoredExecutionRun {
+  id: string;
+  dag_id: string;
+  workflowId: string;
+  workflowName: string;
+  status: "running" | "completed" | "failed" | "cancelled";
+  startTime: string; // ISO String
+  endTime?: string; // ISO String
+  duration?: number;
+  triggeredBy: "manual" | "schedule" | "api";
+  nodeResults: Array<{ /* same as ExecutionRun */ }>;
+}
 
-  // Mock data for demonstration
+
+export function History() {
+  const { logs, clearLogs, currentWorkflowName, currentWorkflowId } = useWorkflow();
+  const [executions, setExecutions] = useState<ExecutionRun[]>([]);
+  const [selectedExecution, setSelectedExecution] = useState<ExecutionRun | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [triggerFilter, setTriggerFilter] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasInitializedSearch, setHasInitializedSearch] = useState(false);
+
+  const loadExecutionsFromLocalStorage = useCallback(() => {
+    console.log("HISTORY: Attempting to load executions from localStorage key 'allWorkflowExecutions'...");
+    setIsLoading(true);
+    try {
+      const workflowData = localStorage.getItem("allWorkflowExecutions");
+      if (workflowData) {
+        console.log("HISTORY: Found data in localStorage for 'allWorkflowExecutions'. Parsing...");
+        const parsedExecutionsFromStorage: StoredExecutionRun[] = JSON.parse(workflowData);
+        
+        const executionsWithDates: ExecutionRun[] = parsedExecutionsFromStorage.map(exec => ({
+          ...exec,
+          startTime: new Date(exec.startTime), // Convert string to Date
+          endTime: exec.endTime ? new Date(exec.endTime) : undefined, // Convert string to Date
+        }));
+        
+        console.log("HISTORY: Parsed executions with Date objects:", executionsWithDates);
+        setExecutions(executionsWithDates);
+      } else {
+        console.warn("HISTORY: NO execution history found in localStorage under key 'allWorkflowExecutions'. The list will be empty until data is saved there.");
+        setExecutions([]);
+      }
+    } catch (error) {
+      console.error("HISTORY: Failed to load or parse execution history from localStorage:", error);
+      setExecutions([]);
+    }
+    setIsLoading(false);
+  }, []);
+
   useEffect(() => {
-    const mockExecutions: ExecutionRun[] = [
-      {
-        id: "exec-001",
-        dag_id: "dag-001",
-        workflowId: "wf-001",
-        workflowName: currentWorkflowName || "Sample Workflow",
-        status: "completed",
-        startTime: new Date(Date.now() - 3600000),
-        endTime: new Date(Date.now() - 3540000),
-        duration: 60000,
-        triggeredBy: "manual",
-        nodeResults: [
-          {
-            nodeId: "start-1",
-            nodeName: "Start",
-            status: "success",
-            duration: 100,
-            output: { trigger: "manual" },
-          },
-          {
-            nodeId: "read-file-1",
-            nodeName: "Read File",
-            status: "success",
-            duration: 2500,
-            output: { content: "File content..." },
-          },
-          {
-            nodeId: "process-1",
-            nodeName: "Process Data",
-            status: "success",
-            duration: 15000,
-            output: { processed: true },
-          },
-        ],
-      },
-      {
-        id: "exec-002",
-        dag_id: "dag-001",
-        workflowId: "wf-001",
-        workflowName: currentWorkflowName || "Sample Workflow",
-        status: "failed",
-        startTime: new Date(Date.now() - 7200000),
-        endTime: new Date(Date.now() - 7180000),
-        duration: 20000,
-        triggeredBy: "schedule",
-        nodeResults: [
-          {
-            nodeId: "start-1",
-            nodeName: "Start",
-            status: "success",
-            duration: 100,
-            output: { trigger: "schedule" },
-          },
-          {
-            nodeId: "read-file-1",
-            nodeName: "Read File",
-            status: "error",
-            duration: 1500,
-            error: "File not found: /path/to/file.txt",
-          },
-        ],
-      },
-      {
-        id: "exec-003",
-        dag_id: "dag-001",
-        workflowId: "wf-001",
-        workflowName: currentWorkflowName || "Sample Workflow",
-        status: "running",
-        startTime: new Date(Date.now() - 300000),
-        triggeredBy: "api",
-        nodeResults: [
-          {
-            nodeId: "start-1",
-            nodeName: "Start",
-            status: "success",
-            duration: 100,
-            output: { trigger: "api" },
-          },
-          {
-            nodeId: "read-file-1",
-            nodeName: "Read File",
-            status: "success",
-            duration: 2000,
-            output: { content: "Processing..." },
-          },
-        ],
-      },
-    ]
-    setExecutions(mockExecutions)
-  }, [currentWorkflowName])
+    loadExecutionsFromLocalStorage();
+  }, [loadExecutionsFromLocalStorage]);
+
+  useEffect(() => {
+    if (currentWorkflowId && !hasInitializedSearch && executions.length > 0 && searchTerm === "") {
+      console.log(`HISTORY: Initializing search term with currentWorkflowId (DAG ID): ${currentWorkflowId}`);
+      setSearchTerm(currentWorkflowId);
+      setHasInitializedSearch(true);
+    }
+    else if (currentWorkflowName && !currentWorkflowId && !hasInitializedSearch && executions.length > 0 && searchTerm === "") {
+      console.log(`HISTORY: Initializing search term with currentWorkflowName (fallback): ${currentWorkflowName}`);
+      setSearchTerm(currentWorkflowName);
+      setHasInitializedSearch(true);
+    }
+  }, [currentWorkflowId, currentWorkflowName, executions, hasInitializedSearch, searchTerm]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "running":
-        return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />
-      case "completed":
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case "failed":
-        return <XCircle className="h-4 w-4 text-red-500" />
-      case "cancelled":
-        return <Square className="h-4 w-4 text-gray-500" />
-      default:
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />
+      case "running": return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />;
+      case "completed": return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "failed": return <XCircle className="h-4 w-4 text-red-500" />;
+      case "cancelled": return <Square className="h-4 w-4 text-gray-500" />;
+      default: return <AlertCircle className="h-4 w-4 text-yellow-500" />;
     }
-  }
+  };
 
   const getStatusBadge = (status: string) => {
-    const variants = {
-      running: "default",
-      completed: "default",
-      failed: "destructive",
-      cancelled: "secondary",
-    } as const
-
     const colors = {
       running: "bg-blue-100 text-blue-800",
       completed: "bg-green-100 text-green-800",
       failed: "bg-red-100 text-red-800",
       cancelled: "bg-gray-100 text-gray-800",
-    }
-
+    };
+    const safeStatus = status as keyof typeof colors;
     return (
-      <Badge className={colors[status as keyof typeof colors] || colors.cancelled}>
+      <Badge className={colors[safeStatus] || colors.cancelled}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
-    )
-  }
+    );
+  };
 
-  const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`
-    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
-    return `${(ms / 60000).toFixed(1)}m`
-  }
+  const formatDuration = (ms: number | undefined) => {
+    if (ms === undefined || ms < 0 || typeof ms !== 'number' || isNaN(ms)) return "N/A";
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${(ms / 60000).toFixed(1)}m`;
+  };
+  
+  const safeFormatDate = (date: Date | undefined, dateFormat: string) => {
+    if (date instanceof Date && !isNaN(date.valueOf())) {
+      return format(date, dateFormat);
+    }
+    return "Invalid Date";
+  };
 
   const filteredExecutions = executions.filter((exec) => {
+    if (!exec.workflowName || !exec.id || !exec.dag_id) { 
+        console.warn("HISTORY: Filtering out invalid execution object:", exec);
+        return false;
+    }
+    const normalizedSearchTerm = searchTerm.toLowerCase();
     const matchesSearch =
-      exec.workflowName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exec.id.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || exec.status === statusFilter
-    const matchesTrigger = triggerFilter === "all" || exec.triggeredBy === triggerFilter
+      (exec.dag_id.toLowerCase().includes(normalizedSearchTerm)) ||
+      (exec.workflowName.toLowerCase().includes(normalizedSearchTerm)) ||
+      (exec.id.toLowerCase().includes(normalizedSearchTerm));
 
-    return matchesSearch && matchesStatus && matchesTrigger
-  })
+    const matchesStatus = statusFilter === "all" || exec.status === statusFilter;
+    const matchesTrigger = triggerFilter === "all" || exec.triggeredBy === triggerFilter;
 
-  const handleRefresh = async () => {
-    setIsLoading(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsLoading(false)
-  }
+    return matchesSearch && matchesStatus && matchesTrigger;
+  });
+
+  const handleRefresh = () => {
+    console.log("HISTORY: Refreshing execution history...");
+    setHasInitializedSearch(false); 
+    loadExecutionsFromLocalStorage();
+  };
 
   const handleExportLogs = () => {
     const logData = logs.map((log) => ({
@@ -213,18 +183,18 @@ export function History() {
       status: log.status,
       message: log.message,
       details: log.details,
-    }))
+    }));
 
-    const blob = new Blob([JSON.stringify(logData, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `workflow-logs-${format(new Date(), "yyyy-MM-dd-HH-mm")}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
+    const blob = new Blob([JSON.stringify(logData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `workflow-logs-${format(new Date(), "yyyy-MM-dd-HH-mm")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-  return (
+    return (
     <div className="flex-1 flex flex-col h-full bg-gray-50">
       <div className="border-b bg-white px-6 py-4">
         <div className="flex items-center justify-between">
@@ -252,9 +222,12 @@ export function History() {
             <div className="relative">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search executions..."
+                placeholder="Search by DAG ID, name, or run ID..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  if(!e.target.value) setHasInitializedSearch(false); 
+                }}
                 className="pl-10"
               />
             </div>
@@ -289,7 +262,13 @@ export function History() {
 
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-3">
-              {filteredExecutions.map((execution) => (
+               {isLoading && (
+                <div className="text-center py-8 text-gray-500">
+                  <RefreshCw className="h-12 w-12 mx-auto mb-4 animate-spin opacity-50" />
+                  <p>Loading executions...</p>
+                </div>
+              )}
+              {!isLoading && filteredExecutions.length > 0 && filteredExecutions.map((execution) => (
                 <Card
                   key={execution.id}
                   className={`cursor-pointer transition-all hover:shadow-md ${
@@ -309,11 +288,11 @@ export function History() {
                     <div className="text-xs text-gray-500 space-y-1">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {format(execution.startTime, "MMM dd, yyyy HH:mm:ss")}
+                        {safeFormatDate(execution.startTime, "MMM dd, yyyy HH:mm:ss")}
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {execution.duration ? formatDuration(execution.duration) : "Running..."}
+                        {formatDuration(execution.duration)}
                       </div>
                       <div className="flex items-center gap-1">
                         <Play className="h-3 w-3" />
@@ -324,11 +303,11 @@ export function History() {
                 </Card>
               ))}
 
-              {filteredExecutions.length === 0 && (
+              {!isLoading && filteredExecutions.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No executions found</p>
-                  <p className="text-sm">Try adjusting your filters</p>
+                  <p className="text-sm">Ensure execution run data is saved to localStorage under "allWorkflowExecutions".</p>
                 </div>
               )}
             </div>
@@ -347,16 +326,20 @@ export function History() {
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
+                    <span className="text-gray-500">Run ID:</span>
+                    <p className="font-mono">{selectedExecution.id}</p>
+                  </div>
+                  <div>
                     <span className="text-gray-500">DAG ID:</span>
                     <p className="font-mono">{selectedExecution.dag_id}</p>
                   </div>
                   <div>
                     <span className="text-gray-500">Duration:</span>
-                    <p>{selectedExecution.duration ? formatDuration(selectedExecution.duration) : "Running..."}</p>
+                    <p>{formatDuration(selectedExecution.duration)}</p>
                   </div>
                   <div>
                     <span className="text-gray-500">Started:</span>
-                    <p>{format(selectedExecution.startTime, "MMM dd, yyyy HH:mm:ss")}</p>
+                    <p>{safeFormatDate(selectedExecution.startTime, "MMM dd, yyyy HH:mm:ss")}</p>
                   </div>
                   <div>
                     <span className="text-gray-500">Triggered by:</span>
@@ -419,7 +402,7 @@ export function History() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-medium">{log.nodeName}</span>
-                              <span className="text-xs text-gray-500">{format(log.timestamp, "HH:mm:ss.SSS")}</span>
+                              <span className="text-xs text-gray-500">{safeFormatDate(log.timestamp, "HH:mm:ss.SSS")}</span>
                             </div>
                             <p className="text-gray-700">{log.message}</p>
                             {log.details && (
@@ -434,7 +417,7 @@ export function History() {
                       {logs.length === 0 && (
                         <div className="text-center py-8 text-gray-500">
                           <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>No logs available</p>
+                          <p>No general logs available for the selected execution.</p>
                         </div>
                       )}
                     </div>
