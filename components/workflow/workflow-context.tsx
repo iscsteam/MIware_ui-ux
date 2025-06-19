@@ -1,16 +1,23 @@
-//workflow-context.tsx 
-"use client"
+"use client";
+import type React from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
+import { v4 as uuidv4 } from "uuid";
+import type { NodeType, SchemaItem } from "@/services/interface";
 
-import type React from "react"
-import { createContext, useContext, useState, useCallback, useEffect } from "react"
-import { v4 as uuidv4 } from "uuid"
-import type { NodeType, SchemaItem } from "@/services/interface"
-import { useToast } from "@/components/ui/use-toast"
-import { saveAndRunWorkflow as saveAndRunWorkflowUtil } from "@/services/workflow-utils"
+import { useToast as useUIToast } from "@/components/ui/use-toast";
+import { saveAndRunWorkflow as saveAndRunWorkflowUtil } from "@/services/workflow-utils";
+import { baseUrl } from "@/services/api";
 
-const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT
+// const baseUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
 
 export type NodeStatus = "idle" | "running" | "success" | "error" | "configured"
+
 
 export interface NodePosition {
   x: number
@@ -22,6 +29,32 @@ export interface NodeSchema {
   description: string
   inputSchema: SchemaItem[]
   outputSchema: SchemaItem[]
+}
+
+export interface FilterCondition {
+  field: string;
+  operation: string;
+  value: any;
+}
+
+// A condition item can be a simple condition OR a nested filter group
+export type ConditionItem = FilterCondition | FilterGroup // Recursive type definition!
+
+export interface FilterGroup {
+  // Represents a logical group of conditions (e.g., AND/OR)
+  operator: "AND" | "OR" | string // Allow "AND", "OR", or other string if needed
+  conditions: ConditionItem[]
+}
+
+// Backend format for order_by: Array of [field: string, direction: "asc" | "desc"]
+export type OrderByClauseBackend = [string, "asc" | "desc"]
+
+// Backend format for aggregation functions: Array of [field: string, func: string]
+export type AggregationFunctionBackend = [string, string]
+
+export interface AggregationConfigBackend {
+  group_by: string[]
+  aggregations: AggregationFunctionBackend[]
 }
 
 export interface WorkflowNodeData {
@@ -71,21 +104,27 @@ export interface WorkflowNodeData {
   schema?: any
   order_by?: any
   aggregation?: any
-  // Add CLI operator specific fields
   source_path?: string
   destination_path?: string
-  cliOperatorPayload?: {
-    operation: string
-    source_path: string
-    destination_path: string
-    options: {
-      overwrite: boolean
-      includeSubDirectories?: boolean
-      createNonExistingDirs?: boolean
-      [key: string]: any
-    }
-    executed_by: string
-  }
+  connectionString?: string
+  writeMode?: string
+  table?: string
+  user?: string
+  password?: string
+  batchSize?: string
+  query?: string
+  filePath?: string
+  csvOptions?: Record<string, any>
+  // Salesforce specific fields
+  fields?: string[]
+  where?: string
+  limit?: number
+  username?: string
+  object_name?: string
+  use_bulk_api?: boolean
+  file_path?: string
+  bulk_batch_size?: number
+  config_id?: number
 }
 
 export interface WorkflowNode {
@@ -96,6 +135,8 @@ export interface WorkflowNode {
   status?: NodeStatus
   output?: any
   error?: string
+  
+  
 }
 
 export interface NodeConnection {
@@ -123,14 +164,27 @@ export interface DAG {
   schedule: string | null
   active: boolean
   dag_sequence: Array<{
-    id: string
-    type: string
-    config_id: number
-    next: string[]
-  }>
-  active_dag_run: number | null
-  created_at: string
-  updated_at: string
+    id: string;
+    type: string;
+    config_id: number;
+    next: string[];
+    config?: any;
+  }>;
+  active_dag_run: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface WorkflowExportData {
+  nodes: WorkflowNode[]
+  connections: NodeConnection[]
+  metadata?: {
+    name: string
+    dag_id: string
+    exported_at?: string
+    schedule?: string | null
+    created_at?: string
+  }
 }
 
 interface WorkflowContextType {
@@ -142,6 +196,8 @@ interface WorkflowContextType {
   propertiesModalNodeId: string | null
   dataMappingModalNodeId: string | null
   draggingNodeInfo: { id: string; offset: { x: number; y: number } } | null
+  currentWorkflowName: string
+  currentWorkflowId: string | null
   setPendingConnection: (connection: { sourceId: string; sourceHandle?: string } | null) => void
   setPropertiesModalNodeId: (nodeId: string | null) => void
   setDataMappingModalNodeId: (nodeId: string | null) => void
@@ -160,10 +216,13 @@ interface WorkflowContextType {
   clearWorkflow: () => void
   saveWorkflow: () => { nodes: WorkflowNode[]; connections: NodeConnection[] }
   saveWorkflowToBackend: () => Promise<void>
-  loadWorkflow: (data: {
-    nodes: WorkflowNode[]
-    connections: NodeConnection[]
-  }) => void
+  getWorkflowExportData: () => WorkflowExportData
+  // loadWorkflow: (data: WorkflowExportData) => void
+    loadWorkflow: (data: {
+    nodes: WorkflowNode[];
+    connections: NodeConnection[];
+  }) => void;
+  loadWorkflowFromDAG: (dagData: DAG) => Promise<void>
   runWorkflow: () => Promise<void>
   executeNode: (nodeId: string, inputData?: any) => Promise<any>
   addLog: (log: Omit<LogEntry, "id" | "timestamp">) => void
@@ -171,45 +230,72 @@ interface WorkflowContextType {
   getNodeById: (id: string) => WorkflowNode | undefined
   getCurrentWorkflowId: () => string | null
   saveAndRunWorkflow: () => Promise<void>
+  createNewWorkflow: (workflowName: string, dagId: string) => void
+  syncWorkflowWithAirflow: (workflowName: string, frontendDagId: string) => Promise<string>
+  setCurrentWorkflowMeta: (id: string, name: string) => void; // Added as per fix
 }
+
+export interface StoredExecutionRun {
+  id: string; // Unique ID for this specific execution run
+  dag_id: string; // The ID of the DAG/workflow definition
+  workflowId: string; // Can be same as dag_id or a frontend-specific ID
+  workflowName: string; // Human-readable name
+  status: "running" | "completed" | "failed" | "cancelled";
+  startTime: string; // ISO String for localStorage
+  endTime?: string; // ISO String for localStorage
+  duration?: number;
+  triggeredBy: "manual" | "schedule" | "api";
+  nodeResults: Array<{
+    nodeId: string;
+    nodeName: string;
+    status: "success" | "error" | "skipped";
+    duration: number;
+    output?: any;
+    error?: string;
+  }>;
+}
+
 
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined)
 
+
 export const getCurrentClientId = (): string | null => {
   try {
-    // 1. Check dedicated "currentClient" item
-    const clientDataString = localStorage.getItem("currentClient");
+    const clientDataString = localStorage.getItem("currentClient")
     if (clientDataString) {
-      const parsedClient = JSON.parse(clientDataString);
-      if (parsedClient && parsedClient.id && String(parsedClient.id).trim() !== '') {
-        return String(parsedClient.id);
+      const parsedClient = JSON.parse(clientDataString)
+      if (parsedClient?.id && String(parsedClient.id).trim() !== "") {
+        return String(parsedClient.id)
       }
     }
-
-    // 2. Fallback: Check for "client_id" inside "currentWorkflow" item
-    const workflowDataString = localStorage.getItem("currentWorkflow");
+    const workflowDataString = localStorage.getItem("currentWorkflow")
     if (workflowDataString) {
-      const parsedWorkflow = JSON.parse(workflowDataString);
-      if (parsedWorkflow && parsedWorkflow.client_id && String(parsedWorkflow.client_id).trim() !== '') {
-        return String(parsedWorkflow.client_id);
+      const parsedWorkflow = JSON.parse(workflowDataString)
+      if (parsedWorkflow?.client_id && String(parsedWorkflow.client_id).trim() !== "") {
+        return String(parsedWorkflow.client_id)
       }
     }
-    // If neither found:
-    console.warn("getCurrentClientId: No valid client_id found in localStorage ('currentClient' or 'currentWorkflow.client_id').");
+    console.warn("getCurrentClientId: No valid client_id found.")
   } catch (error) {
-    console.error("getCurrentClientId: Error accessing localStorage:", error);
+    console.error("getCurrentClientId: Error accessing localStorage:", error)
   }
-  return null;
-};
-
+  return null
+}
 
 export function WorkflowProvider({ children }: { children: React.ReactNode }) {
-  const [nodes, setNodes] = useState<WorkflowNode[]>([])
-  const [connections, setConnections] = useState<NodeConnection[]>([])
-  const [logs, setLogs] = useState<LogEntry[]>([])
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [isRunning, setIsRunning] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [nodes, setNodes] = useState<WorkflowNode[]>([]);
+  const [connections, setConnections] = useState<NodeConnection[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Existing states, ensure types match if fix description used "" vs null
+  const [currentWorkflowName, setCurrentWorkflowName] = useState<string>("");
+  const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(
+    null
+  );
+
   const [pendingConnection, setPendingConnection] = useState<{
     sourceId: string
     sourceHandle?: string
@@ -220,47 +306,654 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     id: string
     offset: { x: number; y: number }
   } | null>(null)
+  const { toast } = useUIToast()
 
-  // Get toast hook for notifications
-  const toast = useToast()
+  const addLog = useCallback((log: Omit<LogEntry, "id" | "timestamp">) => {
+    const newLog: LogEntry = { ...log, id: uuidv4(), timestamp: new Date() }
+    setLogs((prev) => [newLog, ...prev.slice(0, 99)])
+  }, [])
 
-  // --- Node Management ---
+  const clearLogs = useCallback(() => {
+    setLogs([])
+  }, [])
+
+  // Added as per fix description point 2
+  function setCurrentWorkflowMeta(id: string, name: string) {
+    setCurrentWorkflowId(id);
+    setCurrentWorkflowName(name);
+    // This stores {id, name}, where 'id' is the dag_id
+    localStorage.setItem("currentWorkflow", JSON.stringify({ id, name }));
+  }
+
+  const makePythonSafeId = (name: string): string => {
+    let safeId = name.replace(/[^a-zA-Z0-9_]/g, "_")
+    if (!/^[a-zA-Z_]/.test(safeId)) {
+      safeId = "node_" + safeId
+    }
+    return safeId
+  }
+
+  const parseFileConversionConfig = useCallback((dagNode: any, basePosition: NodePosition) => {
+    console.log("Parsing file_conversion config for node:", dagNode.id, dagNode.config)
+
+    const config = dagNode.config
+    if (!config) {
+      console.warn("No config found for file_conversion node:", dagNode.id)
+      return { nodes: [], connections: [], firstNodeId: null, lastNodeId: null }
+    }
+
+    const nodes: WorkflowNode[] = []
+    const connections: NodeConnection[] = []
+    let currentX = basePosition.x
+    const y = basePosition.y
+
+    if (config.input) {
+      const readNodeId = `read_file_${dagNode.config_id || uuidv4()}`
+      console.log("Creating read-file node:", readNodeId, config.input)
+
+      const readNode: WorkflowNode = {
+        id: readNodeId,
+        type: "read-file",
+        position: { x: currentX, y },
+        data: {
+          label: "read-file",
+          displayName: "Read File",
+          path: config.input.path,
+          provider: config.input.provider,
+          format: config.input.format,
+          options: config.input.options || {},
+          schema: config.input.schema,
+          active: true,
+        },
+        status: "configured",
+      }
+      nodes.push(readNode)
+      currentX += 200
+    }
+
+    let filterNodeId: string | null = null
+    if (config.filter || config.order_by || config.aggregation) {
+      filterNodeId = `filter_${dagNode.config_id || uuidv4()}`
+      console.log("Creating filter node:", filterNodeId, {
+        filter: config.filter,
+        order_by: config.order_by,
+        aggregation: config.aggregation,
+      })
+
+      const filterNode: WorkflowNode = {
+        id: filterNodeId,
+        type: "filter",
+        position: { x: currentX, y },
+        data: {
+          label: "filter",
+          displayName: "Filter",
+          filter: config.filter,
+          order_by: config.order_by,
+          aggregation: config.aggregation,
+          active: true,
+        },
+        status: "configured",
+      }
+      nodes.push(filterNode)
+      currentX += 200
+    }
+
+    // Create write-file or database node from output config
+    if (config.output) {
+      // Check if this is a database output by examining the config
+      const isDatabase = config.output.type === "database" || (config.output.connectionString && config.output.table)
+
+      const writeNodeId = `${isDatabase ? "database" : "write_file"}_${dagNode.config_id}`
+      console.log(`Creating ${isDatabase ? "database" : "write-file"} node:`, writeNodeId, config.output)
+
+      const writeNode: WorkflowNode = {
+        id: writeNodeId,
+        type: isDatabase ? "database" : "write-file",
+        position: { x: currentX, y },
+        data: {
+          label: isDatabase ? "database" : "write-file",
+          displayName: isDatabase ? "Database" : "Write File",
+          path: config.output.path,
+          provider: config.output.provider,
+          format: config.output.format,
+          mode: config.output.mode,
+          options: config.output.options || {},
+          // Add database specific fields if it's a database node
+          ...(isDatabase && {
+            connectionString: config.output.connectionString,
+            table: config.output.table,
+            writeMode: config.output.writeMode || "append",
+          }),
+          active: true,
+        },
+        status: "configured",
+      }
+      nodes.push(writeNode)
+    }
+
+    if (nodes.length > 1) {
+      for (let i = 0; i < nodes.length - 1; i++) {
+        const connectionId = uuidv4()
+        console.log("Creating connection:", nodes[i].id, "->", nodes[i + 1].id)
+        connections.push({
+          id: connectionId,
+          sourceId: nodes[i].id,
+          targetId: nodes[i + 1].id,
+        })
+      }
+    }
+
+    console.log("Parsed file_conversion - nodes:", nodes.length, "connections:", connections.length)
+    return { nodes, connections, firstNodeId: nodes[0]?.id, lastNodeId: nodes[nodes.length - 1]?.id }
+  }, [])
+
+  const parseCliOperatorConfig = useCallback((dagNode: any, basePosition: NodePosition) => {
+    console.log("Parsing cli_operator config for node:", dagNode.id, dagNode.config)
+
+    const config = dagNode.config
+    if (!config || !config.operation) {
+      console.warn("No config or operation found for cli_operator node:", dagNode.id)
+      return { nodes: [], connections: [], firstNodeId: null, lastNodeId: null }
+    }
+
+    let nodeType: NodeType
+    let displayName: string
+
+    switch (config.operation) {
+      case "copy":
+        nodeType = "copy-file"
+        displayName = "Copy File"
+        break
+      case "move":
+        nodeType = "move-file"
+        displayName = "Move File"
+        break
+      case "rename":
+        nodeType = "rename-file"
+        displayName = "Rename File"
+        break
+      case "delete":
+        nodeType = "delete-file"
+        displayName = "Delete File"
+        break
+      default:
+        console.warn("Unknown CLI operation:", config.operation)
+        nodeType = "copy-file"
+        displayName = "File Operation"
+    }
+
+    const operationNodeId = `${config.operation}_${dagNode.config_id || uuidv4()}`
+    console.log("Creating CLI operation node:", operationNodeId, nodeType, config)
+
+    const operationNode: WorkflowNode = {
+      id: operationNodeId,
+      type: nodeType,
+      position: basePosition,
+      data: {
+        label: nodeType,
+        displayName,
+        source_path: config.source_path,
+        destination_path: config.destination_path,
+        options: config.options || {},
+        overwrite: config.options?.overwrite || false,
+        includeSubDirectories: config.options?.includeSubDirectories || false,
+        createNonExistingDirs: config.options?.createNonExistingDirs || false,
+        recursive: config.options?.recursive || false,
+        active: true,
+      },
+      status: "configured",
+    }
+
+    return {
+      nodes: [operationNode],
+      connections: [],
+      firstNodeId: operationNodeId,
+      lastNodeId: operationNodeId,
+    }
+  }, [])
+
+  const convertDAGToWorkflow = useCallback(
+    (dagData: DAG) => {
+      console.log("=== Converting DAG to workflow ===")
+      console.log("DAG ID:", dagData.dag_id, "Sequence length:", dagData.dag_sequence.length)
+
+      const newNodes: WorkflowNode[] = []
+      const newConnections: NodeConnection[] = []
+       const nodePositions = new Map<string, NodePosition>();
+      const calculatedNodePositions = new Map<string, NodePosition>()
+
+      const calculateNodePositions = (dagSequence: any[]) => {
+        const levels: string[][] = [];
+        const visited = new Set<string>();
+        const inDegree = new Map<string, number>();
+        dagSequence.forEach((node) => {
+          inDegree.set(node.id, 0);
+        });
+        dagSequence.forEach((node) => {
+          node.next.forEach((nextId: string) => {
+            inDegree.set(nextId, (inDegree.get(nextId) || 0) + 1);
+          });
+        });
+        const queue: string[] = [];
+        dagSequence.forEach((node) => {
+          if (inDegree.get(node.id) === 0) queue.push(node.id);
+        });
+        while (queue.length > 0) {
+          const levelSize = queue.length;
+          const currentLevel: string[] = [];
+          for (let i = 0; i < levelSize; i++) {
+            const nodeId = queue.shift()!;
+            currentLevel.push(nodeId);
+            visited.add(nodeId);
+            const node = dagSequence.find((n) => n.id === nodeId);
+            if (node)
+              node.next.forEach((nextId: string) => {
+                const newInDegree = (inDegree.get(nextId) || 0) - 1;
+                inDegree.set(nextId, newInDegree);
+                if (newInDegree === 0 && !visited.has(nextId))
+                  queue.push(nextId);
+              });
+          }
+          if (currentLevel.length > 0) levels.push(currentLevel);
+        }
+        levels.forEach((level, levelIndex) => {
+          level.forEach((nodeId, nodeIndex) => {
+            const x = levelIndex * 300 + 100;
+            const y = nodeIndex * 150 + 100;
+            nodePositions.set(nodeId, { x, y });
+          });
+        });
+      };
+      calculateNodePositions(dagData.dag_sequence);
+      const dagNodeMapping = new Map<
+        string,
+        { firstNodeId: string; lastNodeId: string }
+      >();
+      dagData.dag_sequence.forEach((dagNode) => {
+        console.log(
+          `Processing DAG node: ID=${dagNode.id}, Type=${dagNode.type}, ConfigID=${dagNode.config_id}, HasConfig=${!!dagNode.config}`,
+        )
+        if (dagNode.config) {
+          console.log("  Config content:", dagNode.config)
+        }
+
+        const defaultPosition = nodePositions.get(dagNode.id) || { x: 100, y: 100 }
+
+        if (dagNode.type === "start" || dagNode.type === "end") {
+          console.log("Creating start/end node:", dagNode.id, dagNode.type)
+          const workflowNode: WorkflowNode = {
+            id: dagNode.id,
+            type: dagNode.type as NodeType,
+            position: defaultPosition,
+            data: {
+              label: dagNode.type,
+              displayName: dagNode.id,
+              active: true,
+            },
+            status: "idle",
+          };
+          newNodes.push(workflowNode);
+          dagNodeMapping.set(dagNode.id, {
+            firstNodeId: dagNode.id,
+            lastNodeId: dagNode.id,
+          });
+        } else if (dagNode.type === "file_conversion" && dagNode.config) {
+          console.log("Processing file_conversion node:", dagNode.id)
+          const parsed = parseFileConversionConfig(dagNode, defaultPosition)
+
+          if (parsed.nodes.length > 0) {
+            newNodes.push(...parsed.nodes);
+            newConnections.push(...parsed.connections);
+            if (parsed.firstNodeId && parsed.lastNodeId)
+              dagNodeMapping.set(dagNode.id, {
+                firstNodeId: parsed.firstNodeId,
+                lastNodeId: parsed.lastNodeId,
+              });
+          } else {
+            console.warn("Failed to parse file_conversion config for node:", dagNode.id)
+            const fallbackNode: WorkflowNode = {
+              id: dagNode.id,
+              type: "start",
+              position: defaultPosition,
+              data: {
+                label: "file_conversion",
+                displayName: dagNode.id,
+                active: true,
+              },
+              status: "idle",
+            }
+            newNodes.push(fallbackNode)
+            dagNodeMapping.set(dagNode.id, { firstNodeId: fallbackNode.id, lastNodeId: fallbackNode.id })
+          }
+        } else if (dagNode.type === "cli_operator" && dagNode.config) {
+          console.log("Processing cli_operator node:", dagNode.id)
+          const parsed = parseCliOperatorConfig(dagNode, defaultPosition)
+
+          if (parsed.nodes.length > 0) {
+            newNodes.push(...parsed.nodes);
+            newConnections.push(...parsed.connections);
+            if (parsed.firstNodeId && parsed.lastNodeId)
+              dagNodeMapping.set(dagNode.id, {
+                firstNodeId: parsed.firstNodeId,
+                lastNodeId: parsed.lastNodeId,
+              });
+          } else {
+            console.warn("Failed to parse cli_operator config for node:", dagNode.id)
+            const fallbackNode: WorkflowNode = {
+              id: dagNode.id,
+              type: "start",
+              position: defaultPosition,
+              data: {
+                label: "cli_operator",
+                displayName: dagNode.id,
+                active: true,
+              },
+              status: "idle",
+            }
+            newNodes.push(fallbackNode)
+            dagNodeMapping.set(dagNode.id, { firstNodeId: fallbackNode.id, lastNodeId: fallbackNode.id })
+          }
+        } else if (dagNode.type === "read_salesforce" && dagNode.config) {
+          console.log("Processing read_salesforce node:", dagNode.id)
+          const salesforceNode: WorkflowNode = {
+            id: dagNode.id,
+            type: "salesforce-cloud",
+            position: defaultPosition,
+            data: {
+              label: "salesforce-cloud",
+              displayName: "Salesforce Cloud",
+              object_name: dagNode.config.object_name,
+              query: dagNode.config.query,
+              fields: dagNode.config.fields || [],
+              where: dagNode.config.where || "",
+              limit: dagNode.config.limit,
+              use_bulk_api: dagNode.config.use_bulk_api || false,
+              file_path: dagNode.config.file_path,
+              config_id: dagNode.config_id,
+              active: true,
+            },
+            status: "configured",
+          }
+          newNodes.push(salesforceNode)
+          dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id })
+        } else if (dagNode.type === "write_salesforce" && dagNode.config) {
+          // Add this new block to handle Salesforce write nodes
+          console.log("Processing write_salesforce node:", dagNode.id)
+          const salesforceWriteNode: WorkflowNode = {
+            id: dagNode.id,
+            type: "write-salesforce",
+            position: defaultPosition,
+            data: {
+              label: "write-salesforce",
+              displayName: "Salesforce Write",
+              object_name: dagNode.config.object_name,
+              use_bulk_api: dagNode.config.use_bulk_api || false,
+              file_path: dagNode.config.file_path,
+              bulk_batch_size: dagNode.config.bulk_batch_size,
+              config_id: dagNode.config_id,
+              active: true,
+            },
+            status: "configured",
+          }
+          newNodes.push(salesforceWriteNode)
+          dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id })
+        } else {
+          // Fallback for unknown types or missing config - use original logic
+          console.warn(
+            "Unknown node type or missing config for DAG node:",
+            dagNode.type,
+            dagNode.id,
+            "config:",
+            !!dagNode.config,
+          )
+
+          // Map DAG node types to workflow node types (original logic)
+          let nodeType: NodeType = "start" // Default fallback
+          switch (dagNode.type) {
+            case "start":
+              nodeType = "start"
+              break
+            case "end":
+              nodeType = "end"
+              break
+            case "file_conversion":
+              nodeType = "file"
+              break
+            case "cli_operator":
+              nodeType = "copy-file";
+              break;
+            case "read-file":
+              nodeType = "read-file"
+              break
+            case "write-file":
+              nodeType = "write-file"
+              break
+            case "database":
+              nodeType = "database"
+              break
+            case "source":
+              nodeType = "source"
+              break
+            case "salesforce-cloud":
+              nodeType = "salesforce-cloud"
+              break
+            case "write-salesforce":
+              nodeType = "write-salesforce"
+              break
+            default:
+              nodeType = "start"
+          }
+          const workflowNode: WorkflowNode = {
+            id: dagNode.id,
+            type: nodeType,
+            position: defaultPosition,
+            data: {
+              label: dagNode.type,
+              displayName: dagNode.id,
+              active: true,
+              // Only basic data if config was missing or type not specifically handled
+              ...(dagNode.config ? dagNode.config : {}), // Try to spread config if present, but this is a fallback
+            },
+            status: "idle",
+          };
+          newNodes.push(workflowNode);
+          dagNodeMapping.set(dagNode.id, {
+            firstNodeId: dagNode.id,
+            lastNodeId: dagNode.id,
+          });
+        }
+      });
+      dagData.dag_sequence.forEach((dagNode) => {
+        const sourceMapping = dagNodeMapping.get(dagNode.id);
+        if (!sourceMapping) return;
+        dagNode.next.forEach((nextNodeId) => {
+          const targetMapping = dagNodeMapping.get(nextNodeId);
+          if (!targetMapping) return;
+          const connection: NodeConnection = {
+            id: uuidv4(),
+            sourceId: sourceMapping.lastNodeId,
+            targetId: targetMapping.firstNodeId,
+          }
+          console.log("Creating DAG connection:", sourceMapping.lastNodeId, "->", targetMapping.firstNodeId)
+          newConnections.push(connection)
+        })
+      })
+
+      console.log("=== Conversion complete ===")
+      console.log("Total nodes:", newNodes.length, "Total connections:", newConnections.length)
+      console.log(
+        "Created nodes:",
+        newNodes.map((n) => ({
+          id: n.id,
+          type: n.type,
+          label: n.data.label,
+          displayName: n.data.displayName,
+          config_id: n.data.config_id,
+          position: n.position,
+        })),
+      )
+
+      return { nodes: newNodes, connections: newConnections }
+    },
+    [parseFileConversionConfig, parseCliOperatorConfig]
+  );
+
+  const loadFileConversionConfigs = useCallback(
+    async (clientId: string, dagId?: string) => {
+      try {
+        const { listFileConversionConfigs } = await import(
+          "@/services/file-conversion-service"
+        );
+        const configs = await listFileConversionConfigs(Number(clientId));
+        if (configs) {
+          console.log("Loaded file conversion configs:", configs)
+
+          const filteredConfigs = dagId ? configs.filter((config) => config.dag_id === dagId) : configs
+
+        // You can enhance nodes with config data here if needed
+        // For example, update nodes that have matching config_ids
+        if (filteredConfigs.length > 0) {
+          addLog({
+            nodeId: "system",
+            nodeName: "System",
+            status: "info",
+            message: `Loaded ${filteredConfigs.length} file conversion config(s).`,
+          })
+        }
+
+          return filteredConfigs
+        }
+      } catch (error) {
+        console.warn("Could not load file conversion configs:", error)
+        return []
+      }
+      return [];
+    },
+    [addLog],
+  )
+
+  const loadWorkflowFromDAG = useCallback(
+    async (dagData: DAG) => {
+      try {
+        console.log("=== Loading workflow from DAG ===")
+        console.log("DAG Data:", JSON.stringify(dagData, null, 2))
+
+        console.log("[WorkflowContext] Setting workflow name:", dagData.name)
+        console.log("[WorkflowContext] Setting workflow ID:", dagData.dag_id)
+
+        setCurrentWorkflowName(dagData.name)
+        setCurrentWorkflowId(dagData.dag_id)
+
+        const workflowInfo = {
+          name: dagData.name,
+          dag_id: dagData.dag_id,
+          schedule: dagData.schedule,
+          created_at: dagData.created_at,
+          client_id: getCurrentClientId(),
+        }
+        localStorage.setItem("currentWorkflow", JSON.stringify(workflowInfo))
+        console.log("[WorkflowContext] Updated localStorage with workflow info:", workflowInfo)
+
+        try {
+          const { loadWorkflowFromMongoDB } = await import("@/services/workflow-position-service")
+          const mongoWorkflow = await loadWorkflowFromMongoDB(dagData.dag_id)
+
+          if (mongoWorkflow && mongoWorkflow.nodes && mongoWorkflow.connections && mongoWorkflow.metadata) {
+            console.log("Loading workflow from MongoDB in loadWorkflowFromDAG...")
+
+            setNodes(mongoWorkflow.nodes)
+            setConnections(mongoWorkflow.connections)
+            setSelectedNodeId(null)
+            setPropertiesModalNodeId(null)
+            setPendingConnection(null)
+            setDraggingNodeInfo(null)
+
+            const workflowData = {
+              nodes: mongoWorkflow.nodes,
+              connections: mongoWorkflow.connections,
+              metadata: mongoWorkflow.metadata,
+            }
+            localStorage.setItem("workflowData", JSON.stringify(workflowData))
+
+            addLog({
+              nodeId: "system",
+              nodeName: "System",
+              status: "info",
+              message: `Workflow "${mongoWorkflow.metadata.name}" loaded successfully from MongoDB with ${mongoWorkflow.nodes.length} nodes.`,
+            })
+            return
+          }
+        } catch (mongoError) {
+          console.warn("Could not load from MongoDB, falling back to DAG conversion:", mongoError)
+        }
+
+        const { nodes: newNodes, connections: newConnections } = convertDAGToWorkflow(dagData)
+
+        setNodes(newNodes)
+        setConnections(newConnections)
+        setSelectedNodeId(null)
+        setPropertiesModalNodeId(null)
+        setPendingConnection(null)
+        setDraggingNodeInfo(null)
+
+        const workflowData = {
+          nodes: newNodes,
+          connections: newConnections,
+          metadata: {
+            name: dagData.name,
+            dag_id: dagData.dag_id,
+            schedule: dagData.schedule,
+            created_at: dagData.created_at,
+          },
+        }
+        localStorage.setItem("workflowData", JSON.stringify(workflowData))
+
+        try {
+          const clientId = getCurrentClientId()
+          if (clientId) {
+            await loadFileConversionConfigs(clientId, dagData.dag_id)
+          }
+        } catch (configError) {
+          console.warn("Could not load file conversion configs:", configError)
+        }
+
+        addLog({
+          nodeId: "system",
+          nodeName: "System",
+          status: "info",
+          message: `Workflow "${dagData.name}" loaded successfully with ${
+            newNodes.length
+          } nodes.${
+            dagData.schedule
+              ? ` Schedule: ${dagData.schedule}`
+              : " (Manual execution)"
+          }`,
+        })
+      } catch (error) {
+        console.error("Error loading workflow from DAG:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load workflow from DAG data.",
+          variant: "destructive",
+        })
+      }
+    },
+    [convertDAGToWorkflow, toast, loadFileConversionConfigs, addLog],
+  )
+
   const addNode = useCallback((type: NodeType, position: NodePosition, initialData?: Partial<WorkflowNodeData>) => {
-    // Use displayName if provided, otherwise generate a name based on type
     const displayName = initialData?.displayName || `${type}_${Math.floor(Math.random() * 10000)}`
-
-    // Create a Python-compatible ID from the displayName
     const nodeId = makePythonSafeId(displayName)
-
     const newNode: WorkflowNode = {
       id: nodeId,
       type,
       position,
-      // Initialize data with active: true and any provided initial data
-      data: {
-        label: type,
-        displayName: displayName,
-        active: true,
-        ...initialData,
-      },
+      data: { label: type, displayName, active: true, ...initialData },
       status: "idle",
     }
     setNodes((prev) => [...prev, newNode])
     return newNode.id
   }, [])
-
-  // Helper function to create Python-compatible IDs
-  const makePythonSafeId = (name: string): string => {
-    // Remove any non-alphanumeric characters and replace with underscores
-    let safeId = name.replace(/[^a-zA-Z0-9_]/g, "_")
-
-    // Ensure it starts with a letter or underscore (Python variable naming rule)
-    if (!/^[a-zA-Z_]/.test(safeId)) {
-      safeId = "node_" + safeId
-    }
-
-    return safeId
-  }
 
   const updateNode = useCallback(
     (
@@ -270,22 +963,9 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       },
     ) => {
       setNodes((prevNodes) =>
-        prevNodes.map((node) => {
-          if (node.id === id) {
-            // Merge node-level updates and data updates separately
-            const { data: dataUpdates, ...nodeUpdates } = updates
-            return {
-              ...node,
-              ...nodeUpdates, // Apply updates like position, status, etc.
-              data: {
-                // Merge data ensuring previous data isn't lost
-                ...node.data,
-                ...dataUpdates,
-              },
-            }
-          }
-          return node
-        }),
+        prevNodes.map((node) =>
+          node.id === id ? { ...node, ...updates, data: { ...node.data, ...updates.data } } : node,
+        ),
       )
     },
     [],
@@ -294,9 +974,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const removeNode = useCallback(
     (id: string) => {
       setNodes((prev) => prev.filter((node) => node.id !== id))
-      // Also remove connections associated with this node
       setConnections((prev) => prev.filter((conn) => conn.sourceId !== id && conn.targetId !== id))
-      // Clear selection/modals if the removed node was active
       if (selectedNodeId === id) setSelectedNodeId(null)
       if (propertiesModalNodeId === id) setPropertiesModalNodeId(null)
     },
@@ -307,29 +985,22 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     setSelectedNodeId(id)
   }, [])
 
-  // --- Connection Management ---
   const addConnection = useCallback(
     (sourceId: string, targetId: string, sourceHandle?: string, targetHandle?: string) => {
-      if (sourceId === targetId) return // Prevent self-connections
-
-      // Check for existing connection (consider handles if they are relevant)
+      if (sourceId === targetId) return
       const exists = connections.some(
         (conn) =>
           conn.sourceId === sourceId &&
           conn.targetId === targetId &&
-          conn.sourceHandle === sourceHandle && // Include handle checks if necessary
+          conn.sourceHandle === sourceHandle &&
           conn.targetHandle === targetHandle,
       )
       if (exists) return
-
-      // Basic check for direct circular connection (A->B and B->A)
-      // More complex cycle detection might be needed for larger graphs
       const isCircular = connections.some((conn) => conn.sourceId === targetId && conn.targetId === sourceId)
       if (isCircular) {
         console.warn("Preventing direct circular connection")
         return
       }
-
       const newConnection: NodeConnection = {
         id: uuidv4(),
         sourceId,
@@ -339,14 +1010,13 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       }
       setConnections((prev) => [...prev, newConnection])
     },
-    [connections], // Dependency array
+    [connections],
   )
 
   const removeConnection = useCallback((connectionId: string) => {
     setConnections((prev) => prev.filter((conn) => conn.id !== connectionId))
   }, [])
 
-  // --- Workflow Management ---
   const clearWorkflow = useCallback(() => {
     setNodes([])
     setConnections([])
@@ -354,111 +1024,73 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     setPropertiesModalNodeId(null)
     setPendingConnection(null)
     setDraggingNodeInfo(null)
-    clearLogs() // Assuming clearLogs is defined elsewhere or added here
-  }, [])
+    setCurrentWorkflowName("")
+    setCurrentWorkflowId(null)
+    clearLogs()
+    localStorage.removeItem("workflowData")
+    localStorage.removeItem("currentWorkflow")
+    toast({
+      description: "The current workflow has been cleared from the canvas.",
+      title: "Workflow Cleared",
+    })
+  }, [clearLogs, toast])
 
-  // Helper function to get current workflow ID
+  // Updated getCurrentWorkflowId to align with setCurrentWorkflowMeta's localStorage item structure
   const getCurrentWorkflowId = useCallback(() => {
+    console.log("[WorkflowContext] getCurrentWorkflowId called")
+    console.log("[WorkflowContext] currentWorkflowId state:", currentWorkflowId)
+
+    if (currentWorkflowId) {
+      console.log("[WorkflowContext] Returning currentWorkflowId from state:", currentWorkflowId)
+      return currentWorkflowId
+    }
+
     try {
       const workflowData = localStorage.getItem("currentWorkflow")
+      console.log("[WorkflowContext] localStorage currentWorkflow:", workflowData)
+
       if (workflowData) {
         const parsed = JSON.parse(workflowData)
-        return parsed.dag_id
+        console.log("[WorkflowContext] Parsed workflow data:", parsed)
+
+        if (parsed?.id && String(parsed.id).trim() !== "") {
+          const id = String(parsed.id)
+          console.log("[WorkflowContext] Returning id from localStorage:", id)
+          return id
+        }
       }
     } catch (error) {
-      console.error("Error getting current workflow ID:", error)
+      console.error("[WorkflowContext] Error getting current workflow ID from localStorage:", error)
     }
+
+    console.warn("[WorkflowContext] No workflow ID found")
     return null
-  }, [])
+  }, [currentWorkflowId])
 
-  // Convert workflow to backend DAG format
-  const convertWorkflowToDAG = useCallback(() => {
-    // Create a map of node connections
-    const nodeConnectionMap: Record<string, string[]> = {}
-
-    // Initialize with empty arrays for all nodes
-    nodes.forEach((node) => {
-      nodeConnectionMap[node.id] = []
-    })
-
-    // Fill in the connections
-    connections.forEach((connection) => {
-      if (nodeConnectionMap[connection.sourceId]) {
-        nodeConnectionMap[connection.sourceId].push(connection.targetId)
-      }
-    })
-
-    const sanitizeId = (id: string) => {
-      // Ensure the ID is Python-compatible (starts with letter, contains only letters, numbers, underscores)
-      let safeId = id.replace(/[^a-zA-Z0-9_]/g, "_")
-
-      // Ensure it starts with a letter or underscore (Python variable naming rule)
-      if (!/^[a-zA-Z_]/.test(safeId)) {
-        safeId = "task_" + safeId
-      }
-
-      return safeId
-    }
-    // Convert to DAG sequence format
-    const dagSequence = nodes.map((node) => {
-      return {
-        id: sanitizeId(node.id),
-        type: node.type,
-        config_id: 1, // Default config_id
-        next: (nodeConnectionMap[node.id] || []).map(sanitizeId),
-      }
-    })
-
-    return {
-      dag_sequence: dagSequence,
-    }
-  }, [nodes, connections])
-
-  // Save workflow to backend
   const saveWorkflowToBackend = useCallback(async () => {
-    // Get the current workflow ID from localStorage
-    let workflowId
-    try {
-      const workflowData = localStorage.getItem("currentWorkflow")
-      if (workflowData) {
-        const parsed = JSON.parse(workflowData)
-        workflowId = parsed.dag_id
-      }
-    } catch (error) {
-      console.error("Error getting current workflow ID:", error)
-    }
+    console.log("[WorkflowContext] saveWorkflowToBackend called")
 
-    // If no workflow ID is found, use the default one
-    if (!workflowId) {
-      workflowId = "dag_sample_47220ca3"
-    }
-
-    const saveWorkflow = () => {
-      const workflowData = { nodes, connections }
-      // Example: Save to localStorage
-      try {
-        localStorage.setItem("workflowData", JSON.stringify(workflowData))
-        console.log("Workflow saved successfully.")
-      } catch (error) {
-        console.error("Failed to save workflow:", error)
-      }
-      // In a real app, you might send this to a backend API
-      return workflowData
-    }
+    const workflowId = getCurrentWorkflowId()
+    console.log("[WorkflowContext] Current workflow ID:", workflowId)
+    console.log("[WorkflowContext] Current workflow name:", currentWorkflowName)
+    console.log("[WorkflowContext] Nodes count:", nodes.length)
+    console.log("[WorkflowContext] Connections count:", connections.length)
 
     if (!workflowId) {
-      toast.toast({
+      console.error("[WorkflowContext] No workflow ID found")
+      toast({
+        description: "No active workflow. Please create or select one first to save to backend.",
         title: "Error",
-        description: "No active workflow to save. Please create a workflow first.",
         variant: "destructive",
       })
       return
     }
 
     if (nodes.length === 0) {
-      toast.toast({
-        title: "Error",
+      console.error("[WorkflowContext] No nodes to save")
+      toast({
         description: "Cannot save an empty workflow. Please add nodes first.",
+        title: "Error",
         variant: "destructive",
       })
       return
@@ -467,419 +1099,655 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     setIsSaving(true)
 
     try {
-      // Convert workflow to DAG format
-      const dagData = convertWorkflowToDAG()
+      console.log(`[WorkflowContext] Starting save process for workflow ${workflowId}...`)
 
-      // Update the workflow in the backend
-      const response = await fetch(`${baseurl}/dags/${workflowId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dagData),
-      })
+      const { saveWorkflowToMongoDB } = await import("@/services/workflow-position-service")
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || "Failed to save workflow")
+      const metadata = {
+        name: currentWorkflowName || "Untitled Workflow",
+        dag_id: workflowId,
+        exported_at: new Date().toISOString(),
+        schedule: null,
+        created_at: new Date().toISOString(),
       }
 
-      // Save to localStorage as well
-      saveWorkflow()
+      console.log(`[WorkflowContext] Metadata to save:`, metadata)
+      console.log(
+        `[WorkflowContext] Nodes to save:`,
+        nodes.map((n) => ({ id: n.id, type: n.type, position: n.position })),
+      )
+      console.log(
+        `[WorkflowContext] Connections to save:`,
+        connections.map((c) => ({ id: c.id, sourceId: c.sourceId, targetId: c.targetId })),
+      )
 
-      toast.toast({
+      await saveWorkflowToMongoDB(nodes, connections, metadata)
+
+      const workflowData = {
+        nodes,
+        connections,
+        metadata,
+      }
+      localStorage.setItem("workflowData", JSON.stringify(workflowData))
+      console.log("[WorkflowContext] Workflow saved to localStorage and MongoDB successfully")
+
+      addLog({
+        message: `Workflow saved successfully to MongoDB with ${nodes.length} nodes and ${connections.length} connections.`,
+        nodeId: "system",
+        nodeName: "System",
+        status: "info",
+      })
+
+      toast({
+        description: "Workflow saved successfully to MongoDB.",
         title: "Success",
-        description: "Workflow saved successfully",
-        variant: "default",
       })
     } catch (error) {
-      console.error("Error saving workflow:", error)
-      toast.toast({
+      console.error("[WorkflowContext] Error saving workflow to MongoDB:", error)
+      addLog({
+        message: `Failed to save workflow: ${error instanceof Error ? error.message : "Unknown error"}`,
+        nodeId: "system",
+        nodeName: "System",
+        status: "error",
+      })
+      toast({
+        description: error instanceof Error ? error.message : "Failed to save workflow to MongoDB.",
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save workflow",
         variant: "destructive",
       })
     } finally {
       setIsSaving(false)
     }
-  }, [nodes, connections, convertWorkflowToDAG, toast])
+  }, [nodes, connections, toast, getCurrentWorkflowId, currentWorkflowName, addLog])
 
   const saveWorkflow = useCallback(() => {
-    const workflowData = { nodes, connections }
-    // Example: Save to localStorage
-    try {
-      localStorage.setItem("workflowData", JSON.stringify(workflowData))
-      console.log("Workflow saved successfully.")
-    } catch (error) {
-      console.error("Failed to save workflow:", error)
+  const workflowData: WorkflowExportData = {
+      nodes,
+      connections,
+      metadata: {
+        name: currentWorkflowName,
+        dag_id: currentWorkflowId || uuidv4(),
+      },
     }
-    // In a real app, you might send this to a backend API
-    return workflowData
-  }, [nodes, connections])
+  const currentWorkflow = {
+    nodes,
+    connections,
+    metadata: {
+      name: currentWorkflowName,
+      dag_id: currentWorkflowId,
+      created_at: new Date().toISOString(),
+    },
+  };
+  try {
+    localStorage.setItem("workflowData", JSON.stringify(currentWorkflow))
+    console.log("Workflow snapshot saved to localStorage.")
+  } catch (error) {
+    console.error("Failed to save workflow snapshot:", error)
+  }
+  return workflowData
+}, [nodes, connections, currentWorkflowName, currentWorkflowId, currentWorkflowName, currentWorkflowId])
 
-  const loadWorkflow = useCallback((data: { nodes: WorkflowNode[]; connections: NodeConnection[] }) => {
-    // Basic validation might be good here
-    if (data && Array.isArray(data.nodes) && Array.isArray(data.connections)) {
-      setNodes(data.nodes)
-      setConnections(data.connections)
-      // Reset UI state after loading
-      setSelectedNodeId(null)
-      setPropertiesModalNodeId(null)
-      setPendingConnection(null)
-      setDraggingNodeInfo(null)
-      console.log("Workflow loaded.")
-    } else {
-      console.error("Invalid data format for loading workflow.")
+  const getWorkflowExportData = useCallback(() => {
+    return {
+      nodes,
+      connections,
+      metadata: {
+        name: currentWorkflowName || "Untitled Workflow",
+        dag_id: currentWorkflowId || uuidv4(),
+        exported_at: new Date().toISOString(),
+      },
     }
-  }, [])
+  }, [nodes, connections, currentWorkflowName, currentWorkflowId])
 
-  //--- Logging ---
-  const addLog = useCallback((log: Omit<LogEntry, "id" | "timestamp">) => {
-    const newLog: LogEntry = {
-      ...log,
-      id: uuidv4(),
-      timestamp: new Date(),
-    }
-    // Keep logs manageable, e.g., limit to last 100 entries
-    setLogs((prev) => [newLog, ...prev.slice(0, 99)])
-  }, [])
 
-  const clearLogs = useCallback(() => {
-    setLogs([])
-  }, [])
+   const loadWorkflow = useCallback(
+    (data: { nodes: WorkflowNode[]; connections: NodeConnection[] }) => {
+      if (
+        data?.nodes &&
+        Array.isArray(data.nodes) &&
+        data.connections &&
+        Array.isArray(data.connections)
+      ) {
+        setNodes(data.nodes);
+        setConnections(data.connections);
+        setSelectedNodeId(null);
+        setPropertiesModalNodeId(null);
+        setPendingConnection(null);
+        setDraggingNodeInfo(null);
+        console.log("Workflow loaded from data.");
+      } else {
+        console.error("Invalid data format for loading workflow.");
+      }
+    },
+    []
+  );
 
-  // --- Execution Logic ---
+
   const getNodeById = useCallback((id: string) => nodes.find((node) => node.id === id), [nodes])
 
   const executeNode = useCallback(
     async (nodeId: string, inputData?: any): Promise<any> => {
       const node = getNodeById(nodeId)
       if (!node) {
-        console.warn(`Node with ID ${nodeId} not found during execution.`)
-        return null // Or throw an error
+        console.warn(`Node ${nodeId} not found.`)
+        return null
       }
-
-      // Use optional chaining for safety when accessing `node.data`
       if (node.data?.active === false) {
         addLog({
-          nodeId: node.id,
+          message: "Skipping inactive node.",
+          nodeId,
           nodeName: `${node.data?.label || node.type} (inactive)`,
           status: "info",
-          message: `Skipping inactive node: ${node.data?.label || node.type}`,
         })
-
-        // Find outgoing connections and execute next nodes *with the current inputData*
-        const outgoingConnections = connections.filter((conn) => conn.sourceId === nodeId)
-        let lastOutput = inputData // Pass data through inactive node
-        for (const connection of outgoingConnections) {
-          // TODO: Handle data mapping based on source/target handles if necessary
-          // For now, just pass the entire output
-          lastOutput = await executeNode(connection.targetId, inputData)
+        const outgoing = connections.filter((c) => c.sourceId === nodeId)
+        let lastOutput = inputData
+        for (const conn of outgoing) {
+          lastOutput = await executeNode(conn.targetId, inputData)
         }
-        return lastOutput // Return data from the last node in the chain after the inactive one
+        return lastOutput
       }
-
-      // Update node status to running
       updateNode(nodeId, { status: "running" })
       addLog({
-        nodeId: node.id,
+        details: { input: inputData },
+        message: "Executing...",
+        nodeId,
         nodeName: node.data?.label || node.type,
         status: "running",
-        message: `Executing ${node.data?.label || node.type}`,
-        details: { input: inputData }, // Log input for debugging
       })
-
       try {
-        // --- Node Execution Simulation ---
-        // Replace this with actual backend calls or logic execution
-        await new Promise((resolve) => setTimeout(resolve, Math.random() * 500 + 100)) // Simulate async work
-
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * 100 + 50))
         let output: any
-        const nodeData = node.data || {} // Use node.data safely
-
-        // Example execution logic (expand significantly for real app)
+        const nodeData = node.data || {}
         switch (node.type) {
           case "start":
-            output = {
-              trigger: "manual",
-              startTime: new Date().toISOString(),
-              ...(inputData || {}),
-            }
-            break
-          case "create-file":
-            console.log(`Simulating CREATE file: ${nodeData.filename} with overwrite: ${nodeData.overwrite}`)
-            output = {
-              filePath: nodeData.filename || "default.txt",
-              created: true,
-            }
+            output = { trigger: "manual", ...(inputData || {}) }
             break
           case "read-file":
-            console.log(`Simulating READ file: ${nodeData.path || nodeData.filename}`)
-            output = {
-              content: `Content of ${nodeData.path || nodeData.filename || "default.txt"}`,
-              encoding: nodeData.encoding || "utf-8",
-            }
+            output = { content: `Content of ${nodeData.path}` }
             break
           case "write-file":
-            console.log(
-              `Simulating WRITE file: ${nodeData.path || nodeData.filename} with content: ${
-                nodeData.content?.substring(0, 50) || ""
-              }...`,
-            )
+            output = { filePath: nodeData.path, written: true }
+            break
+          case "source":
             output = {
-              filePath: nodeData.path || nodeData.filename || "default.txt",
-              written: true,
-              bytes: nodeData.content?.length || 0,
+              data: [{ id: 1, name: "Sample DB Data" }],
+              source: nodeData.table || nodeData.query,
             }
             break
-          case "copy-file":
-            console.log(
-              `Simulating COPY file: ${nodeData.source_path || nodeData.sourceFilename} to ${
-                nodeData.destination_path || nodeData.targetFilename || nodeData.toFilename
-              }`,
-            )
+          case "database":
+            output = { success: true, table: nodeData.table }
+            break
+          case "salesforce-cloud":
             output = {
-              source: nodeData.source_path || nodeData.sourceFilename,
-              target: nodeData.destination_path || nodeData.targetFilename || nodeData.toFilename,
-              copied: true,
+              config_ready: true,
+              file_path: nodeData.file_path,
+              message: "Salesforce configuration ready for execution",
+              object_name: nodeData.object_name,
+              query: nodeData.query,
+              success: true,
+              use_bulk_api: nodeData.use_bulk_api || false,
             }
             break
-          case "rename-file":
-            console.log(`Simulating RENAME file: ${nodeData.oldFilename} to ${nodeData.newFilename}`)
+          case "write-salesforce":
             output = {
-              oldPath: nodeData.oldFilename,
-              newPath: nodeData.newFilename,
-              renamed: true,
+              bulk_batch_size: nodeData.bulk_batch_size,
+              config_ready: true,
+              file_path: nodeData.file_path,
+              message: "Salesforce write configuration ready for execution",
+              object_name: nodeData.object_name,
+              success: true,
+              use_bulk_api: nodeData.use_bulk_api || false,
             }
-            break
-
-             case "database":
-        console.log(
-          `Simulating DATABASE operation: ${
-            nodeData.input?.format || "unknown"
-          } to ${nodeData.output?.provider || "unknown"}`,
-        )
-        output = {
-          success: true,
-          rowsProcessed: Math.floor(Math.random() * 1000) + 100,
-          executionTime: Math.floor(Math.random() * 5000) + 500,
-          message: "Database operation completed successfully",
-          timestamp: new Date().toISOString(),
-        }
-        break
-
-          case "code":
-            console.log(`Simulating EXECUTE code: ${nodeData.language || "unknown"}`)
-            // In real scenario, execute nodeData.code with inputData
-            output = {
-              result: `Executed code successfully`,
-              inputReceived: !!inputData,
-              logs: ["Log line 1"],
-            }
-            break
-          case "xml-parser":
-            console.log(`Simulating XML PARSE: ${nodeData.xmlString?.substring(0, 50)}...`)
-            output = {
-              parsedObject: { root: { item: ["value1", "value2"] } },
-              error: null,
-            } // Simulate success
-            break
-          case "xml-render":
-            console.log(`Simulating XML RENDER object`)
-            output = {
-              xmlString: "<root><item>value1</item></root>",
-              error: null,
-            } // Simulate success
             break
           case "end":
-            output = {
-              finalStatus: "completed",
-              endTime: new Date().toISOString(),
-              result: inputData,
-            }
+            output = { finalStatus: "completed", result: inputData }
             break
           default:
-            console.warn(`Execution logic not implemented for node type: ${node.type}`)
-            output = { ...inputData, [`${node.type}_processed`]: true } // Generic output
+            output = { ...inputData, [`${node.type}_processed`]: true }
         }
-        // --- End Simulation ---
-
-        updateNode(nodeId, {
-          status: "success",
-          output: output,
-          error: undefined,
-        })
+        updateNode(nodeId, { error: undefined, output, status: "success" })
         addLog({
-          nodeId: node.id,
+          details: { output },
+          message: "Executed.",
+          nodeId,
           nodeName: node.data?.label || node.type,
           status: "success",
-          message: `Successfully executed ${node.data?.label || node.type}`,
-          details: { output: output },
         })
-
-        // Execute next connected nodes
-        const outgoingConnections = connections.filter((conn) => conn.sourceId === nodeId)
-        let lastOutput = output // Start with current node's output
-        for (const connection of outgoingConnections) {
-          // TODO: Handle data mapping based on source/target handles if necessary
-          // For now, just pass the entire output
-          lastOutput = await executeNode(connection.targetId, output) // Pass current node's output as input
+        const outgoing = connections.filter((c) => c.sourceId === nodeId)
+        let lastOutput = output
+        for (const conn of outgoing) {
+          lastOutput = await executeNode(conn.targetId, output)
         }
-        return lastOutput // Return the output of the last node executed in this branch
+        return lastOutput
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        updateNode(nodeId, {
-          status: "error",
-          error: errorMessage,
-          output: undefined,
-        })
+        const msg = error instanceof Error ? error.message : String(error)
+        updateNode(nodeId, { error: msg, output: undefined, status: "error" })
         addLog({
-          nodeId: node.id,
+          details: { error },
+          message: `Error: ${msg}`,
+          nodeId,
           nodeName: node.data?.label || node.type,
           status: "error",
-          message: `Error executing ${node.data?.label || node.type}: ${errorMessage}`,
-          details: { error: error }, // Log the actual error object if needed
         })
-        throw error // Re-throw to potentially stop the whole workflow run
+        throw error
       }
     },
-    [nodes, connections, getNodeById, updateNode, addLog], // Correct dependencies
+    [nodes, connections, getNodeById, updateNode, addLog],
   )
 
   const runWorkflow = useCallback(async () => {
     if (isRunning) {
-      console.warn("Workflow is already running.")
+      console.warn("Workflow already running.")
       return
     }
     setIsRunning(true)
     addLog({
+      message: "Workflow started (client simulation).",
       nodeId: "system",
       nodeName: "System",
       status: "info",
-      message: "Workflow execution started.",
     })
-
-    // Reset statuses before run
     setNodes((prev) =>
-      prev.map((node) => ({
-        ...node,
-        status: "idle",
-        output: undefined,
+      prev.map((n) => ({
+        ...n,
         error: undefined,
+        output: undefined,
+        status: "idle",
       })),
     )
-    clearLogs() // Optionally clear logs for the new run
 
-    // Find active start nodes
-    const startNodes = nodes.filter((node) => node.type === "start" && node.data?.active !== false)
-
-    if (startNodes.length === 0) {
+    const activeStartNodes = nodes.filter((n) => n.type === "start" && n.data?.active !== false)
+    if (activeStartNodes.length === 0) {
       addLog({
+        message: "No active start nodes.",
         nodeId: "system",
         nodeName: "System",
         status: "error",
-        message: "No active start nodes found.",
       })
       setIsRunning(false)
       return
     }
-
     try {
-      // Execute all active start nodes concurrently (or sequentially if needed)
-      // Using Promise.all for concurrent start
-      await Promise.all(startNodes.map((startNode) => executeNode(startNode.id)))
+      await Promise.all(activeStartNodes.map((startNode) => executeNode(startNode.id)))
       addLog({
+        message: "Workflow finished (client simulation).",
         nodeId: "system",
         nodeName: "System",
         status: "info",
-        message: "Workflow execution finished.",
       })
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      console.error("Workflow execution failed:", error)
+      const msg = error instanceof Error ? error.message : String(error)
       addLog({
+        message: `Workflow failed (client simulation): ${msg}`,
         nodeId: "system",
         nodeName: "System",
         status: "error",
-        message: `Workflow execution failed: ${errorMessage}`,
       })
-      // Decide if partial results are okay or if the whole run failed
     } finally {
       setIsRunning(false)
     }
-  }, [nodes, executeNode, isRunning, clearLogs, addLog]) // Added isRunning, clearLogs, addLog dependencies
+  }, [nodes, executeNode, isRunning, addLog])
 
-  // --- Effect for Loading from localStorage ---
+  useEffect(() => {
+    const handleWorkflowSelected = async (event: Event) => {
+      const customEvent = event as CustomEvent
+      const eventData = customEvent.detail
+
+      if (eventData) {
+        console.log("[WorkflowContext] Workflow selected event received:", eventData)
+
+        const workflowName = eventData.name || "Untitled Workflow"
+        const workflowId = eventData.dag_id
+
+        console.log("[WorkflowContext] Setting workflow name from event:", workflowName)
+        console.log("[WorkflowContext] Setting workflow ID from event:", workflowId)
+
+        setCurrentWorkflowName(workflowName)
+        setCurrentWorkflowId(workflowId)
+
+        const workflowInfo = {
+          client_id: getCurrentClientId(),
+          created_at: eventData.created_at,
+          dag_id: workflowId,
+          name: workflowName,
+          schedule: eventData.schedule,
+        }
+        localStorage.setItem("currentWorkflow", JSON.stringify(workflowInfo))
+        console.log("[WorkflowContext] Updated localStorage with workflow info:", workflowInfo)
+
+        if (eventData.mongoData) {
+          console.log("Loading workflow from MongoDB data...")
+          const mongoData = eventData.mongoData
+
+          setCurrentWorkflowName(mongoData.metadata.name)
+          setCurrentWorkflowId(mongoData.metadata.dag_id)
+          setNodes(mongoData.nodes)
+          setConnections(mongoData.connections)
+          setSelectedNodeId(null)
+          setPropertiesModalNodeId(null)
+          setPendingConnection(null)
+          setDraggingNodeInfo(null)
+
+          const workflowData = {
+            connections: mongoData.connections,
+            metadata: mongoData.metadata,
+            nodes: mongoData.nodes,
+          }
+          localStorage.setItem("workflowData", JSON.stringify(workflowData))
+
+          addLog({
+            message: `Workflow "${mongoData.metadata.name}" loaded successfully from MongoDB with ${mongoData.nodes.length} nodes.`,
+            nodeId: "system",
+            nodeName: "System",
+            status: "info",
+          })
+        } else if (eventData.dag_sequence && eventData.dag_sequence.length > 0) {
+          await loadWorkflowFromDAG(eventData)
+        } else {
+          setNodes([])
+          setConnections([])
+          setSelectedNodeId(null)
+          setPropertiesModalNodeId(null)
+          setPendingConnection(null)
+          setDraggingNodeInfo(null)
+
+          addLog({
+            message: `Workflow "${workflowName}" selected. Canvas is ready for nodes.`,
+            nodeId: "system",
+            nodeName: "System",
+            status: "info",
+          })
+        }
+      }
+    }
+
+    window.addEventListener("workflowSelected", handleWorkflowSelected)
+    return () => {
+      window.removeEventListener("workflowSelected", handleWorkflowSelected)
+    }
+  }, [loadWorkflowFromDAG, addLog])
+
   useEffect(() => {
     try {
-      const savedData = localStorage.getItem("workflowData")
+      const savedData = localStorage.getItem("workflowData"); // For nodes/connections
       if (savedData) {
-        const parsedData = JSON.parse(savedData)
-        // Add basic validation before loading
-        if (parsedData && Array.isArray(parsedData.nodes) && Array.isArray(parsedData.connections)) {
-          loadWorkflow(parsedData)
+        const parsedData: WorkflowExportData = JSON.parse(savedData)
+        if (
+          parsedData?.nodes &&
+          Array.isArray(parsedData.nodes) &&
+          parsedData.connections &&
+          Array.isArray(parsedData.connections)
+        ) {
+          loadWorkflow(parsedData);
+          // If "workflowData" has metadata, it might be an older source of truth or a fallback
+          if (parsedData.metadata) {
+            if (!currentWorkflowName && parsedData.metadata.name)
+              setCurrentWorkflowName(parsedData.metadata.name);
+            if (!currentWorkflowId && parsedData.metadata.dag_id)
+              setCurrentWorkflowId(parsedData.metadata.dag_id);
+          }
         } else {
-          console.warn("Invalid workflow data found in localStorage.")
+          console.warn(
+            "Invalid workflow data in localStorage for 'workflowData'."
+          );
         }
+      }
+
+      // Prioritize "currentWorkflow" for id and name, as it's set by setCurrentWorkflowMeta
+      const currentWorkflowStr = localStorage.getItem("currentWorkflow");
+      if (currentWorkflowStr) {
+        const workflowInfo = JSON.parse(currentWorkflowStr);
+        // workflowInfo should contain { id, name }
+        if (workflowInfo.name) setCurrentWorkflowName(workflowInfo.name || ""); // Ensure name is set
+        if (workflowInfo.id) setCurrentWorkflowId(workflowInfo.id || null); // Ensure id is set
       }
     } catch (error) {
       console.error("Failed to load workflow from localStorage:", error)
-      localStorage.removeItem("workflowData") // Clear invalid data
+      localStorage.removeItem("workflowData")
+      localStorage.removeItem("currentWorkflow")
     }
-  }, [loadWorkflow]) // Load only on initial mount or when loadWorkflow function identity changes
+  }, [loadWorkflow]); // currentWorkflowId and currentWorkflowName removed from deps to avoid loop with their setters
 
-  // Update the saveAndRunWorkflow function to use the utility function
   const saveAndRunWorkflow = useCallback(async () => {
-    const workflowId = getCurrentWorkflowId()
-    if (!workflowId) {
-      toast.toast({
+    console.log("=== Starting Save and Run Workflow Process ===")
+
+    const currentWorkflowIdValue = getCurrentWorkflowId()
+    if (!currentWorkflowIdValue) {
+      toast({
         title: "Error",
-        description: "No active workflow to save. Please create a workflow first.",
+        description: "No workflow ID found. Please create or select a workflow first.",
         variant: "destructive",
       })
       return
     }
 
-    await saveAndRunWorkflowUtil(nodes, connections, workflowId)
-  }, [nodes, connections, getCurrentWorkflowId, toast])
+    if (nodes.length === 0) {
+      toast({
+        title: "Error",
+         description: "Cannot run an empty workflow. Please add nodes first.",
+        variant: "destructive",
+      })
+      return
+    }
 
-  // --- Context Value ---
+    if (isRunning) {
+      toast({
+        title: "Warning",
+        description: "Workflow is already running. Please wait for it to complete.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsRunning(true)
+
+    try {
+      addLog({
+        nodeId: "system",
+        nodeName: "System",
+        status: "info",
+        message: "Phase 1: Saving workflow to MongoDB...",
+      })
+
+      try {
+        await saveWorkflowToBackend()
+        console.log("✅ Phase 1 Complete: Workflow saved to MongoDB")
+
+        addLog({
+          nodeId: "system",
+          nodeName: "System",
+          status: "success",
+          message: "Phase 1 Complete: Workflow saved to MongoDB successfully",
+        })
+      } catch (saveError) {
+        console.error("❌ Phase 1 Failed: MongoDB save error:", saveError)
+        addLog({
+          nodeId: "system",
+          nodeName: "System",
+          status: "error",
+          message: `Phase 1 Failed: Could not save to MongoDB - ${saveError instanceof Error ? saveError.message : "Unknown error"}`,
+        })
+
+        toast({
+          title: "Warning",
+          description: "Failed to save to MongoDB, but continuing with workflow run...",
+          variant: "destructive",
+        })
+      }
+
+      addLog({
+        nodeId: "system",
+        nodeName: "System",
+        status: "info",
+        message: "Phase 2: Creating configurations and updating DAG sequence...",
+      })
+
+      console.log("🔧 Phase 2: Starting config creation and DAG update...")
+      const success = await saveAndRunWorkflowUtil(nodes, connections, currentWorkflowIdValue)
+
+      if (success) {
+        console.log("✅ Phase 2 Complete: Configs created and DAG updated")
+        addLog({
+          nodeId: "system",
+          nodeName: "System",
+          status: "success",
+          message: "Phase 2 Complete: All configurations created and DAG sequence updated successfully",
+        })
+
+        addLog({
+          nodeId: "system",
+          nodeName: "System",
+          status: "info",
+          message: "Phase 3: Triggering DAG run in Airflow...",
+        })
+
+        console.log("🚀 Phase 3: DAG run should have been triggered by saveAndRunWorkflowUtil")
+
+        addLog({
+          nodeId: "system",
+          nodeName: "System",
+          status: "success",
+          message: "✅ Workflow run completed successfully! Check Airflow UI for execution status.",
+        })
+
+        toast({
+          title: "Success",
+          description: "Workflow saved and triggered successfully! Check Airflow for execution status.",
+          variant: "default",
+        })
+      } else {
+        console.error("❌ Phase 2 Failed: Config creation or DAG update failed")
+        addLog({
+          nodeId: "system",
+          nodeName: "System",
+          status: "error",
+          message: "Phase 2 Failed: Could not create configurations or update DAG sequence",
+        })
+
+        toast({
+          title: "Error",
+          description: "Failed to create configurations or update DAG. Please check the logs for details.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("❌ Workflow run failed:", error)
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+
+      addLog({
+        nodeId: "system",
+        nodeName: "System",
+        status: "error",
+        message: `Workflow run failed: ${errorMessage}`,
+      })
+
+      toast({
+        title: "Workflow Error",
+        description: `Failed to run workflow: ${errorMessage}`,
+        variant: "destructive",
+      })
+    } finally {
+      setIsRunning(false)
+      console.log("=== Save and Run Workflow Process Complete ===")
+    }
+  }, [nodes, connections, getCurrentWorkflowId, toast, saveWorkflowToBackend, isRunning, addLog])
+
+
+  const createNewWorkflow = useCallback(
+    (workflowName: string, airflowDagId: string) => {
+      console.log(`[WorkflowContext] Creating new workflow: ${workflowName} with Airflow DAG ID: ${airflowDagId}`)
+
+      setCurrentWorkflowName(workflowName)
+      setCurrentWorkflowId(airflowDagId)
+
+      setNodes([])
+      setConnections([])
+      setSelectedNodeId(null)
+      setPropertiesModalNodeId(null)
+      setPendingConnection(null)
+      setDraggingNodeInfo(null)
+      clearLogs()
+
+      const workflowData = {
+        client_id: getCurrentClientId(),
+        created_at: new Date().toISOString(),
+        dag_id: airflowDagId,
+        name: workflowName,
+      }
+      localStorage.setItem("currentWorkflow", JSON.stringify(workflowData))
+      console.log("[WorkflowContext] Updated localStorage with Airflow DAG ID:", workflowData)
+
+      localStorage.removeItem("workflowData")
+
+      addLog({
+        message: `New workflow "${workflowName}" created successfully with Airflow DAG ID: ${airflowDagId}. Canvas is ready for nodes.`,
+        nodeId: "system",
+        nodeName: "System",
+        status: "info",
+      })
+
+      toast({
+        description: `New workflow "${workflowName}" has been created with DAG ID: ${airflowDagId}. Start adding nodes to build your workflow.`,
+        title: "Workflow Created",
+      })
+    },
+    [clearLogs, addLog, toast],
+  )
+
   const value: WorkflowContextType = {
+    // State
     nodes,
     connections,
     logs,
-    selectedNodeId,
+    selectedNodeId, // <-- FIX: This was missing
     pendingConnection,
     propertiesModalNodeId,
     dataMappingModalNodeId,
     draggingNodeInfo,
+    currentWorkflowName,
+    currentWorkflowId,
+
+    // State Setters
     setPendingConnection,
     setPropertiesModalNodeId,
     setDataMappingModalNodeId,
     setDraggingNodeInfo,
+
+    // Node & Connection Functions
     addNode,
     updateNode,
     removeNode,
     selectNode,
     addConnection,
     removeConnection,
+    getNodeById,
+
+    // Workflow Lifecycle & Execution
     clearWorkflow,
+    runWorkflow,
     saveWorkflow,
     saveWorkflowToBackend,
+    saveAndRunWorkflow,
+    createNewWorkflow,
     loadWorkflow,
-    runWorkflow,
+    loadWorkflowFromDAG,
+    getWorkflowExportData,
+
+    // Utilities
     executeNode,
     addLog,
     clearLogs,
-    getNodeById,
     getCurrentWorkflowId,
-    saveAndRunWorkflow,
+
+    // This is defined in the type but not implemented in this file.
+    // It will cause an error if called.
+    syncWorkflowWithAirflow: undefined as any,
+    setCurrentWorkflowMeta, // Added to context value
   }
 
   return <WorkflowContext.Provider value={value}>{children}</WorkflowContext.Provider>
 }
 
-// --- Custom Hook ---
 export function useWorkflow() {
   const context = useContext(WorkflowContext)
   if (context === undefined) {

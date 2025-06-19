@@ -1,5 +1,7 @@
 // Define types for API responses
-const baseurl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
+import { baseUrl } from "@/services/api";
+
+
 export interface DAG {
     id: number
     name: string
@@ -22,7 +24,7 @@ export interface DAG {
     // Create a new workflow
     async createWorkflow(data: { name: string; schedule: string; active: boolean }): Promise<DAG> {
       try {
-        const response = await fetch(`${baseurl}/dags/`, {
+        const response = await fetch(`${baseUrl}/dags/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -45,7 +47,7 @@ export interface DAG {
     // Update an existing workflow
     async updateWorkflow(dagId: string, data: any): Promise<DAG> {
       try {
-        const response = await fetch(`${baseurl}/dags/${dagId}`, {
+        const response = await fetch(`${baseUrl}/dags/${dagId}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -68,7 +70,7 @@ export interface DAG {
     // Get workflow by ID
     async getWorkflow(dagId: string): Promise<DAG> {
       try {
-        const response = await fetch(`${baseurl}/dags/${dagId}`)
+        const response = await fetch(`${baseUrl}/dags/${dagId}`)
   
         if (!response.ok) {
           const errorData = await response.json()
@@ -85,7 +87,7 @@ export interface DAG {
     // List all workflows
     async listWorkflows(): Promise<DAG[]> {
       try {
-        const response = await fetch(`${baseurl}/dags/`)
+        const response = await fetch(`${baseUrl}/dags/`)
   
         if (!response.ok) {
           const errorData = await response.json()

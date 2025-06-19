@@ -28,7 +28,10 @@ export type NodeType =
   | "transform-json"
   | "file"
   | "filter"
-    | "database"
+  | "database"
+  | "source"
+  | "salesforce-cloud"
+  | "write-salesforce"
   | "move-file"
   | "code";
 
@@ -39,7 +42,6 @@ export type NodeType =
 //   description: string;
 //   required?: boolean; // Optional flag
 // }
-
 // Interface for the complete schema definition of a node
 export interface NodeSchema {
   label: string;
@@ -68,6 +70,7 @@ export interface DAG {
   dag_sequence: object[];
   active_dag_run?: number | null;
   client_id?: number;
+  type?: string
 }
 
 export type MappingSourceInfo = {
@@ -277,6 +280,15 @@ export interface DagRunMapEntry {
   stage_details: any; // Define more specifically if possible
 }
 
+// export interface DAGStatusResponse {
+//   dag_id: string;
+//   trigger_id: string;
+//   status: string; // e.g., "success", "running", "failed"
+//   started_at?: string;
+//   ended_at?: string;
+//   logs?: string;
+// }
+
 export interface DAGStatusResponse {
   dag_id: string;
   trigger_id: string;
@@ -284,4 +296,18 @@ export interface DAGStatusResponse {
   started_at?: string;
   ended_at?: string;
   logs?: string;
+  
+  // FIX: Added missing properties to align with component usage in `bottom-panel.tsx`
+  canShowOutput?: boolean;
+  data?: any | null;
+  isRunning?: boolean;
+}
+export interface UploadedFileItem {
+  name: string; // Mapped from API's `filename`
+  type: "file" | "directory"; // Defaulted to "file"
+  path: string; // Mapped from API's `filepath` (this is what you need)
+  // Optional fields below, can be omitted if not used by UI
+  original_filename?: string;
+  size_bytes?: number;
+  last_modified?: string;
 }
