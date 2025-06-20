@@ -310,6 +310,8 @@ export function WorkflowEditor() {
     };
   }, [handleMouseMove, handleMouseUp, setPendingConnection]);
 
+  
+
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.preventDefault();
@@ -333,6 +335,42 @@ export function WorkflowEditor() {
     },
     [canvasScale, canvasOffset]
   );
+
+useEffect(() => {
+  const el = canvasRef.current;
+  if (!el) return;
+
+  // Native wheel event handler that delegates to handleWheel
+  const nativeWheelHandler = (e: WheelEvent) => {
+    // Create a synthetic React-like event object for handleWheel
+    // but only pass the native event, since handleWheel expects a React.WheelEvent
+    // We'll need to adapt handleWheel to accept native events
+    // Or, just inline the logic here (recommended for clarity)
+    e.preventDefault();
+    const scrollSensitivity = 0.1;
+    const deltaFactor = e.deltaY > 0 ? 1 - scrollSensitivity : 1 + scrollSensitivity;
+    const newScale = Math.max(0.2, Math.min(2.5, canvasScale * deltaFactor));
+
+    const canvasRect = el.getBoundingClientRect();
+    if (!canvasRect) return;
+
+    const mouseX = e.clientX - canvasRect.left;
+    const mouseY = e.clientY - canvasRect.top;
+
+    const newOffsetX = mouseX / newScale - (mouseX / canvasScale - canvasOffset.x);
+    const newOffsetY = mouseY / newScale - (mouseY / canvasScale - canvasOffset.y);
+
+    setCanvasScale(newScale);
+    setCanvasOffset({ x: newOffsetX, y: newOffsetY });
+  };
+
+  el.addEventListener("wheel", nativeWheelHandler, { passive: false });
+
+  return () => {
+    el.removeEventListener("wheel", nativeWheelHandler);
+  };
+}, [canvasScale, canvasOffset]);
+
 
   const getPendingConnectionSourceNode = useCallback(() => {
     if (!pendingConnection) return null;
@@ -548,9 +586,13 @@ export function WorkflowEditor() {
         style={canvasBackgroundStyle} // Apply dynamic grid or plain background
         onDrop={handleDrop}
         onDragOver={handleDragOver}
-        onWheel={handleWheel}
+        // onWheel={handleWheel}
         onClick={handleCanvasClick}
       >
+
+        
+
+
         {!showGrid && <DotsBackground />} {/* Show dots if grid is off */}
         <div
           className="h-full w-full" // transformOrigin is default 0 0
