@@ -46,7 +46,6 @@ interface APILogEntry {
   duration?: number;
 }
 
-
 interface ExecutionLog {
   id: string;
   nodeName: string;
@@ -288,7 +287,7 @@ export function BottomPanel({ className }: BottomPanelProps) {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b">
+      <div className="flex items-center justify-between px-4 py-1 border-b">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -336,38 +335,43 @@ export function BottomPanel({ className }: BottomPanelProps) {
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         <Tabs defaultValue="execution" className="h-full flex flex-col">
-          <TabsList className="mx-4 mt-2 w-fit">
-            {/* <TabsTrigger value="execution">Execution Logs</TabsTrigger> */}
-            <TabsTrigger value="api">Execution Logs</TabsTrigger>
-            {/* <TabsTrigger value="output">DAG Output</TabsTrigger> */}
-            <TabsTrigger value="stats">Node Stats</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between px-2 border-b">
+            <TabsList className="mx-2 mt-1 w-fit">
+              <TabsTrigger value="execution" className="flex items-center"> 
+                Execution Logs
+              </TabsTrigger>
+              {/* <TabsTrigger value="execution">Execution Logs</TabsTrigger> */}
+              <TabsTrigger value="api" className="">API Logs</TabsTrigger>
+              {/* <TabsTrigger value="output">DAG Output</TabsTrigger> */}
+              <TabsTrigger value="stats">Node Stats</TabsTrigger>
+            </TabsList>
 
-          {/* Filters */}
-          <div className="flex items-center gap-2 px-4 py-2 border-b">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search logs..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+            {/* Filters */}
+            <div className="flex items-center gap-2 px-4 py-2 ">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search logs..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="success">Success</SelectItem>
+                  <SelectItem value="error">Error</SelectItem>
+                  <SelectItem value="running">Running</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="success">Success</SelectItem>
-                <SelectItem value="error">Error</SelectItem>
-                <SelectItem value="running">Running</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
-          {/* <TabsContent value="execution" className="flex-1 m-0">
+          <TabsContent value="execution" className="flex-1 m-0">
             <ScrollArea className="h-full">
               <div className="p-4 space-y-2">
                 {filteredLogs.length === 0 ? (
@@ -405,8 +409,7 @@ export function BottomPanel({ className }: BottomPanelProps) {
                 )}
               </div>
             </ScrollArea>
-          </TabsContent> */}
-        
+          </TabsContent>
 
           <TabsContent
             value="api"
@@ -426,7 +429,6 @@ export function BottomPanel({ className }: BottomPanelProps) {
                       key={log.id}
                       className="p-3 bg-gray-50 rounded border text-sm hover:bg-gray-100 transition-colors mb-4"
                     >
-                     
                       <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="font-mono">
@@ -450,12 +452,10 @@ export function BottomPanel({ className }: BottomPanelProps) {
                         </span>
                       </div>
 
-                   
                       <div className="font-mono text-xs text-gray-700 mb-2">
                         {log.endpoint}
                       </div>
 
-                 
                       {log.response && (
                         <div className="bg-white p-2 rounded border text-xs">
                           <strong>Response:</strong>
@@ -467,7 +467,6 @@ export function BottomPanel({ className }: BottomPanelProps) {
                         </div>
                       )}
 
-              
                       {log.error && (
                         <div className="bg-red-50 p-2 rounded border text-xs text-red-700 mt-2">
                           <strong>Error:</strong> {log.error}
