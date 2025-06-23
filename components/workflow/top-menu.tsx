@@ -15,8 +15,8 @@ import {
   UserIcon,
   Download,
   Upload,
-  Settings,
-  RefreshCw,
+  CircleFadingPlus,
+  CircleFadingArrowUp,
 } from "lucide-react"
 import { useWorkflow } from "./workflow-context"
 import { Button } from "@/components/ui/button"
@@ -332,7 +332,7 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
                   disabled={isCreatingConfigs}
                   className="text-blue-600 hover:text-blue-700"
                 >
-                  {isCreatingConfigs ? <Loader2 className="h-5 w-5 animate-spin" /> : <Settings className="h-5 w-5" />}
+                  {isCreatingConfigs ? <Loader2 className="h-5 w-5 animate-spin" /> : <CircleFadingPlus className="h-5 w-5" />}
                   <span className="sr-only">Create Configs</span>
                 </Button>
               </TooltipTrigger>
@@ -350,7 +350,7 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
                   disabled={isUpdatingConfigs}
                   className="text-orange-600 hover:text-orange-700"
                 >
-                  {isUpdatingConfigs ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
+                  {isUpdatingConfigs ? <Loader2 className="h-5 w-5 animate-spin" /> : <CircleFadingArrowUp className="h-5 w-5" />}
                   <span className="sr-only">Update Configs</span>
                 </Button>
               </TooltipTrigger>
