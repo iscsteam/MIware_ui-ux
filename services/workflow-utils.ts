@@ -1,16 +1,19 @@
 // workflow-utils.ts
-// Enhanced workflow utilities for dynamic file conversion, CLI operations, database operations, and Salesforce
 import type { WorkflowNode, NodeConnection } from "@/components/workflow/workflow-context"
-import { createFileConversionConfig, updateDag, triggerDagRun } from "@/services/file-conversion-service"
+import {
+  createFileConversionConfig,
+  updateDag,
+  triggerDagRun,
+  updateFileConversionConfig,
+} from "@/services/file-conversion-service"
 import {
   createFileToFileConfig,
   createFileToDatabaseConfig,
   createDatabaseToFileConfig,
-  // createSalesforceReadConfig,
-  // createSalesforceWriteConfig,
 } from "@/services/schema-mapper"
 import {
   createCliOperatorConfig,
+  updateCliOperatorConfig,
   mapCopyFileToCliOperator,
   mapMoveFileToCliOperator,
   mapRenameFileToCliOperator,
@@ -18,8 +21,8 @@ import {
 } from "@/services/cli-operator-service"
 import { toast } from "@/components/ui/use-toast"
 import { getCurrentClientId } from "@/components/workflow/workflow-context"
-import { createSalesforceReadConfig } from "@/services/salesforce/salesforceread"
-import { createSalesforceWriteConfig } from "@/services/salesforce/salesforcewrite"
+import { createSalesforceReadConfig, updateSalesforceReadConfig } from "@/services/salesforce/salesforceread"
+import { createSalesforceWriteConfig, updateSalesforceWriteConfig } from "@/services/salesforce/salesforcewrite"
 
 // Helper function to ensure Python-compatible IDs
 function makePythonSafeId(id: string): string {
@@ -45,16 +48,11 @@ interface CliOperationSequence {
   sequenceIndex: number
 }
 
-// Interface for Salesforce read sequence
+// Interface for Salesforce sequence
 interface SalesforceSequence {
   salesforceNode: WorkflowNode
   sequenceIndex: number
-}
-
-// Interface for Salesforce write sequence
-interface SalesforceWriteSequence {
-  salesforceNode: WorkflowNode
-  sequenceIndex: number
+  type: "read" | "write"
 }
 
 // Interface for operation config
@@ -65,6 +63,19 @@ interface OperationConfig {
   sequenceIndex: number
 }
 
+// Store for created configs
+const createdConfigs: {
+  fileConversionConfigs: Map<string, number>
+  cliOperatorConfigs: Map<string, number>
+  salesforceReadConfigs: Map<string, number>
+  salesforceWriteConfigs: Map<string, number>
+} = {
+  fileConversionConfigs: new Map(),
+  cliOperatorConfigs: new Map(),
+  salesforceReadConfigs: new Map(),
+  salesforceWriteConfigs: new Map(),
+}
+
 // Find the next node in the workflow based on connections
 function findNextNode(
   currentNodeId: string,
@@ -73,6 +84,7 @@ function findNextNode(
 ): WorkflowNode | null {
   const connection = connections.find((conn) => conn.sourceId === currentNodeId)
   if (!connection) return null
+
   return nodes.find((node) => node.id === connection.targetId) || null
 }
 
@@ -96,6 +108,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
     // Traverse from read node to find write node or database node
     while (currentNode) {
       const nextNode = findNextNode(currentNode.id, connections, nodes)
+
       if (!nextNode) break
 
       if (nextNode.type === "write-file") {
@@ -111,10 +124,11 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
         sequences.push({
           readNode,
           writeNode,
-          filterNode: filterNode || undefined,
+          filterNode,
           sequenceIndex: sequenceIndex++,
           type: "file-to-file",
         })
+
         break
       } else if (nextNode.type === "database") {
         writeNode = nextNode
@@ -129,10 +143,11 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
         sequences.push({
           readNode,
           writeNode,
-          filterNode: filterNode || undefined,
+          filterNode,
           sequenceIndex: sequenceIndex++,
           type: "file-to-database",
         })
+
         break
       } else if (nextNode.type === "filter") {
         // Filter node before write node
@@ -144,7 +159,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
     }
   }
 
-  // Process database source nodes (database-to-file)
+  // Process database source nodes
   for (const dbSourceNode of databaseSourceNodes) {
     let currentNode: WorkflowNode | null = dbSourceNode
     let writeNode: WorkflowNode | null = null
@@ -153,6 +168,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
     // Traverse from database source to find write-file node
     while (currentNode) {
       const nextNode = findNextNode(currentNode.id, connections, nodes)
+
       if (!nextNode) break
 
       if (nextNode.type === "write-file") {
@@ -168,10 +184,11 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
         sequences.push({
           readNode: dbSourceNode,
           writeNode,
-          filterNode:filterNode || undefined,
+          filterNode,
           sequenceIndex: sequenceIndex++,
           type: "database-to-file",
         })
+
         break
       } else if (nextNode.type === "filter") {
         // Filter node before write node
@@ -198,48 +215,48 @@ function findCliOperationSequences(nodes: WorkflowNode[], connections: NodeConne
   )
 
   let sequenceIndex = 0
+
   for (const operationNode of cliOperationNodes) {
     sequences.push({
       operationNode,
       sequenceIndex: sequenceIndex++,
     })
   }
+
   return sequences
 }
 
-// Find all Salesforce read sequences in the workflow
+// Find all Salesforce sequences in the workflow
 function findSalesforceSequences(nodes: WorkflowNode[], connections: NodeConnection[]): SalesforceSequence[] {
   const sequences: SalesforceSequence[] = []
-  const salesforceNodes = nodes.filter((node) => node.type === "salesforce-cloud")
+  const salesforceReadNodes = nodes.filter((node) => node.type === "salesforce-cloud")
+  const salesforceWriteNodes = nodes.filter((node) => node.type === "write-salesforce")
 
   let sequenceIndex = 0
-  for (const salesforceNode of salesforceNodes) {
+
+  for (const salesforceNode of salesforceReadNodes) {
     sequences.push({
       salesforceNode,
       sequenceIndex: sequenceIndex++,
+      type: "read",
     })
   }
-  return sequences
-}
 
-// Find all Salesforce write sequences in the workflow
-function findSalesforceWriteSequences(nodes: WorkflowNode[], connections: NodeConnection[]): SalesforceWriteSequence[] {
-  const sequences: SalesforceWriteSequence[] = []
-  const salesforceNodes = nodes.filter((node) => node.type === "write-salesforce")
-
-  let sequenceIndex = 0
-  for (const salesforceNode of salesforceNodes) {
+  for (const salesforceNode of salesforceWriteNodes) {
     sequences.push({
       salesforceNode,
       sequenceIndex: sequenceIndex++,
+      type: "write",
     })
   }
+
   return sequences
 }
 
 // Find all operations in workflow order (mixed file conversions, CLI operations, and Salesforce)
 function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnection[]): OperationConfig[] {
   const operations: OperationConfig[] = []
+
   // Find start node
   const startNode = nodes.find((node) => node.type === "start")
   if (!startNode) return operations
@@ -252,8 +269,9 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
     const nextNode = findNextNode(currentNode.id, connections, nodes)
     if (!nextNode) break
 
-    // Check if next node starts a file conversion sequence
+    // Check if current node starts a file conversion sequence
     if (nextNode.type === "read-file" || nextNode.type === "source") {
+      // Find the complete file conversion sequence
       const readNode = nextNode
       let writeNode: WorkflowNode | null = null
       let filterNode: WorkflowNode | null = null
@@ -266,6 +284,7 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
 
         if (seqNextNode.type === "write-file" || seqNextNode.type === "database") {
           writeNode = seqNextNode
+
           // Check for filter after write
           const nodeAfterWrite = findNextNode(writeNode.id, connections, nodes)
           if (nodeAfterWrite && nodeAfterWrite.type === "filter") {
@@ -284,44 +303,48 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
       }
 
       if (writeNode) {
+        const configId = createdConfigs.fileConversionConfigs.get(readNode.id) || -1
         operations.push({
           type: "file_conversion",
-          configId: -1, // Will be set later
+          configId,
           nodeId: readNode.id,
           sequenceIndex: operationIndex++,
         })
       }
     }
-    // Check if next node is a CLI operation
+    // Check if current node is a CLI operation
     else if (
       nextNode.type === "copy-file" ||
       nextNode.type === "move-file" ||
       nextNode.type === "rename-file" ||
       nextNode.type === "delete-file"
     ) {
+      const configId = createdConfigs.cliOperatorConfigs.get(nextNode.id) || -1
       operations.push({
         type: "cli_operator",
-        configId: -1,
+        configId,
         nodeId: nextNode.id,
         sequenceIndex: operationIndex++,
       })
       currentNode = nextNode
     }
-    // Check if next node is a Salesforce read operation
+    // Check if current node is a Salesforce read operation
     else if (nextNode.type === "salesforce-cloud") {
+      const configId = createdConfigs.salesforceReadConfigs.get(nextNode.id) || -1
       operations.push({
         type: "read_salesforce",
-        configId: -1,
+        configId,
         nodeId: nextNode.id,
         sequenceIndex: operationIndex++,
       })
       currentNode = nextNode
     }
-    // Check if next node is a Salesforce write operation
+    // Check if current node is a Salesforce write operation
     else if (nextNode.type === "write-salesforce") {
+      const configId = createdConfigs.salesforceWriteConfigs.get(nextNode.id) || -1
       operations.push({
         type: "write_salesforce",
-        configId: -1,
+        configId,
         nodeId: nextNode.id,
         sequenceIndex: operationIndex++,
       })
@@ -341,11 +364,13 @@ function createMixedOperationsDagSequence(
   endNode: WorkflowNode,
 ): any[] {
   const dagSequence: any[] = []
+
   if (operationConfigs.length === 0) return dagSequence
 
   // Start node
   const firstConfig = operationConfigs[0]
   let firstNodeId: string
+
   if (firstConfig.type === "file_conversion") {
     firstNodeId = `file_node_${firstConfig.configId}`
   } else if (firstConfig.type === "cli_operator") {
@@ -379,26 +404,26 @@ function createMixedOperationsDagSequence(
       nodeId = `read_salesforce_${config.configId}`
     }
 
-    let nextNodeIds: string[]
+    let nextNodeId: string[]
     if (nextConfig) {
       if (nextConfig.type === "file_conversion") {
-        nextNodeIds = [`file_node_${nextConfig.configId}`]
+        nextNodeId = [`file_node_${nextConfig.configId}`]
       } else if (nextConfig.type === "cli_operator") {
-        nextNodeIds = [`cli_op_node_${nextConfig.configId}`]
+        nextNodeId = [`cli_op_node_${nextConfig.configId}`]
       } else if (nextConfig.type === "write_salesforce") {
-        nextNodeIds = [`write_salesforce_${nextConfig.configId}`]
+        nextNodeId = [`write_salesforce_${nextConfig.configId}`]
       } else {
-        nextNodeIds = [`read_salesforce_${nextConfig.configId}`]
+        nextNodeId = [`read_salesforce_${nextConfig.configId}`]
       }
     } else {
-      nextNodeIds = [makePythonSafeId(endNode.id)]
+      nextNodeId = [makePythonSafeId(endNode.id)]
     }
 
     dagSequence.push({
       id: nodeId,
       type: config.type,
       config_id: config.configId,
-      next: nextNodeIds,
+      next: nextNodeId,
     })
   }
 
@@ -413,8 +438,37 @@ function createMixedOperationsDagSequence(
   return dagSequence
 }
 
-// Enhanced save and run workflow function
-export async function saveAndRunWorkflow(
+// Clear all stored configs (useful when workflow structure changes significantly)
+export function clearAllConfigs(): void {
+  createdConfigs.fileConversionConfigs.clear()
+  createdConfigs.cliOperatorConfigs.clear()
+  createdConfigs.salesforceReadConfigs.clear()
+  createdConfigs.salesforceWriteConfigs.clear()
+
+  console.log("All config stores cleared")
+  toast({
+    title: "Configs Cleared",
+    description: "All stored configuration IDs have been cleared.",
+  })
+}
+
+// Get current config counts for debugging
+export function getConfigCounts(): {
+  fileConversion: number
+  cliOperator: number
+  salesforceRead: number
+  salesforceWrite: number
+} {
+  return {
+    fileConversion: createdConfigs.fileConversionConfigs.size,
+    cliOperator: createdConfigs.cliOperatorConfigs.size,
+    salesforceRead: createdConfigs.salesforceReadConfigs.size,
+    salesforceWrite: createdConfigs.salesforceWriteConfigs.size,
+  }
+}
+
+// NEW: Create all configurations
+export async function createAllConfigs(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
   currentWorkflowId: string | null,
@@ -442,55 +496,36 @@ export async function saveAndRunWorkflow(
   if (!currentWorkflowId) {
     toast({
       title: "Error",
-      description: "Workflow ID is required to save and run the workflow.",
+      description: "Workflow ID is required to create configurations.",
       variant: "destructive",
     })
     return false
   }
 
-  if (nodes.length === 0) {
-    toast({
-      title: "Error",
-      description: "Workflow must contain at least one node.",
-      variant: "destructive",
-    })
-    return false
-  }
+  // Optional: Clear configs if workflow structure has changed significantly
+  const currentNodeTypes = nodes.map((n) => n.type).sort()
+  const hasFileConversion = currentNodeTypes.includes("read-file") || currentNodeTypes.includes("write-file")
+  const hasCliOperations = currentNodeTypes.some((type) =>
+    ["copy-file", "move-file", "rename-file", "delete-file"].includes(type),
+  )
+  const hasSalesforce = currentNodeTypes.includes("salesforce-cloud") || currentNodeTypes.includes("write-salesforce")
+
+  console.log("Current workflow contains:", {
+    fileConversion: hasFileConversion,
+    cliOperations: hasCliOperations,
+    salesforce: hasSalesforce,
+    totalNodes: nodes.length,
+  })
 
   try {
-    const startNodes = nodes.filter((node) => node.type === "start")
-    const endNodes = nodes.filter((node) => node.type === "end")
-
-    if (startNodes.length === 0 || endNodes.length === 0) {
-      toast({
-        title: "Error",
-        description: "Workflow must have both start and end nodes.",
-        variant: "destructive",
-      })
-      return false
-    }
-
     // Find all operations in the workflow
     const fileConversionSequences = findFileConversionSequences(nodes, connections)
     const cliOperationSequences = findCliOperationSequences(nodes, connections)
-    const salesforceReadSequences = findSalesforceSequences(nodes, connections)
-    const salesforceWriteSequences = findSalesforceWriteSequences(nodes, connections)
-    const allOperations = findAllOperationsInOrder(nodes, connections)
+    const salesforceSequences = findSalesforceSequences(nodes, connections)
 
-    console.log(`Found ${fileConversionSequences.length} file conversion sequences`)
-    console.log(`Found ${cliOperationSequences.length} CLI operation sequences`)
-    console.log(`Found ${salesforceReadSequences.length} Salesforce‐read sequences`)
-    console.log(`Found ${salesforceWriteSequences.length} Salesforce‐write sequences`)
-    console.log(`Total operations in order:`, allOperations)
-
-    if (allOperations.length === 0) {
-      toast({
-        title: "Error",
-        description: "No valid operations found in the workflow.",
-        variant: "destructive",
-      })
-      return false
-    }
+    console.log(`Creating configs for ${fileConversionSequences.length} file conversion sequences`)
+    console.log(`Creating configs for ${cliOperationSequences.length} CLI operation sequences`)
+    console.log(`Creating configs for ${salesforceSequences.length} Salesforce sequences`)
 
     // Process file conversion sequences
     for (const sequence of fileConversionSequences) {
@@ -523,29 +558,10 @@ export async function saveAndRunWorkflow(
         if (!writeNode.data.connectionString || !writeNode.data.table) {
           toast({
             title: "Error",
-            description: `Database operation sequence ${
-              sequence.sequenceIndex + 1
-            } is missing connection string or table name.`,
+            description: `Database operation sequence ${sequence.sequenceIndex + 1} is missing connection string or table name.`,
             variant: "destructive",
           })
           return false
-        }
-
-        // Validate connection string format for PostgreSQL
-        if (writeNode.data.provider === "local" || writeNode.data.provider === "postgresql") {
-          if (
-            !writeNode.data.connectionString.includes("postgresql://") &&
-            !writeNode.data.connectionString.includes("jdbc:postgresql://")
-          ) {
-            toast({
-              title: "Error",
-              description: `Database sequence ${
-                sequence.sequenceIndex + 1
-              } requires a valid PostgreSQL connection string.`,
-              variant: "destructive",
-            })
-            return false
-          }
         }
       }
 
@@ -555,21 +571,7 @@ export async function saveAndRunWorkflow(
         configPayload = createFileToFileConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
       } else if (type === "file-to-database") {
         configPayload = createFileToDatabaseConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
-
-        // Ensure the output format matches the expected payload structure
-        // configPayload.output = {
-        //   ...configPayload.output,
-        //   connectionString: writeNode.data.connectionString,
-        //   table: writeNode.data.table,
-        //   type: "database",
-        //   options: {
-        //     header: true,
-        //     inferSchema: true,
-        //     ...configPayload.output.options,
-        //   },
-        // }
-      } else {
-        // database-to-file
+      } else if (type === "database-to-file") {
         configPayload = createDatabaseToFileConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
       }
 
@@ -581,11 +583,8 @@ export async function saveAndRunWorkflow(
         throw new Error(`Failed to create ${type} config for sequence ${sequence.sequenceIndex + 1}`)
       }
 
-      // Find the corresponding operation in allOperations and update it
-      const operationIndex = allOperations.findIndex((op) => op.nodeId === readNode.id && op.type === "file_conversion")
-      if (operationIndex !== -1) {
-        allOperations[operationIndex].configId = configResponse.id
-      }
+      // Store the config ID
+      createdConfigs.fileConversionConfigs.set(readNode.id, configResponse.id)
 
       console.log(`Created ${type} config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
     }
@@ -608,7 +607,6 @@ export async function saveAndRunWorkflow(
           }
           cliConfigPayload = mapCopyFileToCliOperator(operationNode)
           break
-
         case "move-file":
           if (!operationNode.data.source_path || !operationNode.data.destination_path) {
             toast({
@@ -620,7 +618,6 @@ export async function saveAndRunWorkflow(
           }
           cliConfigPayload = mapMoveFileToCliOperator(operationNode)
           break
-
         case "rename-file":
           if (!operationNode.data.source_path || !operationNode.data.destination_path) {
             toast({
@@ -632,7 +629,6 @@ export async function saveAndRunWorkflow(
           }
           cliConfigPayload = mapRenameFileToCliOperator(operationNode)
           break
-
         case "delete-file":
           if (!operationNode.data.source_path) {
             toast({
@@ -644,7 +640,6 @@ export async function saveAndRunWorkflow(
           }
           cliConfigPayload = mapDeleteFileToCliOperator(operationNode)
           break
-
         default:
           throw new Error(`Unsupported CLI operation type: ${operationNode.type}`)
       }
@@ -657,192 +652,408 @@ export async function saveAndRunWorkflow(
         throw new Error(`Failed to create CLI operator config for ${operationNode.type} operation`)
       }
 
-      // Find the corresponding operation in allOperations and update it
-      const operationIndex = allOperations.findIndex(
-        (op) => op.nodeId === operationNode.id && op.type === "cli_operator",
-      )
-      if (operationIndex !== -1) {
-        allOperations[operationIndex].configId = configResponse.id
-      }
+      // Store the config ID
+      createdConfigs.cliOperatorConfigs.set(operationNode.id, configResponse.id)
 
       console.log(`Created CLI operator config ${configResponse.id} for ${operationNode.type} operation`)
     }
 
-    // // Process Salesforce read sequences
-    // for (const sequence of salesforceReadSequences) {
-    //   const { salesforceNode } = sequence;
+    // Process Salesforce sequences
+    for (const sequence of salesforceSequences) {
+      const { salesforceNode, type } = sequence
 
-    //   // Validate required Salesforce read fields
-    //   if (
-    //     !salesforceNode.data.object_name ||
-    //     !salesforceNode.data.query ||
-    //     !salesforceNode.data.file_path
-    //   ) {
-    //     toast({
-    //       title: "Error",
-    //       description:
-    //         "Salesforce read workflow requires object_name, query, and file_path. Please configure the Salesforce read node first.",
-    //       variant: "destructive",
-    //     });
-    //     return false;
-    //   }
+      if (type === "read") {
+        // Validate required Salesforce read fields
+        if (!salesforceNode.data.object_name || !salesforceNode.data.query || !salesforceNode.data.file_path) {
+          toast({
+            title: "Error",
+            description:
+              "Salesforce read workflow requires object name, query, and file path. Please configure the Salesforce node first.",
+            variant: "destructive",
+          })
+          return false
+        }
 
-    //   // Create Salesforce read configuration payload
-    //   const configPayload = {
-    //     object_name: salesforceNode.data.object_name,
-    //     query: salesforceNode.data.query,
-    //     fields: salesforceNode.data.fields || [],
-    //     where: salesforceNode.data.where || "",
-    //     limit: salesforceNode.data.limit || undefined,
-    //     use_bulk_api: salesforceNode.data.use_bulk_api || false,
-    //     file_path: salesforceNode.data.file_path,
-    //   };
+        // Create Salesforce read configuration payload
+        const configPayload = {
+          object_name: salesforceNode.data.object_name,
+          query: salesforceNode.data.query,
+          fields: salesforceNode.data.fields || [],
+          where: salesforceNode.data.where || "",
+          limit: salesforceNode.data.limit || undefined,
+          use_bulk_api: salesforceNode.data.use_bulk_api || false,
+          file_path: salesforceNode.data.file_path,
+        }
 
-    //   console.log(
-    //     `Creating Salesforce read config ${sequence.sequenceIndex + 1}:`,
-    //     configPayload
-    //   );
+        console.log(`Creating Salesforce read config ${sequence.sequenceIndex + 1}:`, configPayload)
 
-    //   // Create the config
-    //   const configResponse = await createSalesforceReadConfig(
-    //     dynamicClientIdString,
-    //     configPayload
-    //   );
-    //   if (!configResponse) {
-    //     throw new Error(
-    //       `Failed to create Salesforce read config for sequence ${
-    //         sequence.sequenceIndex + 1
-    //       }`
-    //     );
-    //   }
+        // Create the config
+        const configResponse = await createSalesforceReadConfig(dynamicClientIdString, configPayload)
+        if (!configResponse) {
+          throw new Error(`Failed to create Salesforce read config for sequence ${sequence.sequenceIndex + 1}`)
+        }
 
-    //   // Find the corresponding operation in allOperations and update it
-    //   const operationIndex = allOperations.findIndex(
-    //     (op) => op.nodeId === salesforceNode.id && op.type === "read_salesforce"
-    //   );
-    //   if (operationIndex !== -1) {
-    //     allOperations[operationIndex].configId = configResponse.id;
-    //   }
+        // Store the config ID
+        createdConfigs.salesforceReadConfigs.set(salesforceNode.id, configResponse.id)
 
-    //   console.log(
-    //     `Created Salesforce read config ${configResponse.id} for sequence ${
-    //       sequence.sequenceIndex + 1
-    //     }`
-    //   );
-    // }
-    // Process Salesforce read sequences
-    for (const sequence of salesforceReadSequences) {
-      const { salesforceNode } = sequence
+        console.log(`Created Salesforce read config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
+      } else if (type === "write") {
+        // Validate required Salesforce write fields
+        if (!salesforceNode.data.object_name || !salesforceNode.data.file_path) {
+          toast({
+            title: "Error",
+            description:
+              "Salesforce write workflow requires object name and file path. Please configure the Salesforce write node first.",
+            variant: "destructive",
+          })
+          return false
+        }
 
-      // Validate required Salesforce read fields
-      if (!salesforceNode.data.object_name || !salesforceNode.data.query || !salesforceNode.data.file_path) {
-        toast({
-          title: "Error",
-          description:
-            "Salesforce read workflow requires object_name, query, and file_path. Please configure the Salesforce read node first.",
-          variant: "destructive",
-        })
-        return false
+        // Create Salesforce write configuration payload
+        const configPayload = {
+          object_name: salesforceNode.data.object_name,
+          fields: salesforceNode.data.fields || [],
+          use_bulk_api: salesforceNode.data.use_bulk_api || false,
+          bulk_batch_size: salesforceNode.data.bulk_batch_size || 1000,
+          file_path: salesforceNode.data.file_path,
+        }
+
+        console.log(`Creating Salesforce write config ${sequence.sequenceIndex + 1}:`, configPayload)
+
+        // Create the config
+        const configResponse = await createSalesforceWriteConfig(dynamicClientIdString, configPayload)
+        if (!configResponse) {
+          throw new Error(`Failed to create Salesforce write config for sequence ${sequence.sequenceIndex + 1}`)
+        }
+
+        // Store the config ID
+        createdConfigs.salesforceWriteConfigs.set(salesforceNode.id, configResponse.id)
+
+        console.log(`Created Salesforce write config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
       }
-
-      // Get fields from either fields or selectedFields property
-      const fields = salesforceNode.data.fields || salesforceNode.data.selectedFields || []
-
-      console.log("Salesforce node data:", salesforceNode.data) // Debug log
-      console.log("Fields being sent to API:", fields) // Debug log
-
-      // Create Salesforce read configuration payload
-      const configPayload = {
-        object_name: salesforceNode.data.object_name,
-        query: salesforceNode.data.query,
-        fields: fields, // Use the extracted fields
-        where: salesforceNode.data.where || "",
-        limit: salesforceNode.data.limit || undefined,
-        use_bulk_api: salesforceNode.data.use_bulk_api || false,
-        file_path: salesforceNode.data.file_path,
-      }
-
-      console.log(`Creating Salesforce read config ${sequence.sequenceIndex + 1}:`, configPayload)
-
-      // Create the config
-      const configResponse = await createSalesforceReadConfig(dynamicClientIdString, configPayload)
-      if (!configResponse) {
-        throw new Error(`Failed to create Salesforce read config for sequence ${sequence.sequenceIndex + 1}`)
-      }
-
-      // Find the corresponding operation in allOperations and update it
-      const operationIndex = allOperations.findIndex(
-        (op) => op.nodeId === salesforceNode.id && op.type === "read_salesforce",
-      )
-      if (operationIndex !== -1) {
-        allOperations[operationIndex].configId = configResponse.id
-      }
-
-      console.log(`Created Salesforce read config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
     }
 
-    // Process Salesforce write sequences
-    for (const sequence of salesforceWriteSequences) {
-      const { salesforceNode } = sequence
+    // Count operation types for success message
+    const fileConversionCount = fileConversionSequences.length
+    const cliOperationCount = cliOperationSequences.length
+    const salesforceReadCount = salesforceSequences.filter((s) => s.type === "read").length
+    const salesforceWriteCount = salesforceSequences.filter((s) => s.type === "write").length
 
-      // Validate required Salesforce write fields
-      if (!salesforceNode.data.object_name || !salesforceNode.data.file_path || !salesforceNode.data.bulk_batch_size) {
-        toast({
-          title: "Error",
-          description:
-            "Salesforce write workflow requires object_name, file_path, and bulk_batch_size. Please configure the Salesforce write node first.",
-          variant: "destructive",
-        })
-        return false
+    toast({
+      title: "Success",
+      description: `Created ${fileConversionCount} file conversion config(s), ${cliOperationCount} CLI operator config(s), ${salesforceReadCount} Salesforce read config(s), and ${salesforceWriteCount} Salesforce write config(s).`,
+    })
+
+    return true
+  } catch (error) {
+    console.error("Error in createAllConfigs:", error)
+    toast({
+      title: "Config Creation Error",
+      description: error instanceof Error ? error.message : "Failed to create configurations.",
+      variant: "destructive",
+    })
+    return false
+  }
+}
+
+// NEW: Update all configurations
+export async function updateAllConfigs(
+  nodes: WorkflowNode[],
+  connections: NodeConnection[],
+  currentWorkflowId: string | null,
+): Promise<boolean> {
+  const dynamicClientIdString = getCurrentClientId()
+  if (!dynamicClientIdString) {
+    toast({
+      title: "Error",
+      description: "Client ID not found. Please ensure you're logged in.",
+      variant: "destructive",
+    })
+    return false
+  }
+
+  const clientId = Number.parseInt(dynamicClientIdString, 10)
+  if (isNaN(clientId)) {
+    toast({
+      title: "Error",
+      description: "Invalid client ID format.",
+      variant: "destructive",
+    })
+    return false
+  }
+
+  // Check if configs exist
+  if (
+    createdConfigs.fileConversionConfigs.size === 0 &&
+    createdConfigs.cliOperatorConfigs.size === 0 &&
+    createdConfigs.salesforceReadConfigs.size === 0 &&
+    createdConfigs.salesforceWriteConfigs.size === 0
+  ) {
+    toast({
+      title: "No Configs Found",
+      description: "Please create configs first before updating.",
+      variant: "destructive",
+    })
+    return false
+  }
+
+  try {
+    // Find all operations in the workflow
+    const fileConversionSequences = findFileConversionSequences(nodes, connections)
+    const cliOperationSequences = findCliOperationSequences(nodes, connections)
+    const salesforceSequences = findSalesforceSequences(nodes, connections)
+
+    console.log(`Updating configs for ${fileConversionSequences.length} file conversion sequences`)
+    console.log(`Updating configs for ${cliOperationSequences.length} CLI operation sequences`)
+    console.log(`Updating configs for ${salesforceSequences.length} Salesforce sequences`)
+
+    // Update file conversion sequences
+    for (const sequence of fileConversionSequences) {
+      const { readNode, writeNode, filterNode, type } = sequence
+      const configId = createdConfigs.fileConversionConfigs.get(readNode.id)
+
+      if (!configId) {
+        console.log(`No config found for file conversion node ${readNode.id}, skipping update`)
+        continue
       }
 
-      // Create Salesforce write configuration payload
-      const configPayload = {
-        object_name: salesforceNode.data.object_name,
-        fields: salesforceNode.data.fields || [],
-        use_bulk_api: salesforceNode.data.use_bulk_api || false,
-        bulk_batch_size: salesforceNode.data.bulk_batch_size || 1000,
-        file_path: salesforceNode.data.file_path,
+      // Create config payload based on sequence type
+      let configPayload
+      if (type === "file-to-file") {
+        configPayload = createFileToFileConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
+      } else if (type === "file-to-database") {
+        configPayload = createFileToDatabaseConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
+      } else if (type === "database-to-file") {
+        configPayload = createDatabaseToFileConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
       }
 
-      console.log(`Creating Salesforce write config ${sequence.sequenceIndex + 1}:`, configPayload)
+      console.log(`Updating ${type} config ${configId}:`, configPayload)
 
-      // Create the config
-      const configResponse = await createSalesforceWriteConfig(dynamicClientIdString, configPayload)
+      // Update the config
+      const configResponse = await updateFileConversionConfig(clientId, configId, configPayload)
       if (!configResponse) {
-        throw new Error(`Failed to create Salesforce write config for sequence ${sequence.sequenceIndex + 1}`)
+        throw new Error(`Failed to update ${type} config ${configId}`)
       }
 
-      // Find the corresponding operation in allOperations and update it
-      const operationIndex = allOperations.findIndex(
-        (op) => op.nodeId === salesforceNode.id && op.type === "write_salesforce",
-      )
-      if (operationIndex !== -1) {
-        allOperations[operationIndex].configId = configResponse.id
-      }
-
-      console.log(`Created Salesforce write config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
+      console.log(`Updated ${type} config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
     }
 
-    // Filter out operations that don't have config IDs (shouldn't happen, but safety check)
-    const validOperations = allOperations.filter((op) => op.configId !== -1)
+    // Update CLI operation sequences
+    for (const sequence of cliOperationSequences) {
+      const { operationNode } = sequence
+      const configId = createdConfigs.cliOperatorConfigs.get(operationNode.id)
+
+      if (!configId) {
+        console.log(`No config found for CLI operation node ${operationNode.id}, skipping update`)
+        continue
+      }
+
+      let cliConfigPayload
+
+      // Create CLI operator config based on operation type
+      switch (operationNode.type) {
+        case "copy-file":
+          cliConfigPayload = mapCopyFileToCliOperator(operationNode)
+          break
+        case "move-file":
+          cliConfigPayload = mapMoveFileToCliOperator(operationNode)
+          break
+        case "rename-file":
+          cliConfigPayload = mapRenameFileToCliOperator(operationNode)
+          break
+        case "delete-file":
+          cliConfigPayload = mapDeleteFileToCliOperator(operationNode)
+          break
+        default:
+          throw new Error(`Unsupported CLI operation type: ${operationNode.type}`)
+      }
+
+      console.log(`Updating CLI operator config ${configId} (${operationNode.type}) with:`, cliConfigPayload)
+
+      // Update the config
+      const configResponse = await updateCliOperatorConfig(clientId, configId, cliConfigPayload)
+      if (!configResponse) {
+        throw new Error(`Failed to update CLI operator config ${configId}`)
+      }
+
+      console.log(`Updated CLI operator config ${configId} for ${operationNode.type} operation`)
+    }
+
+    // Update Salesforce sequences
+    for (const sequence of salesforceSequences) {
+      const { salesforceNode, type } = sequence
+
+      if (type === "read") {
+        const configId = createdConfigs.salesforceReadConfigs.get(salesforceNode.id)
+
+        if (!configId) {
+          console.log(`No config found for Salesforce read node ${salesforceNode.id}, skipping update`)
+          continue
+        }
+
+        // Create Salesforce read configuration payload
+        const configPayload = {
+          object_name: salesforceNode.data.object_name,
+          query: salesforceNode.data.query,
+          fields: salesforceNode.data.fields || [],
+          where: salesforceNode.data.where || "",
+          limit: salesforceNode.data.limit || undefined,
+          use_bulk_api: salesforceNode.data.use_bulk_api || false,
+          file_path: salesforceNode.data.file_path,
+        }
+
+        console.log(`Updating Salesforce read config ${configId}:`, configPayload)
+
+        // Update the config
+        const configResponse = await updateSalesforceReadConfig(dynamicClientIdString, configId, configPayload)
+        if (!configResponse) {
+          throw new Error(`Failed to update Salesforce read config ${configId}`)
+        }
+
+        console.log(`Updated Salesforce read config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
+      } else if (type === "write") {
+        const configId = createdConfigs.salesforceWriteConfigs.get(salesforceNode.id)
+
+        if (!configId) {
+          console.log(`No config found for Salesforce write node ${salesforceNode.id}, skipping update`)
+          continue
+        }
+
+        // Create Salesforce write configuration payload
+        const configPayload = {
+          object_name: salesforceNode.data.object_name,
+          fields: salesforceNode.data.fields || [],
+          use_bulk_api: salesforceNode.data.use_bulk_api || false,
+          bulk_batch_size: salesforceNode.data.bulk_batch_size || 1000,
+          file_path: salesforceNode.data.file_path,
+        }
+
+        console.log(`Updating Salesforce write config ${configId}:`, configPayload)
+
+        // Update the config
+        const configResponse = await updateSalesforceWriteConfig(dynamicClientIdString, configId, configPayload)
+        if (!configResponse) {
+          throw new Error(`Failed to update Salesforce write config ${configId}`)
+        }
+
+        console.log(`Updated Salesforce write config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
+      }
+    }
+
+    // Count operation types for success message
+    const fileConversionCount = fileConversionSequences.length
+    const cliOperationCount = cliOperationSequences.length
+    const salesforceReadCount = salesforceSequences.filter((s) => s.type === "read").length
+    const salesforceWriteCount = salesforceSequences.filter((s) => s.type === "write").length
+
+    toast({
+      title: "Success",
+      description: `Updated ${fileConversionCount} file conversion config(s), ${cliOperationCount} CLI operator config(s), ${salesforceReadCount} Salesforce read config(s), and ${salesforceWriteCount} Salesforce write config(s).`,
+    })
+
+    return true
+  } catch (error) {
+    console.error("Error in updateAllConfigs:", error)
+    toast({
+      title: "Config Update Error",
+      description: error instanceof Error ? error.message : "Failed to update configurations.",
+      variant: "destructive",
+    })
+    return false
+  }
+}
+
+// MODIFIED: Run workflow without creating configs
+export async function runWorkflowOnly(
+  nodes: WorkflowNode[],
+  connections: NodeConnection[],
+  currentWorkflowId: string | null,
+): Promise<boolean> {
+  const dynamicClientIdString = getCurrentClientId()
+  if (!dynamicClientIdString) {
+    toast({
+      title: "Error",
+      description: "Client ID not found. Please ensure you're logged in.",
+      variant: "destructive",
+    })
+    return false
+  }
+
+  if (!currentWorkflowId) {
+    toast({
+      title: "Error",
+      description: "Workflow ID is required to run the workflow.",
+      variant: "destructive",
+    })
+    return false
+  }
+
+  if (nodes.length === 0) {
+    toast({
+      title: "Error",
+      description: "Workflow must contain at least one node.",
+      variant: "destructive",
+    })
+    return false
+  }
+
+  try {
+    const startNodes = nodes.filter((node) => node.type === "start")
+    const endNodes = nodes.filter((node) => node.type === "end")
+
+    if (startNodes.length === 0 || endNodes.length === 0) {
+      toast({
+        title: "Error",
+        description: "Workflow must have both start and end nodes.",
+        variant: "destructive",
+      })
+      return false
+    }
+
+    // Find all operations in the workflow
+    const allOperations = findAllOperationsInOrder(nodes, connections)
+
+    console.log(`Total operations in order:`, allOperations)
+
+    if (allOperations.length === 0) {
+      toast({
+        title: "Error",
+        description: "No valid operations found in the workflow.",
+        variant: "destructive",
+      })
+      return false
+    }
+
+    // Check if all operations have config IDs
+    const missingConfigs = allOperations.filter((op) => op.configId === -1)
+    if (missingConfigs.length > 0) {
+      toast({
+        title: "Error",
+        description: "Some operations are missing configurations. Please create configs first.",
+        variant: "destructive",
+      })
+      return false
+    }
 
     // Create DAG sequence for all operations
-    const dagSequence = createMixedOperationsDagSequence(validOperations, startNodes[0], endNodes[0])
+    const dagSequence = createMixedOperationsDagSequence(allOperations, startNodes[0], endNodes[0])
     console.log("Generated DAG sequence for mixed operations:", dagSequence)
 
     // Update DAG with the generated sequence
     const dagUpdateData = { dag_sequence: dagSequence, active: true }
     const updatedDag = await updateDag(currentWorkflowId, dagUpdateData)
+
     if (!updatedDag) {
       throw new Error("Failed to update DAG")
     }
+
     console.log("DAG updated successfully")
 
     // Trigger DAG run
     try {
       console.log("Triggering DAG run...")
       const triggerResult = await triggerDagRun(currentWorkflowId)
+
       if (!triggerResult) {
         console.log("Trigger returned null, but continuing.")
       } else {
@@ -858,27 +1069,36 @@ export async function saveAndRunWorkflow(
       return true
     }
 
-    // Count operation types for success message
-    const fileConversionCount = fileConversionSequences.length
-    const cliOperationCount = cliOperationSequences.length
-    const salesforceReadCount = salesforceReadSequences.length
-    const salesforceWriteCount = salesforceWriteSequences.length
-
     toast({
       title: "Success",
-      description: `Workflow saved and triggered successfully with ${fileConversionCount} file conversion(s), ${cliOperationCount} CLI operation(s), ${salesforceReadCount} Salesforce read(s), and ${salesforceWriteCount} Salesforce write(s).`,
+      description: `Workflow triggered successfully with ${allOperations.length} operation(s).`,
     })
 
     return true
   } catch (error) {
-    console.error("Error in saveAndRunWorkflow:", error)
+    console.error("Error in runWorkflowOnly:", error)
     toast({
       title: "Workflow Error",
-      description: error instanceof Error ? error.message : "Failed to save and run workflow.",
+      description: error instanceof Error ? error.message : "Failed to run workflow.",
       variant: "destructive",
     })
     return false
   }
+}
+
+// Keep the original function for backward compatibility
+export async function saveAndRunWorkflow(
+  nodes: WorkflowNode[],
+  connections: NodeConnection[],
+  currentWorkflowId: string | null,
+): Promise<boolean> {
+  // First create configs, then run
+  const configsCreated = await createAllConfigs(nodes, connections, currentWorkflowId)
+  if (!configsCreated) {
+    return false
+  }
+
+  return await runWorkflowOnly(nodes, connections, currentWorkflowId)
 }
 
 // Helper function to validate workflow structure
@@ -891,42 +1111,52 @@ export function validateWorkflowStructure(
   // Check for start and end nodes
   const startNodes = nodes.filter((node) => node.type === "start")
   const endNodes = nodes.filter((node) => node.type === "end")
+
   if (startNodes.length === 0) {
     errors.push("Workflow must have a start node")
   }
+
   if (endNodes.length === 0) {
     errors.push("Workflow must have an end node")
   }
+
   if (startNodes.length > 1) {
     errors.push("Workflow can only have one start node")
   }
+
   if (endNodes.length > 1) {
     errors.push("Workflow can only have one end node")
   }
 
   // Check file conversion sequences
   const fileConversionSequences = findFileConversionSequences(nodes, connections)
+
   for (const sequence of fileConversionSequences) {
     if (sequence.type === "file-to-file" || sequence.type === "file-to-database") {
       if (!sequence.readNode.data.path) {
         errors.push(`Read file node in sequence ${sequence.sequenceIndex + 1} is missing a file path`)
       }
+
       if (!sequence.readNode.data.format) {
         errors.push(`Read file node in sequence ${sequence.sequenceIndex + 1} is missing a file format`)
       }
     }
+
     if (sequence.type === "file-to-file") {
       if (!sequence.writeNode.data.path) {
         errors.push(`Write file node in sequence ${sequence.sequenceIndex + 1} is missing a file path`)
       }
+
       if (!sequence.writeNode.data.format) {
         errors.push(`Write file node in sequence ${sequence.sequenceIndex + 1} is missing a file format`)
       }
     }
+
     if (sequence.type === "file-to-database" || sequence.type === "database-to-file") {
       if (!sequence.writeNode.data.connectionString) {
         errors.push(`Database node in sequence ${sequence.sequenceIndex + 1} is missing a connection string`)
       }
+
       if (!sequence.writeNode.data.table) {
         errors.push(`Database node in sequence ${sequence.sequenceIndex + 1} is missing a table name`)
       }
@@ -935,11 +1165,14 @@ export function validateWorkflowStructure(
 
   // Check CLI operation sequences
   const cliOperationSequences = findCliOperationSequences(nodes, connections)
+
   for (const sequence of cliOperationSequences) {
     const { operationNode } = sequence
+
     if (!operationNode.data.source_path) {
       errors.push(`${operationNode.type} node in sequence ${sequence.sequenceIndex + 1} is missing a source path`)
     }
+
     if (
       (operationNode.type === "copy-file" ||
         operationNode.type === "move-file" ||
@@ -950,33 +1183,32 @@ export function validateWorkflowStructure(
     }
   }
 
-  // Check Salesforce read sequences
-  const salesforceReadSequences = findSalesforceSequences(nodes, connections)
-  for (const sequence of salesforceReadSequences) {
-    const { salesforceNode } = sequence
-    if (!salesforceNode.data.object_name) {
-      errors.push(`Salesforce read node in sequence ${sequence.sequenceIndex + 1} is missing an object name`)
-    }
-    if (!salesforceNode.data.query) {
-      errors.push(`Salesforce read node in sequence ${sequence.sequenceIndex + 1} is missing a query`)
-    }
-    if (!salesforceNode.data.file_path) {
-      errors.push(`Salesforce read node in sequence ${sequence.sequenceIndex + 1} is missing a file path`)
-    }
-  }
+  // Check Salesforce sequences
+  const salesforceSequences = findSalesforceSequences(nodes, connections)
 
-  // Check Salesforce write sequences
-  const salesforceWriteSequences = findSalesforceWriteSequences(nodes, connections)
-  for (const sequence of salesforceWriteSequences) {
-    const { salesforceNode } = sequence
-    if (!salesforceNode.data.object_name) {
-      errors.push(`Salesforce write node in sequence ${sequence.sequenceIndex + 1} is missing an object name`)
-    }
-    if (!salesforceNode.data.file_path) {
-      errors.push(`Salesforce write node in sequence ${sequence.sequenceIndex + 1} is missing a file path`)
-    }
-    if (!salesforceNode.data.bulk_batch_size) {
-      errors.push(`Salesforce write node in sequence ${sequence.sequenceIndex + 1} is missing a bulk batch size`)
+  for (const sequence of salesforceSequences) {
+    const { salesforceNode, type } = sequence
+
+    if (type === "read") {
+      if (!salesforceNode.data.object_name) {
+        errors.push(`Salesforce read node in sequence ${sequence.sequenceIndex + 1} is missing an object name`)
+      }
+
+      if (!salesforceNode.data.query) {
+        errors.push(`Salesforce read node in sequence ${sequence.sequenceIndex + 1} is missing a query`)
+      }
+
+      if (!salesforceNode.data.file_path) {
+        errors.push(`Salesforce read node in sequence ${sequence.sequenceIndex + 1} is missing a file path`)
+      }
+    } else if (type === "write") {
+      if (!salesforceNode.data.object_name) {
+        errors.push(`Salesforce write node in sequence ${sequence.sequenceIndex + 1} is missing an object name`)
+      }
+
+      if (!salesforceNode.data.file_path) {
+        errors.push(`Salesforce write node in sequence ${sequence.sequenceIndex + 1} is missing a file path`)
+      }
     }
   }
 
@@ -987,10 +1219,4 @@ export function validateWorkflowStructure(
 }
 
 // Export helper functions for external use
-export {
-  findFileConversionSequences,
-  findCliOperationSequences,
-  findSalesforceSequences,
-  findSalesforceWriteSequences,
-  findAllOperationsInOrder,
-}
+export { findFileConversionSequences, findCliOperationSequences, findSalesforceSequences, findAllOperationsInOrder }
