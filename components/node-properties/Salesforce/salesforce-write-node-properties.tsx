@@ -239,7 +239,7 @@ export default function SalesforceWriteNodeProperties({ formData, onChange }: Pr
         />
         <Label htmlFor="update_objects">Update Objects</Label>
       </div>
-      <p className="text-xs text-gray-500">{formData.update_objects ? "Records are updated" : "Records are created"}</p>
+      <p className="text-xs text-gray-500">{formData.update_objects ? "Records are updating" : "Records are inserting"}</p>
 
       <hr className="my-3" />
 
