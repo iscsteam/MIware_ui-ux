@@ -26,6 +26,12 @@ export const salesforceCloudWriteSchema: NodeSchema = {
     { name: "file_path", datatype: "string", description: "Path to the file containing data", required: true },
     { name: "use_bulk_api", datatype: "boolean", description: "Use Salesforce Bulk API", required: false },
     { name: "bulk_batch_size", datatype: "integer", description: "Batch size (max 10000)", required: false },
+    {
+      name: "update_objects",
+      datatype: "boolean",
+      description: "Update existing records instead of creating new ones",
+      required: false,
+    },
   ],
   outputSchema: [
     { name: "records_processed", datatype: "integer", description: "Records successfully processed" },
@@ -42,6 +48,7 @@ export interface SalesforceWriteNodeData {
   file_path: string
   use_bulk_api?: boolean
   bulk_batch_size?: number
+  update_objects?: boolean
   config_id?: number
 }
 
@@ -60,10 +67,10 @@ export default function SalesforceWriteNodeProperties({ formData, onChange }: Pr
   useEffect(() => {
     if (!selectedNodeId) return
 
-    const incoming = connections.find(c => c.targetId === selectedNodeId)
+    const incoming = connections.find((c) => c.targetId === selectedNodeId)
     if (!incoming) return
 
-    const sourceNode = nodes.find(n => n.id === incoming.sourceId)
+    const sourceNode = nodes.find((n) => n.id === incoming.sourceId)
     if (!sourceNode) return
 
     const upstreamPath =
@@ -98,13 +105,10 @@ export default function SalesforceWriteNodeProperties({ formData, onChange }: Pr
       const clientId = getCurrentClientId()
       if (!clientId) throw new Error("Client ID not found")
 
-      const { object_name, file_path, use_bulk_api, bulk_batch_size } = formData
+      const { object_name, file_path, use_bulk_api, bulk_batch_size, update_objects } = formData
       if (!object_name.trim()) throw new Error("Object name is required.")
       if (!file_path.trim()) throw new Error("Input file path is required.")
-      if (
-        use_bulk_api &&
-        (isNaN(bulk_batch_size!) || bulk_batch_size! < 1 || bulk_batch_size! > 10000)
-      ) {
+      if (use_bulk_api && (isNaN(bulk_batch_size!) || bulk_batch_size! < 1 || bulk_batch_size! > 10000)) {
         throw new Error("Bulk batch size must be between 1 and 10000.")
       }
 
@@ -113,6 +117,7 @@ export default function SalesforceWriteNodeProperties({ formData, onChange }: Pr
         file_path: file_path.trim(),
         use_bulk_api: use_bulk_api ?? true,
         bulk_batch_size: use_bulk_api ? (bulk_batch_size ?? 2000) : undefined,
+        update_objects: update_objects ?? false,
       }
 
       const response = await new Promise<{ id: number; message: string }>((resolve, reject) => {
@@ -136,6 +141,7 @@ export default function SalesforceWriteNodeProperties({ formData, onChange }: Pr
             config_id: response.id,
             object_name: payload.object_name,
             input_file_path: payload.file_path,
+            update_objects: payload.update_objects,
             success: true,
             message: response.message,
           },
@@ -159,16 +165,10 @@ export default function SalesforceWriteNodeProperties({ formData, onChange }: Pr
 
   const isBulkInvalid =
     formData.use_bulk_api &&
-    (isNaN(formData.bulk_batch_size!) ||
-      formData.bulk_batch_size! < 1 ||
-      formData.bulk_batch_size! > 10000)
+    (isNaN(formData.bulk_batch_size!) || formData.bulk_batch_size! < 1 || formData.bulk_batch_size! > 10000)
 
   const isFormValid = (): boolean => {
-    return (
-      !!formData.object_name?.trim() &&
-      !!formData.file_path?.trim() &&
-      !(formData.use_bulk_api && isBulkInvalid)
-    )
+    return !!formData.object_name?.trim() && !!formData.file_path?.trim() && !(formData.use_bulk_api && isBulkInvalid)
   }
 
   return (
@@ -186,7 +186,7 @@ export default function SalesforceWriteNodeProperties({ formData, onChange }: Pr
           id="object_name"
           value={formData.object_name || ""}
           placeholder="Account"
-          onChange={e => onChange("object_name", e.target.value)}
+          onChange={(e) => onChange("object_name", e.target.value)}
           className={!formData.object_name?.trim() ? "border-orange-400" : ""}
         />
         {!formData.object_name?.trim() && <p className="text-xs text-orange-600">Required field</p>}
@@ -198,14 +198,18 @@ export default function SalesforceWriteNodeProperties({ formData, onChange }: Pr
           id="file_path"
           value={formData.file_path || ""}
           placeholder="(auto-filled from upstream Read node)"
-          onChange={e => onChange("file_path", e.target.value)}
+          onChange={(e) => onChange("file_path", e.target.value)}
           className={!formData.file_path?.trim() ? "border-orange-400" : ""}
         />
         {!formData.file_path?.trim() && <p className="text-xs text-orange-600">Required field</p>}
       </div>
 
       <div className="flex items-center space-x-2">
-        <Switch id="use_bulk_api" checked={formData.use_bulk_api ?? true} onCheckedChange={val => onChange("use_bulk_api", val)} />
+        <Switch
+          id="use_bulk_api"
+          checked={formData.use_bulk_api ?? true}
+          onCheckedChange={(val) => onChange("use_bulk_api", val)}
+        />
         <Label htmlFor="use_bulk_api">Use Bulk API</Label>
         <p className="text-xs text-gray-500 ml-2">(Recommended)</p>
       </div>
@@ -219,7 +223,7 @@ export default function SalesforceWriteNodeProperties({ formData, onChange }: Pr
             value={formData.bulk_batch_size ?? 2000}
             min={1}
             max={10000}
-            onChange={e => onChange("bulk_batch_size", parseInt(e.target.value, 10))}
+            onChange={(e) => onChange("bulk_batch_size", Number.parseInt(e.target.value, 10))}
             className={isBulkInvalid ? "border-red-500" : ""}
           />
           <p className="text-xs text-gray-500">1–10000 records per batch</p>
@@ -227,9 +231,23 @@ export default function SalesforceWriteNodeProperties({ formData, onChange }: Pr
         </div>
       )}
 
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="update_objects"
+          checked={formData.update_objects ?? false}
+          onCheckedChange={(val) => onChange("update_objects", val)}
+        />
+        <Label htmlFor="update_objects">Update Objects</Label>
+      </div>
+      <p className="text-xs text-gray-500">{formData.update_objects ? "Records are updated" : "Records are created"}</p>
+
       <hr className="my-3" />
 
-      <Button onClick={handleSaveConfiguration} disabled={loading || !isFormValid()} className="w-full bg-blue-600 text-white hover:bg-blue-700">
+      <Button
+        onClick={handleSaveConfiguration}
+        disabled={loading || !isFormValid()}
+        className="w-full bg-blue-600 text-white hover:bg-blue-700"
+      >
         {loading ? "Saving..." : formData.config_id ? "Update Configuration" : "Save Configuration"}
       </Button>
 

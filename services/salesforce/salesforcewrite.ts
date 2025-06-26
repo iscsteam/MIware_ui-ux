@@ -1,3 +1,4 @@
+//salesforcewrite.ts
 import { toast } from "@/components/ui/use-toast"
 import { URLS } from "@/services/url"
 import { baseUrl } from "@/services/api"
@@ -7,6 +8,7 @@ export interface SalesforceWriteConfig {
   bulk_batch_size: number
   use_bulk_api: boolean
   file_path: string
+  update_objects: boolean
 }
 
 export interface SalesforceWriteConfigResponse extends SalesforceWriteConfig {
@@ -23,6 +25,7 @@ export interface SalesforceWriteConfigCreate {
   use_bulk_api: boolean
   bulk_batch_size: number
   file_path: string
+  update_objects: boolean
 }
 
 export async function createSalesforceWriteConfig(
