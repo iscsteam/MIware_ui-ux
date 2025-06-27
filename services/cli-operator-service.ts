@@ -1,4 +1,3 @@
-
 import { toast } from "@/components/ui/use-toast"
 import type { WorkflowNode } from "@/components/workflow/workflow-context"
 import { URLS } from "./url"
@@ -26,6 +25,25 @@ export interface CliOperatorConfigResponse extends CliOperatorConfig {
   client_id: string
   created_at: string
   updated_at: string
+}
+
+// Read File Request Interface
+export interface ReadFileRequest {
+  input_path: string
+  limit?: number
+  pretty?: boolean
+}
+
+// Read File Response Interface
+export interface ReadFileResponse {
+  content?: string
+  file_path?: string
+  file_type?: string
+  record_count?: number
+  success: boolean
+  error_message?: string
+  timestamp: string
+  limit?: number
 }
 
 /**
@@ -100,6 +118,90 @@ export async function updateCliOperatorConfig(
       variant: "destructive",
     })
     return null
+  }
+}
+
+/**
+ * Reads file content using CLI operator
+ */
+export async function readFileWithContent(clientId: number, request: ReadFileRequest): Promise<ReadFileResponse> {
+  try {
+    console.log("Reading file with content:", JSON.stringify(request, null, 2))
+
+    const { input_path, limit = 50, pretty = false } = request
+
+    // Build URL with query parameters
+    const url = new URL(baseUrl(URLS.readFileWithContent(clientId)))
+    url.searchParams.append("limit", limit.toString())
+    url.searchParams.append("pretty", pretty.toString())
+
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        input_path,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const result = await response.text()
+
+    // Helper function to detect file type
+    const detectFileType = (path: string): string => {
+      const extension = path.split(".").pop()?.toLowerCase()
+      switch (extension) {
+        case "json":
+          return "json"
+        case "xml":
+          return "xml"
+        case "csv":
+          return "csv"
+        default:
+          return "text"
+      }
+    }
+
+    // Helper function to count records
+    const countRecords = (content: string): number => {
+      const lines = content.split("\n").filter((line) => line.trim() !== "")
+      return lines.length
+    }
+
+    const successResponse: ReadFileResponse = {
+      content: result,
+      file_path: input_path,
+      file_type: detectFileType(input_path),
+      record_count: countRecords(result),
+      success: true,
+      timestamp: new Date().toISOString(),
+      limit: limit,
+    }
+
+    console.log("File read successfully")
+    return successResponse
+  } catch (error) {
+    console.error("Error reading file:", error)
+
+    const errorMessage = error instanceof Error ? error.message : "Failed to read file"
+
+    toast({
+      title: "File Read Error",
+      description: errorMessage,
+      variant: "destructive",
+    })
+
+    const errorResponse: ReadFileResponse = {
+      success: false,
+      error_message: errorMessage,
+      timestamp: new Date().toISOString(),
+    }
+
+    return errorResponse
   }
 }
 
@@ -196,6 +298,28 @@ export function mapDeleteFileToCliOperator(deleteNode: WorkflowNode): CliOperato
     source_path,
     options: {
       recursive: recursive || false,
+    },
+    executed_by: "workflow_user",
+  }
+}
+
+/**
+ * Maps read file node properties to CLI operator configuration
+ */
+export function mapReadFileToCliOperator(readNode: WorkflowNode): CliOperatorConfig {
+  if (!readNode || !readNode.data) {
+    throw new Error("Invalid read file node data")
+  }
+  const { input_path, limit, pretty } = readNode.data
+
+  if (!input_path) throw new Error("Read file node is missing an input path.")
+
+  return {
+    operation: "read",
+    source_path: input_path,
+    options: {
+      limit: limit || 50,
+      pretty: pretty || false,
     },
     executed_by: "workflow_user",
   }

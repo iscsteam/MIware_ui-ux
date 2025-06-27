@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useState } from "react"
+import { readFileWithContent, type ReadFileRequest, type ReadFileResponse } from "@/services/cli-operator-service"
 
 export interface SchemaItem {
   name: string
@@ -95,40 +96,22 @@ export default function ReadNodeProperties({ formData, onChange }: Props) {
         throw new Error("Client ID not found")
       }
 
-      const limit = formData.limit || 50
-      const pretty = formData.pretty || false
-
-      const response = await fetch(
-        `http://localhost:64042/clients/${clientId}/cli_operators_configs/read-file-with-content?limit=${limit}&pretty=${pretty}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            input_path: formData.input_path,
-          }),
-        },
-      )
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      const request: ReadFileRequest = {
+        input_path: formData.input_path,
+        limit: formData.limit || 50,
+        pretty: formData.pretty || false,
       }
 
-      const result = await response.text()
+      const result: ReadFileResponse = await readFileWithContent(clientId, request)
 
-      // Store the full response in formData for the node modal to display
-      onChange("lastResponse", {
-        content: result,
-        file_path: formData.input_path,
-        file_type: detectFileType(formData.input_path),
-        record_count: countRecords(result),
-        success: true,
-        timestamp: new Date().toISOString(),
-        limit: limit,
-      })
+      // Store the response in formData for the node modal to display
+      onChange("lastResponse", result)
 
-      setSuccess("File read successfully!")
+      if (result.success) {
+        setSuccess("File read successfully!")
+      } else {
+        setError(result.error_message || "Failed to read file")
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to read file"
       setError(errorMessage)
@@ -142,26 +125,6 @@ export default function ReadNodeProperties({ formData, onChange }: Props) {
     } finally {
       setLoading(false)
     }
-  }
-
-  const detectFileType = (path: string): string => {
-    const extension = path.split(".").pop()?.toLowerCase()
-    switch (extension) {
-      case "json":
-        return "json"
-      case "xml":
-        return "xml"
-      case "csv":
-        return "csv"
-      default:
-        return "text"
-    }
-  }
-
-  const countRecords = (content: string): number => {
-    // Simple record counting logic
-    const lines = content.split("\n").filter((line) => line.trim() !== "")
-    return lines.length
   }
 
   return (
@@ -222,17 +185,6 @@ export default function ReadNodeProperties({ formData, onChange }: Props) {
           <p className="text-red-700 text-sm break-words">{error}</p>
         </div>
       )}
-
-      {/* Usage Info */}
-      {/* <div className="p-3 bg-blue-50 border border-blue-200 rounded">
-        <h4 className="font-medium text-blue-900 mb-2">Usage Information</h4>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>• Supports XML, JSON, CSV, and text file formats</li>
-          <li>• The input_path will be passed to connected nodes</li>
-          <li>• Use limit to control memory usage for large files</li>
-          <li>• Pretty format makes output more readable but may increase size</li>
-        </ul>
-      </div> */}
     </div>
   )
 }

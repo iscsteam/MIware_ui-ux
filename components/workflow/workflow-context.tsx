@@ -119,6 +119,8 @@ export interface WorkflowNodeData {
   bulk_batch_size?: number
   config_id?: number
   update_objects?: boolean
+  input_path?: string
+  pretty?: boolean
 }
 
 export interface WorkflowNode {
