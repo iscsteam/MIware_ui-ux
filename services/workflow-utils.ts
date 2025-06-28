@@ -1,16 +1,19 @@
-// workflow-utils.ts
+// Enhanced workflow-utils.ts with inline operations support
 import type { WorkflowNode, NodeConnection } from "@/components/workflow/workflow-context"
+
 import {
   createFileConversionConfig,
   updateDag,
   triggerDagRun,
   updateFileConversionConfig,
 } from "@/services/file-conversion-service"
+
 import {
   createFileToFileConfig,
   createFileToDatabaseConfig,
   createDatabaseToFileConfig,
 } from "@/services/schema-mapper"
+
 import {
   createCliOperatorConfig,
   updateCliOperatorConfig,
@@ -19,6 +22,7 @@ import {
   mapRenameFileToCliOperator,
   mapDeleteFileToCliOperator,
 } from "@/services/cli-operator-service"
+
 import { toast } from "@/components/ui/use-toast"
 import { getCurrentClientId } from "@/components/workflow/workflow-context"
 import { createSalesforceReadConfig, updateSalesforceReadConfig } from "@/services/salesforce/salesforceread"
@@ -42,6 +46,14 @@ interface FileConversionSequence {
   type: "file-to-file" | "file-to-database" | "database-to-file"
 }
 
+// Interface for inline conversion sequence
+interface InlineConversionSequence {
+  inlineInputNode: WorkflowNode
+  inlineOutputNode: WorkflowNode
+  filterNode?: WorkflowNode
+  sequenceIndex: number
+}
+
 // Interface for CLI operation sequence
 interface CliOperationSequence {
   operationNode: WorkflowNode
@@ -57,7 +69,7 @@ interface SalesforceSequence {
 
 // Interface for operation config
 interface OperationConfig {
-  type: "file_conversion" | "cli_operator" | "read_salesforce" | "write_salesforce"
+  type: "file_conversion" | "inline_conversion" | "cli_operator" | "read_salesforce" | "write_salesforce"
   configId: number
   nodeId: string
   sequenceIndex: number
@@ -66,11 +78,13 @@ interface OperationConfig {
 // Store for created configs
 const createdConfigs: {
   fileConversionConfigs: Map<string, number>
+  inlineConversionConfigs: Map<string, number>
   cliOperatorConfigs: Map<string, number>
   salesforceReadConfigs: Map<string, number>
   salesforceWriteConfigs: Map<string, number>
 } = {
   fileConversionConfigs: new Map(),
+  inlineConversionConfigs: new Map(),
   cliOperatorConfigs: new Map(),
   salesforceReadConfigs: new Map(),
   salesforceWriteConfigs: new Map(),
@@ -94,6 +108,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
 
   // Find read-file nodes
   const readFileNodes = nodes.filter((node) => node.type === "read-file")
+
   // Find database source nodes
   const databaseSourceNodes = nodes.filter((node) => node.type === "source")
 
@@ -108,12 +123,10 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
     // Traverse from read node to find write node or database node
     while (currentNode) {
       const nextNode = findNextNode(currentNode.id, connections, nodes)
-
       if (!nextNode) break
 
       if (nextNode.type === "write-file") {
         writeNode = nextNode
-
         // Check if there's a filter node after write node
         const nodeAfterWrite = findNextNode(writeNode.id, connections, nodes)
         if (nodeAfterWrite && nodeAfterWrite.type === "filter") {
@@ -128,11 +141,9 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
           sequenceIndex: sequenceIndex++,
           type: "file-to-file",
         })
-
         break
       } else if (nextNode.type === "database") {
         writeNode = nextNode
-
         // Check if there's a filter node after database node
         const nodeAfterWrite = findNextNode(writeNode.id, connections, nodes)
         if (nodeAfterWrite && nodeAfterWrite.type === "filter") {
@@ -147,7 +158,6 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
           sequenceIndex: sequenceIndex++,
           type: "file-to-database",
         })
-
         break
       } else if (nextNode.type === "filter") {
         // Filter node before write node
@@ -168,12 +178,10 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
     // Traverse from database source to find write-file node
     while (currentNode) {
       const nextNode = findNextNode(currentNode.id, connections, nodes)
-
       if (!nextNode) break
 
       if (nextNode.type === "write-file") {
         writeNode = nextNode
-
         // Check if there's a filter node after write node
         const nodeAfterWrite = findNextNode(writeNode.id, connections, nodes)
         if (nodeAfterWrite && nodeAfterWrite.type === "filter") {
@@ -188,7 +196,6 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
           sequenceIndex: sequenceIndex++,
           type: "database-to-file",
         })
-
         break
       } else if (nextNode.type === "filter") {
         // Filter node before write node
@@ -203,9 +210,47 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
   return sequences
 }
 
+// NEW: Find inline conversion sequences (inline-input -> [filter] -> inline-output)
+function findInlineConversionSequences(
+  nodes: WorkflowNode[],
+  connections: NodeConnection[],
+): InlineConversionSequence[] {
+  const sequences: InlineConversionSequence[] = []
+
+  // Find inline-input nodes
+  const inlineInputNodes = nodes.filter((node) => node.type === "inline-input")
+
+  let sequenceIndex = 0
+
+  for (const inlineInputNode of inlineInputNodes) {
+    // Find the next node after inline-input
+    let nextNode = findNextNode(inlineInputNode.id, connections, nodes)
+    let filterNode: WorkflowNode | undefined
+
+    // Check if the next node is a filter
+    if (nextNode && nextNode.type === "filter") {
+      filterNode = nextNode
+      nextNode = findNextNode(filterNode.id, connections, nodes)
+    }
+
+    // Check if the final node is inline-output
+    if (nextNode && nextNode.type === "inline-output") {
+      sequences.push({
+        inlineInputNode,
+        inlineOutputNode: nextNode,
+        filterNode,
+        sequenceIndex: sequenceIndex++,
+      })
+    }
+  }
+
+  return sequences
+}
+
 // Find all CLI operation sequences in the workflow
 function findCliOperationSequences(nodes: WorkflowNode[], connections: NodeConnection[]): CliOperationSequence[] {
   const sequences: CliOperationSequence[] = []
+
   const cliOperationNodes = nodes.filter(
     (node) =>
       node.type === "copy-file" ||
@@ -229,6 +274,7 @@ function findCliOperationSequences(nodes: WorkflowNode[], connections: NodeConne
 // Find all Salesforce sequences in the workflow
 function findSalesforceSequences(nodes: WorkflowNode[], connections: NodeConnection[]): SalesforceSequence[] {
   const sequences: SalesforceSequence[] = []
+
   const salesforceReadNodes = nodes.filter((node) => node.type === "salesforce-cloud")
   const salesforceWriteNodes = nodes.filter((node) => node.type === "write-salesforce")
 
@@ -253,12 +299,83 @@ function findSalesforceSequences(nodes: WorkflowNode[], connections: NodeConnect
   return sequences
 }
 
-// Find all operations in workflow order (mixed file conversions, CLI operations, and Salesforce)
+// NEW: Create inline conversion config from nodes
+function createInlineConversionConfig(
+  inlineInputNode: WorkflowNode,
+  inlineOutputNode: WorkflowNode,
+  filterNode?: WorkflowNode,
+  dagId?: string,
+) {
+  const inputData = inlineInputNode.data
+  const outputData = inlineOutputNode.data
+
+  // Validate required fields
+  if (!inputData.format || !inputData.content) {
+    throw new Error("Inline input node requires format and content")
+  }
+
+  if (!outputData.format || !outputData.path) {
+    throw new Error("Inline output node requires format and path")
+  }
+
+  // Create the inline conversion config
+  const config = {
+    input: {
+      provider: "inline",
+      format: inputData.format,
+      path: "",
+      options: inputData.options || {},
+      content: inputData.content,
+      schema: inputData.schema || {
+        fields: [
+          { name: "Id", type: "string", nullable: false },
+          { name: "Name", type: "string", nullable: false },
+        ],
+      },
+    },
+    output: {
+      provider: outputData.provider || "local",
+      format: outputData.format,
+      path: outputData.path,
+      mode: outputData.mode || "overwrite",
+      options: outputData.options || {},
+      content: "",
+    },
+    spark_config: {
+      driver_cores: 1,
+      driver_memory: "512m",
+      executor_instances: 1,
+      executor_cores: 1,
+      executor_memory: "512m",
+      "spark.sql.shuffle.partitions": "1",
+    },
+    dag_id: dagId,
+  }
+
+  // Add filter configuration if present
+  if (filterNode) {
+    const filterData = filterNode.data
+    if (filterData.filter) {
+      config.filter = filterData.filter
+    }
+    if (filterData.order_by) {
+      config.order_by = filterData.order_by
+    }
+    if (filterData.aggregation) {
+      config.aggregation = filterData.aggregation
+    }
+  }
+
+  return config
+}
+
+// Find all operations in workflow order (mixed file conversions, inline conversions, CLI operations, and Salesforce)
 function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnection[]): OperationConfig[] {
   const operations: OperationConfig[] = []
 
   // Find start node
   const startNode = nodes.find((node) => node.type === "start")
+
   if (!startNode) return operations
 
   let currentNode = startNode
@@ -284,7 +401,6 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
 
         if (seqNextNode.type === "write-file" || seqNextNode.type === "database") {
           writeNode = seqNextNode
-
           // Check for filter after write
           const nodeAfterWrite = findNextNode(writeNode.id, connections, nodes)
           if (nodeAfterWrite && nodeAfterWrite.type === "filter") {
@@ -310,6 +426,48 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
           nodeId: readNode.id,
           sequenceIndex: operationIndex++,
         })
+      }
+    }
+    // NEW: Check if current node starts an inline conversion sequence
+    else if (nextNode.type === "inline-input") {
+      const inlineInputNode = nextNode
+      let inlineOutputNode: WorkflowNode | null = null
+      let filterNode: WorkflowNode | null = null
+      let sequenceNode = inlineInputNode
+
+      console.log(`🔍 Found inline-input node: ${inlineInputNode.id}`)
+
+      // Traverse to find inline-output node
+      while (sequenceNode) {
+        const seqNextNode = findNextNode(sequenceNode.id, connections, nodes)
+        if (!seqNextNode) break
+
+        if (seqNextNode.type === "inline-output") {
+          inlineOutputNode = seqNextNode
+          currentNode = inlineOutputNode // Continue from inline output
+          console.log(`✅ Found matching inline-output node: ${inlineOutputNode.id}`)
+          break
+        } else if (seqNextNode.type === "filter") {
+          filterNode = seqNextNode
+          sequenceNode = seqNextNode
+          console.log(`🔧 Found filter node in sequence: ${filterNode.id}`)
+        } else {
+          sequenceNode = seqNextNode
+        }
+      }
+
+      if (inlineOutputNode) {
+        const configId = createdConfigs.inlineConversionConfigs.get(inlineInputNode.id) || -1
+        operations.push({
+          type: "inline_conversion",
+          configId,
+          nodeId: inlineInputNode.id,
+          sequenceIndex: operationIndex++,
+        })
+        console.log(`✅ Added inline_conversion operation: configId=${configId}, nodeId=${inlineInputNode.id}`)
+      } else {
+        console.warn(`⚠️ Inline input node ${inlineInputNode.id} has no corresponding inline output node`)
+        currentNode = nextNode
       }
     }
     // Check if current node is a CLI operation
@@ -357,7 +515,7 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
   return operations
 }
 
-// Create DAG sequence for mixed operations
+// Create DAG sequence for mixed operations (enhanced with inline operations)
 function createMixedOperationsDagSequence(
   operationConfigs: OperationConfig[],
   startNode: WorkflowNode,
@@ -373,6 +531,8 @@ function createMixedOperationsDagSequence(
 
   if (firstConfig.type === "file_conversion") {
     firstNodeId = `file_node_${firstConfig.configId}`
+  } else if (firstConfig.type === "inline_conversion") {
+    firstNodeId = `inline_node_${firstConfig.configId}`
   } else if (firstConfig.type === "cli_operator") {
     firstNodeId = `cli_op_node_${firstConfig.configId}`
   } else if (firstConfig.type === "write_salesforce") {
@@ -396,6 +556,8 @@ function createMixedOperationsDagSequence(
     let nodeId: string
     if (config.type === "file_conversion") {
       nodeId = `file_node_${config.configId}`
+    } else if (config.type === "inline_conversion") {
+      nodeId = `inline_node_${config.configId}`
     } else if (config.type === "cli_operator") {
       nodeId = `cli_op_node_${config.configId}`
     } else if (config.type === "write_salesforce") {
@@ -408,6 +570,8 @@ function createMixedOperationsDagSequence(
     if (nextConfig) {
       if (nextConfig.type === "file_conversion") {
         nextNodeId = [`file_node_${nextConfig.configId}`]
+      } else if (nextConfig.type === "inline_conversion") {
+        nextNodeId = [`inline_node_${nextConfig.configId}`]
       } else if (nextConfig.type === "cli_operator") {
         nextNodeId = [`cli_op_node_${nextConfig.configId}`]
       } else if (nextConfig.type === "write_salesforce") {
@@ -438,13 +602,13 @@ function createMixedOperationsDagSequence(
   return dagSequence
 }
 
-// Clear all stored configs (useful when workflow structure changes significantly)
+// Clear all stored configs (enhanced with inline configs)
 export function clearAllConfigs(): void {
   createdConfigs.fileConversionConfigs.clear()
+  createdConfigs.inlineConversionConfigs.clear()
   createdConfigs.cliOperatorConfigs.clear()
   createdConfigs.salesforceReadConfigs.clear()
   createdConfigs.salesforceWriteConfigs.clear()
-
   console.log("All config stores cleared")
   toast({
     title: "Configs Cleared",
@@ -452,22 +616,24 @@ export function clearAllConfigs(): void {
   })
 }
 
-// Get current config counts for debugging
+// Get current config counts for debugging (enhanced with inline configs)
 export function getConfigCounts(): {
   fileConversion: number
+  inlineConversion: number
   cliOperator: number
   salesforceRead: number
   salesforceWrite: number
 } {
   return {
     fileConversion: createdConfigs.fileConversionConfigs.size,
+    inlineConversion: createdConfigs.inlineConversionConfigs.size,
     cliOperator: createdConfigs.cliOperatorConfigs.size,
     salesforceRead: createdConfigs.salesforceReadConfigs.size,
     salesforceWrite: createdConfigs.salesforceWriteConfigs.size,
   }
 }
 
-// NEW: Create all configurations
+// ENHANCED: Create all configurations (with inline operations support)
 export async function createAllConfigs(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
@@ -505,6 +671,7 @@ export async function createAllConfigs(
   // Optional: Clear configs if workflow structure has changed significantly
   const currentNodeTypes = nodes.map((n) => n.type).sort()
   const hasFileConversion = currentNodeTypes.includes("read-file") || currentNodeTypes.includes("write-file")
+  const hasInlineConversion = currentNodeTypes.includes("inline-input") || currentNodeTypes.includes("inline-output")
   const hasCliOperations = currentNodeTypes.some((type) =>
     ["copy-file", "move-file", "rename-file", "delete-file"].includes(type),
   )
@@ -512,6 +679,7 @@ export async function createAllConfigs(
 
   console.log("Current workflow contains:", {
     fileConversion: hasFileConversion,
+    inlineConversion: hasInlineConversion,
     cliOperations: hasCliOperations,
     salesforce: hasSalesforce,
     totalNodes: nodes.length,
@@ -520,10 +688,12 @@ export async function createAllConfigs(
   try {
     // Find all operations in the workflow
     const fileConversionSequences = findFileConversionSequences(nodes, connections)
+    const inlineConversionSequences = findInlineConversionSequences(nodes, connections)
     const cliOperationSequences = findCliOperationSequences(nodes, connections)
     const salesforceSequences = findSalesforceSequences(nodes, connections)
 
     console.log(`Creating configs for ${fileConversionSequences.length} file conversion sequences`)
+    console.log(`Creating configs for ${inlineConversionSequences.length} inline conversion sequences`)
     console.log(`Creating configs for ${cliOperationSequences.length} CLI operation sequences`)
     console.log(`Creating configs for ${salesforceSequences.length} Salesforce sequences`)
 
@@ -567,6 +737,7 @@ export async function createAllConfigs(
 
       // Create config payload based on sequence type
       let configPayload
+
       if (type === "file-to-file") {
         configPayload = createFileToFileConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
       } else if (type === "file-to-database") {
@@ -579,6 +750,7 @@ export async function createAllConfigs(
 
       // Create the config
       const configResponse = await createFileConversionConfig(clientId, configPayload)
+
       if (!configResponse) {
         throw new Error(`Failed to create ${type} config for sequence ${sequence.sequenceIndex + 1}`)
       }
@@ -589,9 +761,75 @@ export async function createAllConfigs(
       console.log(`Created ${type} config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
     }
 
+    // NEW: Process inline conversion sequences
+    for (const sequence of inlineConversionSequences) {
+      const { inlineInputNode, inlineOutputNode, filterNode } = sequence
+
+      console.log(`Processing inline conversion sequence ${sequence.sequenceIndex + 1}:`, {
+        inputNodeId: inlineInputNode.id,
+        outputNodeId: inlineOutputNode.id,
+        filterNodeId: filterNode?.id,
+        inputFormat: inlineInputNode.data.format,
+        outputFormat: inlineOutputNode.data.format,
+        inputContent: inlineInputNode.data.content?.substring(0, 100) + "...",
+        outputPath: inlineOutputNode.data.path,
+      })
+
+      // Validate required fields
+      if (!inlineInputNode.data.format || !inlineInputNode.data.content) {
+        toast({
+          title: "Error",
+          description: `Inline input node ${sequence.sequenceIndex + 1} is missing format or content.`,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      if (!inlineOutputNode.data.format || !inlineOutputNode.data.path) {
+        toast({
+          title: "Error",
+          description: `Inline output node ${sequence.sequenceIndex + 1} is missing format or path.`,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      // Create config payload
+      const configPayload = createInlineConversionConfig(
+        inlineInputNode,
+        inlineOutputNode,
+        filterNode,
+        currentWorkflowId,
+      )
+
+      console.log(`Creating inline conversion config ${sequence.sequenceIndex + 1}:`, configPayload)
+
+      // Create the config using the existing file conversion service
+      const configResponse = await createFileConversionConfig(clientId, configPayload)
+      if (!configResponse) {
+        throw new Error(`Failed to create inline conversion config for sequence ${sequence.sequenceIndex + 1}`)
+      }
+
+      // Store the config ID
+      createdConfigs.inlineConversionConfigs.set(inlineInputNode.id, configResponse.id)
+
+      console.log(`✅ Created inline conversion config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
+      console.log(`Stored config ID ${configResponse.id} for node ${inlineInputNode.id}`)
+    }
+
+    // DEBUG: Log the final state of all configs
+    console.log("📊 Final config creation summary:", {
+      fileConversionConfigs: Array.from(createdConfigs.fileConversionConfigs.entries()),
+      inlineConversionConfigs: Array.from(createdConfigs.inlineConversionConfigs.entries()),
+      cliOperatorConfigs: Array.from(createdConfigs.cliOperatorConfigs.entries()),
+      salesforceReadConfigs: Array.from(createdConfigs.salesforceReadConfigs.entries()),
+      salesforceWriteConfigs: Array.from(createdConfigs.salesforceWriteConfigs.entries()),
+    })
+
     // Process CLI operation sequences
     for (const sequence of cliOperationSequences) {
       const { operationNode } = sequence
+
       let cliConfigPayload
 
       // Create CLI operator config based on operation type
@@ -607,6 +845,7 @@ export async function createAllConfigs(
           }
           cliConfigPayload = mapCopyFileToCliOperator(operationNode)
           break
+
         case "move-file":
           if (!operationNode.data.source_path || !operationNode.data.destination_path) {
             toast({
@@ -618,6 +857,7 @@ export async function createAllConfigs(
           }
           cliConfigPayload = mapMoveFileToCliOperator(operationNode)
           break
+
         case "rename-file":
           if (!operationNode.data.source_path || !operationNode.data.destination_path) {
             toast({
@@ -629,6 +869,7 @@ export async function createAllConfigs(
           }
           cliConfigPayload = mapRenameFileToCliOperator(operationNode)
           break
+
         case "delete-file":
           if (!operationNode.data.source_path) {
             toast({
@@ -640,6 +881,7 @@ export async function createAllConfigs(
           }
           cliConfigPayload = mapDeleteFileToCliOperator(operationNode)
           break
+
         default:
           throw new Error(`Unsupported CLI operation type: ${operationNode.type}`)
       }
@@ -689,6 +931,7 @@ export async function createAllConfigs(
 
         // Create the config
         const configResponse = await createSalesforceReadConfig(dynamicClientIdString, configPayload)
+
         if (!configResponse) {
           throw new Error(`Failed to create Salesforce read config for sequence ${sequence.sequenceIndex + 1}`)
         }
@@ -722,6 +965,7 @@ export async function createAllConfigs(
 
         // Create the config
         const configResponse = await createSalesforceWriteConfig(dynamicClientIdString, configPayload)
+
         if (!configResponse) {
           throw new Error(`Failed to create Salesforce write config for sequence ${sequence.sequenceIndex + 1}`)
         }
@@ -735,13 +979,14 @@ export async function createAllConfigs(
 
     // Count operation types for success message
     const fileConversionCount = fileConversionSequences.length
+    const inlineConversionCount = inlineConversionSequences.length
     const cliOperationCount = cliOperationSequences.length
     const salesforceReadCount = salesforceSequences.filter((s) => s.type === "read").length
     const salesforceWriteCount = salesforceSequences.filter((s) => s.type === "write").length
 
     toast({
       title: "Success",
-      description: `Created ${fileConversionCount} file conversion config(s), ${cliOperationCount} CLI operator config(s), ${salesforceReadCount} Salesforce read config(s), and ${salesforceWriteCount} Salesforce write config(s).`,
+      description: `Created ${fileConversionCount} file conversion config(s), ${inlineConversionCount} inline conversion config(s), ${cliOperationCount} CLI operator config(s), ${salesforceReadCount} Salesforce read config(s), and ${salesforceWriteCount} Salesforce write config(s).`,
     })
 
     return true
@@ -756,7 +1001,7 @@ export async function createAllConfigs(
   }
 }
 
-// NEW: Update all configurations
+// ENHANCED: Update all configurations (with inline operations support)
 export async function updateAllConfigs(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
@@ -785,6 +1030,7 @@ export async function updateAllConfigs(
   // Check if configs exist
   if (
     createdConfigs.fileConversionConfigs.size === 0 &&
+    createdConfigs.inlineConversionConfigs.size === 0 &&
     createdConfigs.cliOperatorConfigs.size === 0 &&
     createdConfigs.salesforceReadConfigs.size === 0 &&
     createdConfigs.salesforceWriteConfigs.size === 0
@@ -800,10 +1046,12 @@ export async function updateAllConfigs(
   try {
     // Find all operations in the workflow
     const fileConversionSequences = findFileConversionSequences(nodes, connections)
+    const inlineConversionSequences = findInlineConversionSequences(nodes, connections)
     const cliOperationSequences = findCliOperationSequences(nodes, connections)
     const salesforceSequences = findSalesforceSequences(nodes, connections)
 
     console.log(`Updating configs for ${fileConversionSequences.length} file conversion sequences`)
+    console.log(`Updating configs for ${inlineConversionSequences.length} inline conversion sequences`)
     console.log(`Updating configs for ${cliOperationSequences.length} CLI operation sequences`)
     console.log(`Updating configs for ${salesforceSequences.length} Salesforce sequences`)
 
@@ -819,6 +1067,7 @@ export async function updateAllConfigs(
 
       // Create config payload based on sequence type
       let configPayload
+
       if (type === "file-to-file") {
         configPayload = createFileToFileConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
       } else if (type === "file-to-database") {
@@ -831,11 +1080,41 @@ export async function updateAllConfigs(
 
       // Update the config
       const configResponse = await updateFileConversionConfig(clientId, configId, configPayload)
+
       if (!configResponse) {
         throw new Error(`Failed to update ${type} config ${configId}`)
       }
 
       console.log(`Updated ${type} config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
+    }
+
+    // NEW: Update inline conversion sequences
+    for (const sequence of inlineConversionSequences) {
+      const { inlineInputNode, inlineOutputNode, filterNode } = sequence
+      const configId = createdConfigs.inlineConversionConfigs.get(inlineInputNode.id)
+
+      if (!configId) {
+        console.log(`No config found for inline conversion node ${inlineInputNode.id}, skipping update`)
+        continue
+      }
+
+      // Create config payload
+      const configPayload = createInlineConversionConfig(
+        inlineInputNode,
+        inlineOutputNode,
+        filterNode,
+        currentWorkflowId,
+      )
+
+      console.log(`Updating inline conversion config ${configId}:`, configPayload)
+
+      // Update the config using the existing file conversion service
+      const configResponse = await updateFileConversionConfig(clientId, configId, configPayload)
+      if (!configResponse) {
+        throw new Error(`Failed to update inline conversion config ${configId}`)
+      }
+
+      console.log(`Updated inline conversion config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
     }
 
     // Update CLI operation sequences
@@ -872,6 +1151,7 @@ export async function updateAllConfigs(
 
       // Update the config
       const configResponse = await updateCliOperatorConfig(clientId, configId, cliConfigPayload)
+
       if (!configResponse) {
         throw new Error(`Failed to update CLI operator config ${configId}`)
       }
@@ -906,6 +1186,7 @@ export async function updateAllConfigs(
 
         // Update the config
         const configResponse = await updateSalesforceReadConfig(dynamicClientIdString, configId, configPayload)
+
         if (!configResponse) {
           throw new Error(`Failed to update Salesforce read config ${configId}`)
         }
@@ -932,6 +1213,7 @@ export async function updateAllConfigs(
 
         // Update the config
         const configResponse = await updateSalesforceWriteConfig(dynamicClientIdString, configId, configPayload)
+
         if (!configResponse) {
           throw new Error(`Failed to update Salesforce write config ${configId}`)
         }
@@ -942,13 +1224,14 @@ export async function updateAllConfigs(
 
     // Count operation types for success message
     const fileConversionCount = fileConversionSequences.length
+    const inlineConversionCount = inlineConversionSequences.length
     const cliOperationCount = cliOperationSequences.length
     const salesforceReadCount = salesforceSequences.filter((s) => s.type === "read").length
     const salesforceWriteCount = salesforceSequences.filter((s) => s.type === "write").length
 
     toast({
       title: "Success",
-      description: `Updated ${fileConversionCount} file conversion config(s), ${cliOperationCount} CLI operator config(s), ${salesforceReadCount} Salesforce read config(s), and ${salesforceWriteCount} Salesforce write config(s).`,
+      description: `Updated ${fileConversionCount} file conversion config(s), ${inlineConversionCount} inline conversion config(s), ${cliOperationCount} CLI operator config(s), ${salesforceReadCount} Salesforce read config(s), and ${salesforceWriteCount} Salesforce write config(s).`,
     })
 
     return true
@@ -963,7 +1246,7 @@ export async function updateAllConfigs(
   }
 }
 
-// MODIFIED: Run workflow without creating configs
+// MODIFIED: Run workflow without creating configs (enhanced with inline operations)
 export async function runWorkflowOnly(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
@@ -1013,6 +1296,26 @@ export async function runWorkflowOnly(
     // Find all operations in the workflow
     const allOperations = findAllOperationsInOrder(nodes, connections)
 
+    // DEBUG: Log detailed operation analysis
+    console.log("🔍 Detailed operation analysis:", {
+      totalOperations: allOperations.length,
+      operationsByType: allOperations.reduce(
+        (acc, op) => {
+          acc[op.type] = (acc[op.type] || 0) + 1
+          return acc
+        },
+        {} as Record<string, number>,
+      ),
+      operationsWithConfigs: allOperations.filter((op) => op.configId !== -1).length,
+      missingConfigOperations: allOperations
+        .filter((op) => op.configId === -1)
+        .map((op) => ({
+          type: op.type,
+          nodeId: op.nodeId,
+          sequenceIndex: op.sequenceIndex,
+        })),
+    })
+
     console.log(`Total operations in order:`, allOperations)
 
     if (allOperations.length === 0) {
@@ -1026,6 +1329,7 @@ export async function runWorkflowOnly(
 
     // Check if all operations have config IDs
     const missingConfigs = allOperations.filter((op) => op.configId === -1)
+
     if (missingConfigs.length > 0) {
       toast({
         title: "Error",
@@ -1037,10 +1341,12 @@ export async function runWorkflowOnly(
 
     // Create DAG sequence for all operations
     const dagSequence = createMixedOperationsDagSequence(allOperations, startNodes[0], endNodes[0])
+
     console.log("Generated DAG sequence for mixed operations:", dagSequence)
 
     // Update DAG with the generated sequence
     const dagUpdateData = { dag_sequence: dagSequence, active: true }
+
     const updatedDag = await updateDag(currentWorkflowId, dagUpdateData)
 
     if (!updatedDag) {
@@ -1101,7 +1407,7 @@ export async function saveAndRunWorkflow(
   return await runWorkflowOnly(nodes, connections, currentWorkflowId)
 }
 
-// Helper function to validate workflow structure
+// Helper function to validate workflow structure (enhanced with inline operations)
 export function validateWorkflowStructure(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
@@ -1130,7 +1436,6 @@ export function validateWorkflowStructure(
 
   // Check file conversion sequences
   const fileConversionSequences = findFileConversionSequences(nodes, connections)
-
   for (const sequence of fileConversionSequences) {
     if (sequence.type === "file-to-file" || sequence.type === "file-to-database") {
       if (!sequence.readNode.data.path) {
@@ -1163,9 +1468,30 @@ export function validateWorkflowStructure(
     }
   }
 
+  // NEW: Check inline conversion sequences
+  const inlineConversionSequences = findInlineConversionSequences(nodes, connections)
+  for (const sequence of inlineConversionSequences) {
+    const { inlineInputNode, inlineOutputNode } = sequence
+
+    if (!inlineInputNode.data.format) {
+      errors.push(`Inline input node in sequence ${sequence.sequenceIndex + 1} is missing a format`)
+    }
+
+    if (!inlineInputNode.data.content) {
+      errors.push(`Inline input node in sequence ${sequence.sequenceIndex + 1} is missing content`)
+    }
+
+    if (!inlineOutputNode.data.format) {
+      errors.push(`Inline output node in sequence ${sequence.sequenceIndex + 1} is missing a format`)
+    }
+
+    if (!inlineOutputNode.data.path) {
+      errors.push(`Inline output node in sequence ${sequence.sequenceIndex + 1} is missing a path`)
+    }
+  }
+
   // Check CLI operation sequences
   const cliOperationSequences = findCliOperationSequences(nodes, connections)
-
   for (const sequence of cliOperationSequences) {
     const { operationNode } = sequence
 
@@ -1185,7 +1511,6 @@ export function validateWorkflowStructure(
 
   // Check Salesforce sequences
   const salesforceSequences = findSalesforceSequences(nodes, connections)
-
   for (const sequence of salesforceSequences) {
     const { salesforceNode, type } = sequence
 
@@ -1218,5 +1543,61 @@ export function validateWorkflowStructure(
   }
 }
 
-// Export helper functions for external use
-export { findFileConversionSequences, findCliOperationSequences, findSalesforceSequences, findAllOperationsInOrder }
+// Export helper functions for external use (enhanced with inline operations)
+export {
+  findFileConversionSequences,
+  findInlineConversionSequences,
+  findCliOperationSequences,
+  findSalesforceSequences,
+  findAllOperationsInOrder,
+  createInlineConversionConfig,
+}
+
+// DEBUG: Function to check inline operation detection
+export function debugInlineOperations(nodes: WorkflowNode[], connections: NodeConnection[]): void {
+  console.log("=== DEBUG: Inline Operations Detection ===")
+
+  const inlineInputNodes = nodes.filter((node) => node.type === "inline-input")
+  const inlineOutputNodes = nodes.filter((node) => node.type === "inline-output")
+
+  console.log(
+    `Found ${inlineInputNodes.length} inline-input nodes:`,
+    inlineInputNodes.map((n) => ({
+      id: n.id,
+      format: n.data.format,
+      hasContent: !!n.data.content,
+      contentLength: n.data.content?.length || 0,
+    })),
+  )
+
+  console.log(
+    `Found ${inlineOutputNodes.length} inline-output nodes:`,
+    inlineOutputNodes.map((n) => ({
+      id: n.id,
+      format: n.data.format,
+      path: n.data.path,
+    })),
+  )
+
+  const inlineSequences = findInlineConversionSequences(nodes, connections)
+  console.log(
+    `Found ${inlineSequences.length} inline conversion sequences:`,
+    inlineSequences.map((s) => ({
+      sequenceIndex: s.sequenceIndex,
+      inputNodeId: s.inlineInputNode.id,
+      outputNodeId: s.inlineOutputNode.id,
+      hasFilter: !!s.filterNode,
+    })),
+  )
+
+  const allOperations = findAllOperationsInOrder(nodes, connections)
+  const inlineOperations = allOperations.filter((op) => op.type === "inline_conversion")
+  console.log(`Found ${inlineOperations.length} inline operations in sequence:`, inlineOperations)
+
+  console.log("Current inline config store:", {
+    size: createdConfigs.inlineConversionConfigs.size,
+    entries: Array.from(createdConfigs.inlineConversionConfigs.entries()),
+  })
+
+  console.log("=== END DEBUG ===")
+}

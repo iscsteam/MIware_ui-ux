@@ -32,6 +32,8 @@ export function getNodeIcon(type: NodeType) {
     "file-poller": "/icons/pollar.png",
     "rename-file": "/icons/write.png",
     "salesforce-cloud": "/icons/source.png",
+     "inline-input": "/icons/inline-input.png",
+    "inline-output": "/icons/inline-output.png",
     end: "/icons/stop.png",
 
     // add more PNG types if needed

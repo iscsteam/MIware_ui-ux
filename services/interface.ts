@@ -33,6 +33,8 @@ export type NodeType =
   | "salesforce-cloud"
   | "write-salesforce"
   | "move-file"
+   | "inline-input"
+  | "inline-output"
   | "code";
 
 // Interface for a single item within an input or output schema
