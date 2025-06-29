@@ -1,3 +1,4 @@
+//inline-output-node-properties.tsx
 "use client"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -5,13 +6,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Button } from "@/components/ui/button"
+import { useState } from "react"
+import { useWorkflow } from "@/components/workflow/workflow-context"
 
-interface InlineOutputNodePropertiesProps {
-  formData: Record<string, any>
-  onChange: (name: string, value: any) => void
+export interface SchemaItem {
+  name: string
+  datatype: string
+  description: string
+  required?: boolean
 }
 
-export const inlineOutputSchema = {
+export interface NodeSchema {
+  inputSchema: SchemaItem[]
+  outputSchema: SchemaItem[]
+}
+
+export const inlineOutputSchema: NodeSchema = {
   inputSchema: [
     {
       name: "processedData",
@@ -48,15 +59,80 @@ export const inlineOutputSchema = {
       datatype: "integer",
       description: "Number of records processed",
     },
+    {
+      name: "fileSize",
+      datatype: "integer",
+      description: "Size of the output file in bytes",
+    },
   ],
 }
 
-export default function InlineOutputNodeProperties({ formData, onChange }: InlineOutputNodePropertiesProps) {
+interface Props {
+  formData: Record<string, any>
+  onChange: (name: string, value: any) => void
+}
+
+export default function InlineOutputNodeProperties({ formData, onChange }: Props) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const { updateNode, selectedNodeId } = useWorkflow()
+
   const format = formData.format || "csv"
 
   const handleOptionsChange = (optionKey: string, value: any) => {
     const currentOptions = formData.options || {}
     onChange("options", { ...currentOptions, [optionKey]: value })
+  }
+
+  const handleSaveConfig = async () => {
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      if (!formData.path) {
+        setError("Output path is required")
+        return
+      }
+
+      if (!formData.format) {
+        setError("Output format is required")
+        return
+      }
+
+      // Ensure provider and mode are set
+      onChange("provider", formData.provider || "local")
+      onChange("mode", formData.mode || "overwrite")
+      onChange("active", true)
+
+      setSuccess("Configuration saved successfully!")
+
+      if (selectedNodeId) {
+        updateNode(selectedNodeId, {
+          status: "configured",
+          data: {
+            ...formData,
+            provider: formData.provider || "local",
+            mode: formData.mode || "overwrite",
+            active: true,
+            label: "inline-output",
+          },
+        })
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Configuration validation failed"
+      setError(errorMessage)
+
+      if (selectedNodeId) {
+        updateNode(selectedNodeId, {
+          status: "error",
+          error: errorMessage,
+        })
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   const renderFormatOptions = () => {
@@ -83,10 +159,19 @@ export default function InlineOutputNodeProperties({ formData, onChange }: Inlin
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="header"
-                checked={options.header !== false}
+                checked={options.header !== "false"}
                 onCheckedChange={(checked) => handleOptionsChange("header", checked ? "true" : "false")}
               />
               <Label htmlFor="header">Include header row</Label>
+            </div>
+            <div>
+              <Label htmlFor="delimiter">Delimiter</Label>
+              <Input
+                id="delimiter"
+                value={options.delimiter || ","}
+                onChange={(e) => handleOptionsChange("delimiter", e.target.value)}
+                placeholder=","
+              />
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -106,18 +191,18 @@ export default function InlineOutputNodeProperties({ formData, onChange }: Inlin
               <Label htmlFor="rowTag">Row Tag</Label>
               <Input
                 id="rowTag"
-                value={options.rowTag || ""}
+                value={options.rowTag || "Account"}
                 onChange={(e) => handleOptionsChange("rowTag", e.target.value)}
-                placeholder="e.g., Account"
+                placeholder="Account"
               />
             </div>
             <div>
               <Label htmlFor="rootTag">Root Tag</Label>
               <Input
                 id="rootTag"
-                value={options.rootTag || ""}
+                value={options.rootTag || "Accounts"}
                 onChange={(e) => handleOptionsChange("rootTag", e.target.value)}
-                placeholder="e.g., Accounts"
+                placeholder="Accounts"
               />
             </div>
             <div className="flex items-center space-x-2">
@@ -167,16 +252,6 @@ export default function InlineOutputNodeProperties({ formData, onChange }: Inlin
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="displayName">Display Name</Label>
-            <Input
-              id="displayName"
-              value={formData.displayName || ""}
-              onChange={(e) => onChange("displayName", e.target.value)}
-              placeholder="Inline Output"
-            />
-          </div>
-
-          <div>
             <Label htmlFor="format">Output Format</Label>
             <Select value={format} onValueChange={(value) => onChange("format", value)}>
               <SelectTrigger>
@@ -197,8 +272,9 @@ export default function InlineOutputNodeProperties({ formData, onChange }: Inlin
               id="path"
               value={formData.path || ""}
               onChange={(e) => onChange("path", e.target.value)}
-              placeholder="/app/data/mock_data/output/converted_file"
+              placeholder="/app/data/output/converted_file"
             />
+            <p className="text-xs text-gray-500 mt-1">File extension will be added automatically based on format</p>
           </div>
 
           <div>
@@ -224,13 +300,32 @@ export default function InlineOutputNodeProperties({ formData, onChange }: Inlin
 
           <div>
             <Label htmlFor="provider">Provider</Label>
-            <Input
-              id="provider"
-              value={formData.provider || "local"}
-              onChange={(e) => onChange("provider", e.target.value)}
-              placeholder="local"
-            />
+            <Select value={formData.provider || "local"} onValueChange={(value) => onChange("provider", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="local">Local</SelectItem>
+                <SelectItem value="s3">S3</SelectItem>
+                <SelectItem value="gcs">Google Cloud Storage</SelectItem>
+                <SelectItem value="azure">Azure Blob Storage</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          <div>
+            <Button
+              onClick={handleSaveConfig}
+              disabled={loading || !formData.path || !formData.format}
+              className="w-full"
+            >
+              {loading ? "Saving..." : "Save Configuration"}
+            </Button>
+          </div>
+
+          {/* Feedback */}
+          {success && <p className="text-green-500 text-sm">{success}</p>}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
         </CardContent>
       </Card>
     </div>
