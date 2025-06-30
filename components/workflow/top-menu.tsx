@@ -1,8 +1,7 @@
-//top-menu.tsx
+// //top-menu.tsx
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect, useRef } from "react"
 import {
   Share2,
@@ -17,6 +16,7 @@ import {
   Upload,
   CircleFadingPlus,
   CircleFadingArrowUp,
+  Key,
 } from "lucide-react"
 import { useWorkflow } from "./workflow-context"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,7 @@ import { createClient } from "@/services/client"
 import type { ClientCreateResponse } from "@/services/interface"
 import { stopCurrentWorkflow } from "@/services/dagService"
 import { createAllConfigs, updateAllConfigs, runWorkflowOnly } from "@/services/workflow-utils"
+import { CreateCredentialsModal } from "@/components/auth/createcredentialsModal"
 
 const topTabs = ["File", "Edit", "Project", "Run"]
 
@@ -60,6 +61,7 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
   } = useWorkflow()
   const [activeTab, setActiveTab] = useState("File")
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false)
+  const [createCredentialsDialogOpen, setCreateCredentialsDialogOpen] = useState(false)
   const [clientName, setClientName] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [createdClient, setCreatedClient] = useState<ClientCreateResponse | null>(null)
@@ -258,6 +260,11 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
     }
   }
 
+  const handleCreateCredentialsClick = () => {
+    setClientPopoverOpen(false)
+    setCreateCredentialsDialogOpen(true)
+  }
+
   // Common style for all tooltips
   const TooltipStyle = "text-xs px-2 py-1"
 
@@ -410,6 +417,10 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
                     <Button variant="ghost" size="sm" onClick={handleListClientsClick} className="justify-start w-full">
                       <UserIcon className="h-4 w-4 mr-2" /> List Clients
                     </Button>
+                    <Separator className="my-1" />
+                    <Button variant="ghost" size="sm" onClick={handleCreateCredentialsClick} className="justify-start w-full">
+                      <Key className="h-4 w-4 mr-2" /> Create Credentials
+                    </Button>
                   </PopoverContent>
                 </Popover>
               </TooltipTrigger>
@@ -497,6 +508,7 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
         </div>
       )}
 
+      {/* Create Client Dialog */}
       <Dialog open={createClientDialogOpen} onOpenChange={setCreateClientDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -568,6 +580,12 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Credentials Modal */}
+      <CreateCredentialsModal 
+        open={createCredentialsDialogOpen} 
+        onOpenChange={setCreateCredentialsDialogOpen} 
+      />
     </div>
   )
 }
