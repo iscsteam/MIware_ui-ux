@@ -16,6 +16,10 @@ export const URLS = {
   manageCLIoperations: (clientId: number | string, configId: number | string) =>
     `clients/${clientId}/cli_operators_configs/${configId}`,
 
+  // Read File Operations
+  readFileWithContent: (clientId: number | string) =>
+    `clients/${clientId}/cli_operators_configs/read-file-with-content`,
+
   // Salesforce Read Configs
   listCreateSaleforceReadConfigs: (clientId: number | string) => `clients/${clientId}/read_salesforce_configs`,
   manageSaleforceReadConfigs: (clientId: number | string, configId: number | string) =>
