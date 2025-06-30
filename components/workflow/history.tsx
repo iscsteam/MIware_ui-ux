@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 
-const POLLING_INTERVAL = 120 * 1000; // 5 minutes, increased from 2 minutes
 const LOCAL_STORAGE_KEY = "allWorkflowExecutionsHistory_v2"; // Changed key if schema changes
 
 // Types
@@ -212,6 +211,7 @@ export function History() {
   const [triggerFilter, setTriggerFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(false); // For API calls
   const [initialStorageLoadDone, setInitialStorageLoadDone] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState(180000); // 3 min default
 
   // 1. Load ALL executions from localStorage on initial mount
   useEffect(() => {
@@ -509,21 +509,35 @@ export function History() {
 
   // 5. Polling: Periodically refresh data for the currently viewed workflow
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-    if (currentWorkflowId && initialStorageLoadDone) {
-      console.log(`HISTORY (Polling): Starting for ${currentWorkflowId}`);
-      intervalId = setInterval(() => {
-        console.log(`HISTORY (Polling): Update for ${currentWorkflowId}`);
-        fetchAndStoreWorkflowRuns(currentWorkflowId);
-      }, POLLING_INTERVAL);
+    // If auto-refresh is disabled (0), or no workflow is selected, do nothing.
+    if (
+      refreshInterval === 0 ||
+      !currentWorkflowId ||
+      !initialStorageLoadDone
+    ) {
+      return;
     }
+
+    console.log(
+      `HISTORY (Polling): Starting for ${currentWorkflowId} every ${refreshInterval}ms.`
+    );
+    const intervalId = setInterval(() => {
+      console.log(`HISTORY (Polling): Update for ${currentWorkflowId}`);
+      fetchAndStoreWorkflowRuns(currentWorkflowId);
+    }, refreshInterval);
+
     return () => {
       if (intervalId) {
         console.log("HISTORY (Polling): Clearing interval.");
         clearInterval(intervalId);
       }
     };
-  }, [currentWorkflowId, initialStorageLoadDone, fetchAndStoreWorkflowRuns]);
+  }, [
+    currentWorkflowId,
+    initialStorageLoadDone,
+    fetchAndStoreWorkflowRuns,
+    refreshInterval,
+  ]);
 
   const getStatusIcon = (status?: string) => {
     switch (status?.toLowerCase()) {
@@ -660,6 +674,27 @@ export function History() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Select
+              value={String(refreshInterval)}
+              onValueChange={(val) => setRefreshInterval(Number(val))}
+            >
+              {/* remove outline shadcn outline */}
+              <SelectTrigger 
+              
+                    className="w-[180px]  shadow-none ring-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+              >
+                <SelectValue placeholder="Refresh Interval" 
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="30000">Every 30 sec</SelectItem>
+                <SelectItem value="60000">Every 1 min</SelectItem>
+                <SelectItem value="180000">Every 3 min</SelectItem>
+                <SelectItem value="300000">Every 5 min</SelectItem>
+                <SelectItem value="0">Manual Only</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Button
               variant="outline"
               size="sm"
@@ -668,16 +703,18 @@ export function History() {
             >
               <RefreshCw
                 className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-              />{" "}
+              />
               Refresh
             </Button>
+
             <Button
               variant="outline"
               size="sm"
               onClick={handleExportLogs}
               disabled={!Array.isArray(logs) || logs.length === 0}
             >
-              <Download className="h-4 w-4 mr-2" /> Export Logs
+              <Download className="h-4 w-4 mr-2" />
+              Export Logs
             </Button>
           </div>
         </div>
@@ -1073,375 +1110,5 @@ export function History() {
         </div>
       </div>
     </div>
-    // <div className="flex-1 flex overflow-hidden">
-    //   <div className="w-1/2 border-r bg-white flex flex-col">
-    //     <div className="p-4 border-b space-y-4">
-    //       <div className="relative">
-    //         <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-    //         <Input
-    //           placeholder="Filter current workflow runs..."
-    //           value={searchTerm}
-    //           onChange={(e) => setSearchTerm(e.target.value)}
-    //           className="pl-10"
-    //           disabled={!currentWorkflowId && displayedExecutions.length === 0}
-    //         />
-    //       </div>
-    //       <div className="flex gap-2">
-    //         <Select
-    //           value={statusFilter}
-    //           onValueChange={setStatusFilter}
-    //           disabled={!currentWorkflowId && displayedExecutions.length === 0}
-    //         >
-    //           <SelectTrigger className="w-full sm:w-32">
-    //             <SelectValue placeholder="Status" />
-    //           </SelectTrigger>
-    //           <SelectContent>
-    //             <SelectItem value="all">All Status</SelectItem>
-    //             <SelectItem value="running">Running</SelectItem>
-    //             <SelectItem value="completed">Completed</SelectItem>
-    //             <SelectItem value="failed">Failed</SelectItem>
-    //             <SelectItem value="queued">Queued</SelectItem>
-    //             <SelectItem value="force_stopped">Force Stopped</SelectItem>
-    //           </SelectContent>
-    //         </Select>
-    //         <Select
-    //           value={triggerFilter}
-    //           onValueChange={setTriggerFilter}
-    //           disabled={!currentWorkflowId && displayedExecutions.length === 0}
-    //         >
-    //           <SelectTrigger className="w-full sm:w-32">
-    //             <SelectValue placeholder="Trigger" />
-    //           </SelectTrigger>
-    //           <SelectContent>
-    //             <SelectItem value="all">All Triggers</SelectItem>
-    //             <SelectItem value="manual">Manual</SelectItem>
-    //             <SelectItem value="schedule">Schedule</SelectItem>
-    //             <SelectItem value="api">API</SelectItem>
-    //           </SelectContent>
-    //         </Select>
-    //       </div>
-    //     </div>
-    //     <ScrollArea className="flex-1">
-    //       <div className="p-4 space-y-3">
-    //         {isLoading && !initialStorageLoadDone && (
-    //           <div className="text-center py-8 text-gray-500">
-    //             <RefreshCw className="h-12 w-12 mx-auto mb-4 animate-spin opacity-50" />
-    //             <p>Loading execution history...</p>
-    //           </div>
-    //         )}
-    //         {initialStorageLoadDone &&
-    //           filteredAndSortedDisplayedExecutions.length > 0 &&
-    //           filteredAndSortedDisplayedExecutions.map((execution) => (
-    //             <Card
-    //               key={execution.id}
-    //               className={`cursor-pointer transition-all hover:shadow-md ${
-    //                 selectedExecution?.id === execution.id
-    //                   ? "ring-2 ring-blue-500 shadow-lg"
-    //                   : "hover:border-gray-300"
-    //               }`}
-    //               onClick={() => setSelectedExecution(execution)}
-    //             >
-    //               <CardContent className="p-4">
-    //                 <div className="flex items-start justify-between mb-2">
-    //                   <div className="flex items-center gap-2">
-    //                     {getStatusIcon(execution.status)}
-    //                     <span
-    //                       className="font-medium text-sm truncate max-w-xs"
-    //                       title={execution.workflowName}
-    //                     >
-    //                       {execution.workflowName}
-    //                     </span>
-    //                   </div>
-    //                   {getStatusBadge(execution.status)}
-    //                 </div>
-    //                 <div className="text-xs text-gray-500 space-y-1">
-    //                   <div className="flex items-center gap-1">
-    //                     <Activity className="h-3 w-3" />
-    //                     Run ID:{" "}
-    //                     <span className="font-mono text-xs">
-    //                       {execution.id}
-    //                     </span>
-    //                   </div>
-    //                   <div className="flex items-center gap-1">
-    //                     <Calendar className="h-3 w-3" />
-    //                     {safeFormatDate(execution.startTime)}
-    //                   </div>
-    //                   <div className="flex items-center gap-1">
-    //                     <Clock className="h-3 w-3" />
-    //                     Duration: {formatDuration(execution.duration)}
-    //                   </div>
-    //                   <div className="flex items-center gap-1">
-    //                     <Play className="h-3 w-3" />
-    //                     Trigger: {execution.triggeredBy}
-    //                   </div>
-    //                 </div>
-    //               </CardContent>
-    //             </Card>
-    //           ))}
-    //         {initialStorageLoadDone &&
-    //           !isLoading &&
-    //           filteredAndSortedDisplayedExecutions.length === 0 && (
-    //             <div className="text-center py-8 text-gray-500">
-    //               <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-    //               <p>
-    //                 {currentWorkflowId
-    //                   ? "No executions found for this workflow."
-    //                   : "Please select a workflow."}
-    //               </p>
-    //               {currentWorkflowId &&
-    //                 (searchTerm ||
-    //                   statusFilter !== "all" ||
-    //                   triggerFilter !== "all") && (
-    //                   <p className="text-sm">
-    //                     Try adjusting filters or your search term.
-    //                   </p>
-    //                 )}
-    //               {currentWorkflowId &&
-    //                 !searchTerm &&
-    //                 statusFilter === "all" &&
-    //                 triggerFilter === "all" && (
-    //                   <p className="text-sm">
-    //                     This workflow may not have any recorded runs, or they
-    //                     haven't been fetched yet.
-    //                   </p>
-    //                 )}
-    //             </div>
-    //           )}
-    //       </div>
-    //     </ScrollArea>
-    //   </div>
-
-    //   <div className="w-1/2 bg-white flex flex-col">
-    //     {selectedExecution ? (
-    //       <>
-    //         <div className="p-4 border-b">
-    //           <div className="flex items-center justify-between mb-4">
-    //             <h3
-    //               className="text-lg font-semibold truncate max-w-md"
-    //               title={selectedExecution.workflowName}
-    //             >
-    //               {selectedExecution.workflowName}
-    //             </h3>
-    //             {getStatusBadge(selectedExecution.status)}
-    //           </div>
-    //           <div className="grid grid-cols-2 gap-4 text-sm">
-    //             <div>
-    //               <span className="text-gray-500">Run ID:</span>
-    //               <p className="font-mono">{selectedExecution.id}</p>
-    //             </div>
-    //             <div>
-    //               <span className="text-gray-500">DAG ID:</span>
-    //               <p className="font-mono">{selectedExecution.dag_id}</p>
-    //             </div>
-    //             <div>
-    //               <span className="text-gray-500">Duration:</span>
-    //               <p>{formatDuration(selectedExecution.duration)}</p>
-    //             </div>
-    //             <div>
-    //               <span className="text-gray-500">Started:</span>
-    //               <p>{safeFormatDate(selectedExecution.startTime)}</p>
-    //             </div>
-    //             <div>
-    //               <span className="text-gray-500">Ended:</span>
-    //               <p>
-    //                 {selectedExecution.endTime
-    //                   ? safeFormatDate(selectedExecution.endTime)
-    //                   : selectedExecution.status === "running" ||
-    //                     selectedExecution.status === "queued"
-    //                   ? "In progress..."
-    //                   : "N/A"}
-    //               </p>
-    //             </div>
-    //             <div>
-    //               <span className="text-gray-500">Triggered by:</span>
-    //               <p className="capitalize">{selectedExecution.triggeredBy}</p>
-    //             </div>
-    //           </div>
-    //         </div>
-    //         <Tabs defaultValue="nodes" className="flex-1 flex flex-col min-h-0">
-    //           <TabsList className="mx-4 mt-4 w-fit shrink-0">
-    //             <TabsTrigger value="nodes">Node Results</TabsTrigger>
-    //             <TabsTrigger value="logs">Execution Logs</TabsTrigger>
-    //             <TabsTrigger value="output">Output Data</TabsTrigger>
-    //           </TabsList>
-    //           <TabsContent
-    //             value="nodes"
-    //             className="flex-1 m-4 mt-2 overflow-hidden"
-    //           >
-    //             <ScrollArea className="h-full">
-    //               <div className="space-y-3">
-    //                 {selectedExecution.nodeResults?.length > 0 ? (
-    //                   selectedExecution.nodeResults.map((result, index) => (
-    //                     <Card
-    //                       key={`${selectedExecution.id}-${result.nodeId}-${index}`}
-    //                     >
-    //                       <CardContent className="p-4">
-    //                         <div className="flex items-center justify-between mb-2">
-    //                           <div className="flex items-center gap-2">
-    //                             {getStatusIcon(result.status)}
-    //                             <span
-    //                               className="font-medium truncate max-w-xs"
-    //                               title={`${result.nodeName} (${result.nodeId})`}
-    //                             >
-    //                               {result.nodeName} ({result.nodeId})
-    //                             </span>
-    //                           </div>
-    //                           <Badge variant="outline" className="text-xs">
-    //                             {formatDuration(result.duration)}
-    //                           </Badge>
-    //                         </div>
-    //                         {result.error && (
-    //                           <div className="bg-red-50 border border-red-200 rounded p-2 mt-2">
-    //                             <p className="text-red-800 text-sm font-medium">
-    //                               Error:
-    //                             </p>
-    //                             <p className="text-red-700 text-sm whitespace-pre-wrap break-all">
-    //                               {result.error}
-    //                             </p>
-    //                           </div>
-    //                         )}
-    //                         {result.output !== undefined &&
-    //                           result.output !== null && (
-    //                             <div className="bg-gray-50 border rounded p-2 mt-2">
-    //                               <p className="text-gray-700 text-sm font-medium mb-1">
-    //                                 Output:
-    //                               </p>
-    //                               <pre className="text-xs text-gray-600 overflow-auto max-h-60">
-    //                                 {JSON.stringify(result.output, null, 2)}
-    //                               </pre>
-    //                             </div>
-    //                           )}
-    //                       </CardContent>
-    //                     </Card>
-    //                   ))
-    //                 ) : (
-    //                   <div className="text-center py-8 text-gray-500">
-    //                     <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-    //                     <p>No node results available.</p>
-    //                     <p className="text-xs">
-    //                       Workflow might be running or no task details reported.
-    //                     </p>
-    //                   </div>
-    //                 )}
-    //               </div>
-    //             </ScrollArea>
-    //           </TabsContent>
-    //           <TabsContent
-    //             value="logs"
-    //             className="flex-1 m-4 mt-2 overflow-hidden"
-    //           >
-    //             <ScrollArea className="h-full">
-    //               <div className="space-y-2">
-    //                 {(Array.isArray(logs) ? logs : ([] as LogEntry[]))
-    //                   .filter(
-    //                     (log: LogEntry) =>
-    //                       log.workflowRunId === selectedExecution.id ||
-    //                       (!log.workflowRunId &&
-    //                         (selectedExecution.status === "running" ||
-    //                           selectedExecution.status === "queued"))
-    //                   )
-    //                   .sort((a, b) =>
-    //                     a.timestamp instanceof Date &&
-    //                     b.timestamp instanceof Date
-    //                       ? a.timestamp.getTime() - b.timestamp.getTime()
-    //                       : 0
-    //                   )
-    //                   .map((log: LogEntry) => (
-    //                     <div
-    //                       key={log.id}
-    //                       className="flex items-start gap-3 p-3 bg-gray-50 rounded border text-sm"
-    //                     >
-    //                       <div className="flex-shrink-0 mt-0.5">
-    //                         {getStatusIcon(log.status)}
-    //                       </div>
-    //                       <div className="flex-1 min-w-0">
-    //                         <div className="flex items-center gap-2 mb-1">
-    //                           <span
-    //                             className="font-medium truncate max-w-xs"
-    //                             title={log.nodeName}
-    //                           >
-    //                             {log.nodeName}
-    //                           </span>
-    //                           <span className="text-xs text-gray-500">
-    //                             {safeFormatDate(log.timestamp, "HH:mm:ss.SSS")}
-    //                           </span>
-    //                         </div>
-    //                         <p className="text-gray-700 whitespace-pre-wrap break-all">
-    //                           {log.message}
-    //                         </p>
-    //                         {log.details && (
-    //                           <pre className="text-xs text-gray-600 mt-1 overflow-auto max-h-40">
-    //                             {JSON.stringify(log.details, null, 2)}
-    //                           </pre>
-    //                         )}
-    //                       </div>
-    //                     </div>
-    //                   ))}
-    //                 {(Array.isArray(logs) ? logs : []).filter(
-    //                   (log: LogEntry) =>
-    //                     log.workflowRunId === selectedExecution.id ||
-    //                     (!log.workflowRunId &&
-    //                       (selectedExecution.status === "running" ||
-    //                         selectedExecution.status === "queued"))
-    //                 ).length === 0 && (
-    //                   <div className="text-center py-8 text-gray-500">
-    //                     <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-    //                     <p>No logs available for this execution run.</p>
-    //                   </div>
-    //                 )}
-    //               </div>
-    //             </ScrollArea>
-    //           </TabsContent>
-    //           {/* <TabsContent value="output" className="flex-1 m-4 mt-2 overflow-hidden">
-    //           <ScrollArea className="h-full">
-    //             {selectedExecution.nodeResults?.some(r => r.output !== undefined && r.output !== null) ? (
-    //               <div className="bg-gray-50 border rounded p-4">
-    //                 <pre className="text-sm text-gray-700 overflow-auto max-h-[calc(100vh-20rem)]">
-    //                   {JSON.stringify(selectedExecution.nodeResults.filter(r => r.output !== undefined && r.output !== null).reduce((acc, r) => ({ ...acc, [r.nodeId]: r.output }), {}), null, 2)}
-    //                 </pre>
-    //               </div>
-    //             ) : (
-    //               <div className="text-center py-8 text-gray-500"><AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>No output data available.</p><p className="text-xs">Ensure tasks produce outputs and API provides them.</p></div>
-    //             )}
-    //           </ScrollArea>
-    //         </TabsContent> */}
-    //           <TabsContent
-    //             value="output"
-    //             className="flex-1 m-4 mt-2 overflow-hidden"
-    //           >
-    //             <ScrollArea className="h-full">
-    //               {selectedExecution?.dag_run_map ? (
-    //                 <div className="bg-gray-50 border rounded p-4">
-    //                   <pre className="text-sm text-gray-700 overflow-auto max-h-[calc(100vh-20rem)]">
-    //                     {JSON.stringify(selectedExecution.dag_run_map, null, 2)}
-    //                   </pre>
-    //                 </div>
-    //               ) : (
-    //                 <div className="text-center py-8 text-gray-500">
-    //                   <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-    //                   <p>No output data available.</p>
-    //                   <p className="text-xs">
-    //                     Ensure tasks produce outputs and API provides them.
-    //                   </p>
-    //                 </div>
-    //               )}
-    //             </ScrollArea>
-    //           </TabsContent>
-    //         </Tabs>
-    //       </>
-    //     ) : (
-    //       <div className="flex-1 flex items-center justify-center text-gray-500">
-    //         <div className="text-center">
-    //           <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-    //           <p>
-    //             {currentWorkflowId
-    //               ? "Select an execution to view details"
-    //               : "Select a workflow to see its history"}
-    //           </p>
-    //         </div>
-    //       </div>
-    //     )}
-    //   </div>
-    // </div>
   );
 }
