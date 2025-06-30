@@ -1476,17 +1476,164 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   }, [loadWorkflow]) // currentWorkflowId and currentWorkflowName removed from deps to avoid loop with their setters
 
-  const saveAndRunWorkflow = useCallback(async () => {
-    console.log("=== Starting Save and Run Workflow Process ===")
+  // const saveAndRunWorkflow = useCallback(async () => {
+  //   console.log("=== Starting Save and Run Workflow Process ===")
 
-    const currentWorkflowIdValue = getCurrentWorkflowId()
+  //   const currentWorkflowIdValue = getCurrentWorkflowId()
+  //   if (!currentWorkflowIdValue) {
+  //     toast({
+  //       title: "Error",
+  //       description: "No workflow ID found. Please create or select a workflow first.",
+  //       variant: "destructive",
+  //     })
+  //     return
+  //   }
+
+  //   if (nodes.length === 0) {
+  //     toast({
+  //       title: "Error",
+  //        description: "Cannot run an empty workflow. Please add nodes first.",
+  //       variant: "destructive",
+  //     })
+  //     return
+  //   }
+
+  //   if (isRunning) {
+  //     toast({
+  //       title: "Warning",
+  //       description: "Workflow is already running. Please wait for it to complete.",
+  //       variant: "destructive",
+  //     })
+  //     return
+  //   }
+
+  //   setIsRunning(true)
+
+  //   try {
+  //     addLog({
+  //       nodeId: "system",
+  //       nodeName: "System",
+  //       status: "info",
+  //       message: "Phase 1: Saving workflow to MongoDB...",
+  //     })
+
+  //     try {
+  //       await saveWorkflowToBackend()
+  //       console.log("✅ Phase 1 Complete: Workflow saved to MongoDB")
+
+  //       addLog({
+  //         nodeId: "system",
+  //         nodeName: "System",
+  //         status: "success",
+  //         message: "Phase 1 Complete: Workflow saved to MongoDB successfully",
+  //       })
+  //     } catch (saveError) {
+  //       console.error("❌ Phase 1 Failed: MongoDB save error:", saveError)
+  //       addLog({
+  //         nodeId: "system",
+  //         nodeName: "System",
+  //         status: "error",
+  //         message: `Phase 1 Failed: Could not save to MongoDB - ${saveError instanceof Error ? saveError.message : "Unknown error"}`,
+  //       })
+
+  //       toast({
+  //         title: "Warning",
+  //         description: "Failed to save to MongoDB, but continuing with workflow run...",
+  //         variant: "destructive",
+  //       })
+  //     }
+
+  //     addLog({
+  //       nodeId: "system",
+  //       nodeName: "System",
+  //       status: "info",
+  //       message: "Phase 2: Creating configurations and updating DAG sequence...",
+  //     })
+
+  //     console.log("🔧 Phase 2: Starting config creation and DAG update...")
+  //     const success = await saveAndRunWorkflowUtil(nodes, connections, currentWorkflowIdValue)
+
+  //     if (success) {
+  //       console.log("✅ Phase 2 Complete: Configs created and DAG updated")
+  //       addLog({
+  //         nodeId: "system",
+  //         nodeName: "System",
+  //         status: "success",
+  //         message: "Phase 2 Complete: All configurations created and DAG sequence updated successfully",
+  //       })
+
+  //       addLog({
+  //         nodeId: "system",
+  //         nodeName: "System",
+  //         status: "info",
+  //         message: "Phase 3: Triggering DAG run in Airflow...",
+  //       })
+
+  //       console.log("🚀 Phase 3: DAG run should have been triggered by saveAndRunWorkflowUtil")
+
+  //       addLog({
+  //         nodeId: "system",
+  //         nodeName: "System",
+  //         status: "success",
+  //         message: "✅ Workflow run completed successfully! Check Airflow UI for execution status.",
+  //       })
+
+  //       toast({
+  //         title: "Success",
+  //         description: "Workflow saved and triggered successfully! Check Airflow for execution status.",
+  //         variant: "default",
+  //       })
+  //     } else {
+  //       console.error("❌ Phase 2 Failed: Config creation or DAG update failed")
+  //       addLog({
+  //         nodeId: "system",
+  //         nodeName: "System",
+  //         status: "error",
+  //         message: "Phase 2 Failed: Could not create configurations or update DAG sequence",
+  //       })
+
+  //       toast({
+  //         title: "Error",
+  //         description: "Failed to create configurations or update DAG. Please check the logs for details.",
+  //         variant: "destructive",
+  //       })
+  //     }
+  //   } catch (error) {
+  //     console.error("❌ Workflow run failed:", error)
+  //     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+
+  //     addLog({
+  //       nodeId: "system",
+  //       nodeName: "System",
+  //       status: "error",
+  //       message: `Workflow run failed: ${errorMessage}`,
+  //     })
+
+  //     toast({
+  //       title: "Workflow Error",
+  //       description: `Failed to run workflow: ${errorMessage}`,
+  //       variant: "destructive",
+  //     })
+  //   } finally {
+  //     setIsRunning(false)
+  //     console.log("=== Save and Run Workflow Process Complete ===")
+  //   }
+  // }, [nodes, connections, getCurrentWorkflowId, toast, saveWorkflowToBackend, isRunning, addLog])
+    const saveAndRunWorkflow = useCallback(async () => {
+    console.log("WORKFLOW_CONTEXT: === Starting Save and Run Workflow Process ===");
+    addLog({nodeId: "system", nodeName: "System", status: "info", message: "Save and Run: Process initiated."});
+
+    const currentWorkflowIdValue = getCurrentWorkflowId(); // This is effectively currentWorkflowIdValue
+    const workflowNameForRun = currentWorkflowName; // Get the name from state
+
     if (!currentWorkflowIdValue) {
       toast({
         title: "Error",
-        description: "No workflow ID found. Please create or select a workflow first.",
+        description: "No workflow DAG ID found. Please create or select a workflow first.",
         variant: "destructive",
-      })
-      return
+      });
+      addLog({nodeId: "system", nodeName: "System", status: "error", message: "Save and Run Aborted: No DAG ID."});
+      return;
     }
 
     if (nodes.length === 0) {
@@ -1494,131 +1641,187 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         title: "Error",
         description: "Cannot run an empty workflow. Please add nodes first.",
         variant: "destructive",
-      })
-      return
+      });
+      addLog({nodeId: "system", nodeName: "System", status: "error", message: "Save and Run Aborted: Empty workflow."});
+      return;
     }
 
     if (isRunning) {
       toast({
         title: "Warning",
         description: "Workflow is already running. Please wait for it to complete.",
-        variant: "destructive",
-      })
-      return
+        variant: "default", // Changed to default as it's a warning, not a hard error
+      });
+      addLog({nodeId: "system", nodeName: "System", status: "info", message: "Save and Run: Workflow already in progress."});
+      return;
     }
 
-    setIsRunning(true)
+    setIsRunning(true);
 
     try {
       addLog({
         nodeId: "system",
         nodeName: "System",
         status: "info",
-        message: "Phase 1: Saving workflow to MongoDB...",
-      })
+        message: "Save and Run: Phase 1: Saving workflow to MongoDB...",
+      });
 
       try {
-        await saveWorkflowToBackend()
-        console.log("✅ Phase 1 Complete: Workflow saved to MongoDB")
-
+        await saveWorkflowToBackend(); // Call your existing backend save function
+        console.log("WORKFLOW_CONTEXT: ✅ Phase 1 Complete: Workflow saved to MongoDB");
         addLog({
           nodeId: "system",
           nodeName: "System",
           status: "success",
-          message: "Phase 1 Complete: Workflow saved to MongoDB successfully",
-        })
-      } catch (saveError) {
-        console.error("❌ Phase 1 Failed: MongoDB save error:", saveError)
+          message: "Save and Run: Phase 1 Complete: Workflow saved to MongoDB successfully.",
+        });
+      } catch (saveError: any) {
+        console.error("WORKFLOW_CONTEXT: ❌ Phase 1 Failed: MongoDB save error:", saveError);
         addLog({
           nodeId: "system",
           nodeName: "System",
           status: "error",
-          message: `Phase 1 Failed: Could not save to MongoDB - ${saveError instanceof Error ? saveError.message : "Unknown error"}`,
-        })
-
+          message: `Save and Run: Phase 1 Failed: Could not save to MongoDB - ${saveError?.message || "Unknown error"}`,
+        });
         toast({
-          title: "Warning",
-          description: "Failed to save to MongoDB, but continuing with workflow run...",
-          variant: "destructive",
-        })
+          title: "Save Warning",
+          description: "Failed to save workflow to MongoDB, but attempting to continue with the run.",
+          variant: "default",
+        });
       }
 
       addLog({
         nodeId: "system",
         nodeName: "System",
         status: "info",
-        message: "Phase 2: Creating configurations and updating DAG sequence...",
-      })
+        message: "Save and Run: Phase 2: Creating configurations and updating DAG sequence...",
+      });
 
-      console.log("🔧 Phase 2: Starting config creation and DAG update...")
-      const success = await saveAndRunWorkflowUtil(nodes, connections, currentWorkflowIdValue)
+      console.log("WORKFLOW_CONTEXT: 🔧 Phase 2: Starting config creation and DAG update via saveAndRunWorkflowUtil...");
+      // Assuming saveAndRunWorkflowUtil handles Airflow interactions and returns true on success of that part
+      const airflowUtilSuccess = await saveAndRunWorkflowUtil(nodes, connections, currentWorkflowIdValue);
 
-      if (success) {
-        console.log("✅ Phase 2 Complete: Configs created and DAG updated")
+      if (airflowUtilSuccess) {
+        console.log("WORKFLOW_CONTEXT: ✅ Phase 2 Complete: Airflow util (config/DAG update/trigger) reported success.");
         addLog({
           nodeId: "system",
           nodeName: "System",
           status: "success",
-          message: "Phase 2 Complete: All configurations created and DAG sequence updated successfully",
-        })
+          message: "Save and Run: Phase 2 Complete: Configurations created and DAG sequence updated successfully.",
+        });
 
         addLog({
           nodeId: "system",
           nodeName: "System",
           status: "info",
-          message: "Phase 3: Triggering DAG run in Airflow...",
-        })
+          message: "Save and Run: Phase 3: Logging execution to history and (assumed) Airflow DAG run triggered.",
+        });
 
-        console.log("🚀 Phase 3: DAG run should have been triggered by saveAndRunWorkflowUtil")
+        // --- ADDING EXECUTION TO LOCALSTORAGE HISTORY ---
+        try {
+            console.log(`WORKFLOW_CONTEXT: Preparing to save execution history for DAG ID: ${currentWorkflowIdValue}, Name: ${workflowNameForRun}`);
 
-        addLog({
-          nodeId: "system",
-          nodeName: "System",
-          status: "success",
-          message: "✅ Workflow run completed successfully! Check Airflow UI for execution status.",
-        })
+            const newExecutionRunForStorage: StoredExecutionRun = {
+                id: `run-${currentWorkflowIdValue}-${Date.now()}`,
+                dag_id: currentWorkflowIdValue,
+                workflowId: currentWorkflowIdValue, 
+                workflowName: workflowNameForRun || "Unnamed Workflow",
+                status: "running", // Set to "running" as Airflow is now (presumably) handling it
+                startTime: new Date().toISOString(),
+                triggeredBy: "manual", // Assuming "Save and Run" is a manual trigger
+                nodeResults: [], // Node results will be populated if/when Airflow reports back
+            };
 
+            const existingHistoryRaw = localStorage.getItem("allWorkflowExecutions");
+            let allHistoryEntries: StoredExecutionRun[] = [];
+            
+            if (existingHistoryRaw) {
+                try {
+                    const parsed = JSON.parse(existingHistoryRaw);
+                    if (Array.isArray(parsed)) {
+                        allHistoryEntries = parsed;
+                    } else {
+                        console.warn("WORKFLOW_CONTEXT: 'allWorkflowExecutions' in localStorage was not an array. Resetting.");
+                    }
+                } catch (e) {
+                    console.error("WORKFLOW_CONTEXT: Error parsing existing 'allWorkflowExecutions'. Discarding old data.", e);
+                }
+            }
+            
+            allHistoryEntries.unshift(newExecutionRunForStorage); 
+
+            const MAX_HISTORY_ITEMS = 50; 
+            localStorage.setItem("allWorkflowExecutions", JSON.stringify(allHistoryEntries.slice(0, MAX_HISTORY_ITEMS)));
+            
+            console.log(`WORKFLOW_CONTEXT: Execution run ${newExecutionRunForStorage.id} saved to localStorage history with status 'running'.`);
+            addLog({
+                nodeId: "system",
+                nodeName: "System",
+                status: "info",
+                message: `Execution run ${newExecutionRunForStorage.id} for ${newExecutionRunForStorage.workflowName} (status: running) logged to local history.`,
+            });
+
+        } catch (e: any) {
+            console.error("WORKFLOW_CONTEXT: Error saving execution run to localStorage history:", e);
+            addLog({
+                nodeId: "system",
+                nodeName: "System",
+                status: "error",
+                message: `Failed to save execution run to local history: ${e?.message || String(e)}`,
+            });
+        }
+        // --- END OF ADDING EXECUTION TO HISTORY ---
+
+        // This success message is about the triggering, not the actual Airflow completion
         toast({
-          title: "Success",
-          description: "Workflow saved and triggered successfully! Check Airflow for execution status.",
+          title: "Run Triggered",
+          description: "Workflow saved and run triggered. Check History or Airflow for execution status.",
           variant: "default",
-        })
+        });
       } else {
-        console.error("❌ Phase 2 Failed: Config creation or DAG update failed")
+        console.error("WORKFLOW_CONTEXT: ❌ Phase 2 Failed: saveAndRunWorkflowUtil (config/DAG update/trigger) failed.");
         addLog({
           nodeId: "system",
           nodeName: "System",
           status: "error",
-          message: "Phase 2 Failed: Could not create configurations or update DAG sequence",
-        })
-
+          message: "Save and Run: Phase 2 Failed: Could not create configurations, update DAG, or trigger run.",
+        });
         toast({
-          title: "Error",
-          description: "Failed to create configurations or update DAG. Please check the logs for details.",
+          title: "Trigger Error",
+          description: "Failed to create configurations, update DAG, or trigger run. Please check logs.",
           variant: "destructive",
-        })
+        });
       }
-    } catch (error) {
-      console.error("❌ Workflow run failed:", error)
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
-
+    } catch (error: any) {
+      console.error("WORKFLOW_CONTEXT: ❌ Workflow run process encountered an unhandled error:", error);
       addLog({
         nodeId: "system",
         nodeName: "System",
         status: "error",
-        message: `Workflow run failed: ${errorMessage}`,
-      })
-
+        message: `Save and Run: Unhandled error: ${error?.message || "Unknown error occurred"}`,
+      });
       toast({
         title: "Workflow Error",
-        description: `Failed to run workflow: ${errorMessage}`,
+        description: `Failed to run workflow: ${error?.message || "Unknown error"}`,
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsRunning(false)
-      console.log("=== Save and Run Workflow Process Complete ===")
+      setIsRunning(false);
+      console.log("WORKFLOW_CONTEXT: === Save and Run Workflow Process Complete ===");
+      addLog({nodeId: "system", nodeName: "System", status: "info", message: "Save and Run: Process finished."});
     }
-  }, [nodes, connections, getCurrentWorkflowId, toast, saveWorkflowToBackend, isRunning, addLog])
+  }, [
+      nodes, 
+      connections, 
+      getCurrentWorkflowId, 
+      currentWorkflowName, // Added currentWorkflowName as a dependency
+      toast, 
+      saveWorkflowToBackend, // Added saveWorkflowToBackend
+      isRunning, 
+      addLog,
+      // saveAndRunWorkflowUtil is used inside, but it's an import, not state/prop, so not needed in deps array.
+    ]
+  );
 
   const createNewWorkflow = useCallback(
     (workflowName: string, airflowDagId: string) => {
