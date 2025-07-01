@@ -241,16 +241,26 @@ export function BottomPanel({ className }: BottomPanelProps) {
       <div className={`border-t bg-white ${className}`}>
         <div className="flex items-center justify-between px-4 py-2">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
+            {/* <Button
+              variant="outline"
               size="sm"
               onClick={() => setIsExpanded(true)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 "
             >
               <ChevronUp className="h-4 w-4" />
-              <Terminal className="h-4 w-4" />
+             
+              Console
+            </Button> */}
+            <Button
+              // type="button"
+              onClick={() => setIsExpanded(true)}
+              className="inline-flex items-center  text-white bg-gray-800 hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400 rounded-full"
+              // title="Expand Console"
+            >
+              <ChevronUp className="h-4 w-4" />
               Console
             </Button>
+
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Badge variant="outline">{filteredLogs.length} logs</Badge>
               <Badge variant="outline">
@@ -289,14 +299,24 @@ export function BottomPanel({ className }: BottomPanelProps) {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-1 border-b">
         <div className="flex items-center gap-4">
-          <Button
+          {/* <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded(false)}
             className="flex items-center gap-2"
           >
             <ChevronDown className="h-4 w-4" />
-            <Terminal className="h-4 w-4" />
+       
+            Console
+          </Button> */}
+
+          <Button
+            // type="button"
+            onClick={() => setIsExpanded(false)}
+            className="inline-flex items-center text-white bg-gray-800 hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400 rounded-full"
+            // title="Expand Console"
+          >
+            <ChevronDown className="h-4 w-4" />
             Console
           </Button>
 
@@ -320,7 +340,7 @@ export function BottomPanel({ className }: BottomPanelProps) {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={clearLogs}>
             <Trash2 className="h-4 w-4 mr-1" />
             Clear
@@ -329,7 +349,7 @@ export function BottomPanel({ className }: BottomPanelProps) {
             <Download className="h-4 w-4 mr-1" />
             Export
           </Button>
-        </div>
+        </div> */}
       </div>
 
       {/* Content */}
@@ -337,11 +357,13 @@ export function BottomPanel({ className }: BottomPanelProps) {
         <Tabs defaultValue="execution" className="h-full flex flex-col">
           <div className="flex items-center justify-between px-2 border-b">
             <TabsList className="mx-2 mt-1 w-fit">
-              <TabsTrigger value="execution" className="flex items-center"> 
+              <TabsTrigger value="execution" className="flex items-center">
                 Execution Logs
               </TabsTrigger>
               {/* <TabsTrigger value="execution">Execution Logs</TabsTrigger> */}
-              <TabsTrigger value="api" className="">API Logs</TabsTrigger>
+              <TabsTrigger value="api" className="">
+                API Logs
+              </TabsTrigger>
               {/* <TabsTrigger value="output">DAG Output</TabsTrigger> */}
               <TabsTrigger value="stats">Node Stats</TabsTrigger>
             </TabsList>
