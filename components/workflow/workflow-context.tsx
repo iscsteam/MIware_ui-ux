@@ -1,4 +1,4 @@
-//workflow-context.tsx
+// //workflow-context.tsx
 "use client"
 import type React from "react"
 import { createContext, useContext, useState, useCallback, useEffect } from "react"
@@ -7,8 +7,6 @@ import type { NodeType, SchemaItem } from "@/services/interface"
 
 import { useToast as useUIToast } from "@/components/ui/use-toast"
 import { saveAndRunWorkflow as saveAndRunWorkflowUtil } from "@/services/workflow-utils"
-
-// const baseUrl = process.env.NEXT_PUBLIC_USER_API_END_POINT;
 
 export type NodeStatus = "idle" | "running" | "success" | "error" | "configured"
 
@@ -30,19 +28,15 @@ export interface FilterCondition {
   value: any
 }
 
-// A condition item can be a simple condition OR a nested filter group
-export type ConditionItem = FilterCondition | FilterGroup // Recursive type definition!
+export type ConditionItem = FilterCondition | FilterGroup
 
 export interface FilterGroup {
-  // Represents a logical group of conditions (e.g., AND/OR)
-  operator: "AND" | "OR" | string // Allow "AND", "OR", or other string if needed
+  operator: "AND" | "OR" | string
   conditions: ConditionItem[]
 }
 
-// Backend format for order_by: Array of [field: string, direction: "asc" | "desc"]
 export type OrderByClauseBackend = [string, "asc" | "desc"]
 
-// Backend format for aggregation functions: Array of [field: string, func: string]
 export type AggregationFunctionBackend = [string, string]
 
 export interface AggregationConfigBackend {
@@ -108,7 +102,6 @@ export interface WorkflowNodeData {
   query?: string
   filePath?: string
   csvOptions?: Record<string, any>
-  // Salesforce specific fields
   fields?: string[]
   where?: string
   limit?: number
@@ -118,6 +111,17 @@ export interface WorkflowNodeData {
   file_path?: string
   bulk_batch_size?: number
   config_id?: number
+  // Inline-specific fields
+  multiLine?: boolean
+  header?: boolean | string
+  inferSchema?: boolean | string
+  delimiter?: string
+  rowTag?: string
+  rootTag?: string
+  singleFile?: boolean
+  compression?: string
+  lineSep?: string
+  wholetext?: boolean
   update_objects?: boolean
   input_path?: string
   pretty?: boolean
@@ -230,13 +234,13 @@ interface WorkflowContextType {
 }
 
 export interface StoredExecutionRun {
-  id: string // Unique ID for this specific execution run
-  dag_id: string // The ID of the DAG/workflow definition
-  workflowId: string // Can be same as dag_id or a frontend-specific ID
-  workflowName: string // Human-readable name
+  id: string
+  dag_id: string
+  workflowId: string
+  workflowName: string
   status: "running" | "completed" | "failed" | "cancelled"
-  startTime: string // ISO String for localStorage
-  endTime?: string // ISO String for localStorage
+  startTime: string
+  endTime?: string
   duration?: number
   triggeredBy: "manual" | "schedule" | "api"
   nodeResults: Array<{
@@ -307,11 +311,9 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     setLogs([])
   }, [])
 
-  // Added as per fix description point 2
   function setCurrentWorkflowMeta(id: string, name: string) {
     setCurrentWorkflowId(id)
     setCurrentWorkflowName(name)
-    // This stores {id, name}, where 'id' is the dag_id
     localStorage.setItem("currentWorkflow", JSON.stringify({ id, name }))
   }
 
@@ -337,7 +339,30 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     let currentX = basePosition.x
     const y = basePosition.y
 
-    if (config.input) {
+    // Handle inline input
+    if (config.input && config.input.provider === "inline") {
+      const inlineInputNodeId = `inline_input_${dagNode.config_id || uuidv4()}`
+      console.log("Creating inline-input node:", inlineInputNodeId, config.input)
+
+      const inlineInputNode: WorkflowNode = {
+        id: inlineInputNodeId,
+        type: "inline-input",
+        position: { x: currentX, y },
+        data: {
+          label: "inline-input",
+          displayName: "Inline Input",
+          provider: "inline",
+          format: config.input.format,
+          content: config.input.content || "",
+          options: config.input.options || {},
+          schema: config.input.schema,
+          active: true,
+        },
+        status: "configured",
+      }
+      nodes.push(inlineInputNode)
+      currentX += 200
+    } else if (config.input) {
       const readNodeId = `read_file_${dagNode.config_id || uuidv4()}`
       console.log("Creating read-file node:", readNodeId, config.input)
 
@@ -388,27 +413,44 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       currentX += 200
     }
 
-    // Create write-file or database node from output config
+    // Handle inline output or regular output
     if (config.output) {
-      // Check if this is a database output by examining the config
       const isDatabase = config.output.type === "database" || (config.output.connectionString && config.output.table)
+      const isInlineOutput = config.output.provider === "inline"
 
-      const writeNodeId = `${isDatabase ? "database" : "write_file"}_${dagNode.config_id}`
-      console.log(`Creating ${isDatabase ? "database" : "write-file"} node:`, writeNodeId, config.output)
+      let writeNodeId: string
+      let nodeType: NodeType
+      let displayName: string
+
+      if (isInlineOutput) {
+        writeNodeId = `inline_output_${dagNode.config_id}`
+        nodeType = "inline-output"
+        displayName = "Inline Output"
+      } else if (isDatabase) {
+        writeNodeId = `database_${dagNode.config_id}`
+        nodeType = "database"
+        displayName = "Database"
+      } else {
+        writeNodeId = `write_file_${dagNode.config_id}`
+        nodeType = "write-file"
+        displayName = "Write File"
+      }
+
+      console.log(`Creating ${nodeType} node:`, writeNodeId, config.output)
 
       const writeNode: WorkflowNode = {
         id: writeNodeId,
-        type: isDatabase ? "database" : "write-file",
+        type: nodeType,
         position: { x: currentX, y },
         data: {
-          label: isDatabase ? "database" : "write-file",
-          displayName: isDatabase ? "Database" : "Write File",
+          label: nodeType,
+          displayName,
           path: config.output.path,
           provider: config.output.provider,
           format: config.output.format,
           mode: config.output.mode,
           options: config.output.options || {},
-          // Add database specific fields if it's a database node
+          content: config.output.content || "",
           ...(isDatabase && {
             connectionString: config.output.connectionString,
             table: config.output.table,
@@ -663,7 +705,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           newNodes.push(salesforceNode)
           dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id })
         } else if (dagNode.type === "write_salesforce" && dagNode.config) {
-          // Add this new block to handle Salesforce write nodes
           console.log("Processing write_salesforce node:", dagNode.id)
           const salesforceWriteNode: WorkflowNode = {
             id: dagNode.id,
@@ -685,7 +726,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           newNodes.push(salesforceWriteNode)
           dagNodeMapping.set(dagNode.id, { firstNodeId: dagNode.id, lastNodeId: dagNode.id })
         } else {
-          // Fallback for unknown types or missing config - use original logic
           console.warn(
             "Unknown node type or missing config for DAG node:",
             dagNode.type,
@@ -694,8 +734,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             !!dagNode.config,
           )
 
-          // Map DAG node types to workflow node types (original logic)
-          let nodeType: NodeType = "start" // Default fallback
+          let nodeType: NodeType = "start"
           switch (dagNode.type) {
             case "start":
               nodeType = "start"
@@ -727,6 +766,12 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             case "write-salesforce":
               nodeType = "write-salesforce"
               break
+            case "inline-input":
+              nodeType = "inline-input"
+              break
+            case "inline-output":
+              nodeType = "inline-output"
+              break
             default:
               nodeType = "start"
           }
@@ -738,8 +783,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
               label: dagNode.type,
               displayName: dagNode.id,
               active: true,
-              // Only basic data if config was missing or type not specifically handled
-              ...(dagNode.config ? dagNode.config : {}), // Try to spread config if present, but this is a fallback
+              ...(dagNode.config ? dagNode.config : {}),
             },
             status: "idle",
           }
@@ -795,6 +839,14 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
           const filteredConfigs = dagId ? configs.filter((config) => config.dag_id === dagId) : configs
 
+          if (filteredConfigs.length > 0) {
+            addLog({
+              nodeId: "system",
+              nodeName: "System",
+              status: "info",
+              message: `Loaded ${filteredConfigs.length} file conversion config(s).`,
+            })
+          }
           // You can enhance nodes with config data here if needed
           // For example, update nodes that have matching config_ids
           if (filteredConfigs.length > 0) {
@@ -1016,7 +1068,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     })
   }, [clearLogs, toast])
 
-  // Updated getCurrentWorkflowId to align with setCurrentWorkflowMeta's localStorage item structure
   const getCurrentWorkflowId = useCallback(() => {
     console.log("[WorkflowContext] getCurrentWorkflowId called")
     console.log("[WorkflowContext] currentWorkflowId state:", currentWorkflowId)
@@ -1166,7 +1217,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       console.error("Failed to save workflow snapshot:", error)
     }
     return workflowData
-  }, [nodes, connections, currentWorkflowName, currentWorkflowId, currentWorkflowName, currentWorkflowId])
+  }, [nodes, connections, currentWorkflowName, currentWorkflowId])
 
   const getWorkflowExportData = useCallback(() => {
     return {
@@ -1232,6 +1283,22 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         switch (node.type) {
           case "start":
             output = { trigger: "manual", ...(inputData || {}) }
+            break
+          case "inline-input":
+            output = {
+              processedData: nodeData.content ? JSON.parse(nodeData.content) : {},
+              schema: nodeData.schema,
+              format: nodeData.format,
+              recordCount: Array.isArray(nodeData.content) ? nodeData.content.length : 1,
+            }
+            break
+          case "inline-output":
+            output = {
+              filePath: nodeData.path,
+              success: true,
+              recordCount: inputData?.recordCount || 0,
+              fileSize: nodeData.content ? nodeData.content.length : 0,
+            }
             break
           case "read-file":
             output = { content: `Content of ${nodeData.path}` }
@@ -1723,25 +1790,20 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   )
 
   const value: WorkflowContextType = {
-    // State
     nodes,
     connections,
     logs,
-    selectedNodeId, // <-- FIX: This was missing
+    selectedNodeId,
     pendingConnection,
     propertiesModalNodeId,
     dataMappingModalNodeId,
     draggingNodeInfo,
     currentWorkflowName,
     currentWorkflowId,
-
-    // State Setters
     setPendingConnection,
     setPropertiesModalNodeId,
     setDataMappingModalNodeId,
     setDraggingNodeInfo,
-
-    // Node & Connection Functions
     addNode,
     updateNode,
     removeNode,
@@ -1749,8 +1811,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     addConnection,
     removeConnection,
     getNodeById,
-
-    // Workflow Lifecycle & Execution
     clearWorkflow,
     runWorkflow,
     saveWorkflow,
@@ -1760,17 +1820,12 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     loadWorkflow,
     loadWorkflowFromDAG,
     getWorkflowExportData,
-
-    // Utilities
     executeNode,
     addLog,
     clearLogs,
     getCurrentWorkflowId,
-
-    // This is defined in the type but not implemented in this file.
-    // It will cause an error if called.
     syncWorkflowWithAirflow: undefined as any,
-    setCurrentWorkflowMeta, // Added to context value
+    setCurrentWorkflowMeta,
   }
 
   return <WorkflowContext.Provider value={value}>{children}</WorkflowContext.Provider>

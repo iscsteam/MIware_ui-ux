@@ -1,4 +1,3 @@
-// Enhanced schema mapper with database, file, and Salesforce support
 import type { WorkflowNode } from "@/components/workflow/workflow-context"
 import type {
   FilterGroup,
@@ -7,15 +6,13 @@ import type {
   AggregationConfigBackend,
 } from "@/components/workflow/workflow-context"
 
-// const baseUrl = process.env.NEXT_PUBLIC_API_URL
-
-// File Conversion Config Interface
 export interface FileConversionConfig {
   input: {
     provider: string
     format: string
     path: string
     options?: Record<string, any>
+    content?: string
     schema?: {
       fields: Array<{
         name: string
@@ -31,8 +28,9 @@ export interface FileConversionConfig {
     connectionString?: string
     table?: string
     mode: string
-    type?: string // Add this field
+    type?: string
     options?: Record<string, any>
+    content?: string
   }
   filter?: {
     operator: string
@@ -44,18 +42,16 @@ export interface FileConversionConfig {
     aggregations: Array<[string, string]>
   }
   spark_config?: {
+    driver_cores: number
+    driver_memory: string
     executor_instances: number
     executor_cores: number
     executor_memory: string
-    driver_memory: string
-    driver_cores: number
+    "spark.sql.shuffle.partitions": string
   }
   dag_id?: string
 }
 
-// Salesforce Configuration Types
-
-// CLI Operator Config Interface
 interface CliOperatorConfig {
   operation: string
   source_path?: string
@@ -65,7 +61,6 @@ interface CliOperatorConfig {
   dag_id?: string
 }
 
-// Helper Functions
 function getDatabaseDriver(provider?: string): string {
   const drivers: Record<string, string> = {
     postgresql: "org.postgresql.Driver",
@@ -78,18 +73,111 @@ function getDatabaseDriver(provider?: string): string {
   return drivers[provider?.toLowerCase() || "postgresql"] || "org.postgresql.Driver"
 }
 
+// EXACT Spark config from working payloads
 export const DEFAULT_SPARK_CONFIG = {
+  driver_cores: 1,
+  driver_memory: "512m",
   executor_instances: 1,
   executor_cores: 1,
   executor_memory: "512m",
-  driver_memory: "512m",
-  driver_cores: 1,
+  "spark.sql.shuffle.partitions": "1",
 }
 
-// Node Mapping Functions
+// EXACT schema from working payloads
+export const getDefaultSchema = () => ({
+  fields: [
+    { name: "Id", type: "string", nullable: false },
+    { name: "Name", type: "string", nullable: false },
+    { name: "AccountNumber", type: "string", nullable: false },
+    { name: "Site", type: "string", nullable: true },
+    { name: "Type", type: "string", nullable: true },
+    { name: "Industry", type: "string", nullable: true },
+    { name: "AnnualRevenue", type: "long", nullable: true },
+    { name: "Rating", type: "string", nullable: true },
+    { name: "Phone", type: "string", nullable: true },
+    { name: "Fax", type: "string", nullable: true },
+    { name: "Website", type: "string", nullable: true },
+    { name: "TickerSymbol", type: "string", nullable: true },
+    { name: "Ownership", type: "string", nullable: true },
+    { name: "NumberOfEmployees", type: "integer", nullable: true },
+  ],
+})
+
+// EXACT format options from working payloads
+export const getFormatOptions = (format: string, isInput = true) => {
+  const formatLower = format.toLowerCase()
+
+  if (isInput) {
+    switch (formatLower) {
+      case "json":
+        return {
+          multiLine: true,
+        }
+      case "csv":
+        return {
+          header: "true",
+          inferSchema: "false",
+        }
+      case "xml":
+        return {
+          rowTag: "Account",
+          rootTag: "Accounts",
+        }
+      case "txt":
+      case "text":
+        return {
+          delimiter: "|",
+          header: "false",
+          inferSchema: "false",
+        }
+      default:
+        return {}
+    }
+  } else {
+    // Output options
+    switch (formatLower) {
+      case "json":
+        return {
+          singleFile: true,
+        }
+      case "csv":
+        return {
+          header: "true",
+          singleFile: true,
+        }
+      case "xml":
+        return {
+          rowTag: "Account",
+          rootTag: "Accounts",
+          singleFile: true,
+        }
+      case "txt":
+      case "text":
+        return {
+          delimiter: "|",
+          singleFile: true,
+        }
+      default:
+        return {}
+    }
+  }
+}
+
 export function mapNodeToInputConfig(node: WorkflowNode) {
   if (!node || !node.data) {
+    console.error("mapNodeToInputConfig: Invalid node or missing data")
     return null
+  }
+
+  if (node.type === "inline-input") {
+    return {
+      provider: "inline",
+      format: node.data.format || "json",
+      path: "",
+      content: node.data.content || "",
+      options: node.data.options || getFormatOptions(node.data.format || "json", true),
+      schema: node.data.schema || getDefaultSchema(),
+    }
   }
 
   if (node.type === "read-file") {
@@ -108,8 +196,8 @@ export function mapNodeToInputConfig(node: WorkflowNode) {
       format: "sql",
       path: node.data.connectionString || "",
       options: {
-        query: node.data.query,
-        table: node.data.table,
+        query: node.data.query || "",
+        table: node.data.table || "",
         user: node.data.user || "",
         password: node.data.password || "",
         driver: getDatabaseDriver(node.data.provider),
@@ -118,12 +206,26 @@ export function mapNodeToInputConfig(node: WorkflowNode) {
     }
   }
 
+  console.error("mapNodeToInputConfig: Unsupported node type:", node.type)
   return null
 }
 
 export function mapNodeToOutputConfig(node: WorkflowNode) {
   if (!node || !node.data) {
+    console.error("mapNodeToOutputConfig: Invalid node or missing data")
     return null
+  }
+
+  if (node.type === "inline-output") {
+    // Use the exact structure from working payloads
+    return {
+      provider: "local",
+      format: node.data.format || "csv",
+      path: node.data.path || "/app/data/mock_data/output/inline_output_test",
+      mode: node.data.mode || "overwrite",
+      options: node.data.options || getFormatOptions(node.data.format || "csv", false),
+      content: "",
+    }
   }
 
   if (node.type === "write-file") {
@@ -140,11 +242,11 @@ export function mapNodeToOutputConfig(node: WorkflowNode) {
     return {
       provider: node.data.provider || "postgresql",
       format: "sql",
-      path: node.data.connectionString || "", // Use path instead of connectionString
+      path: node.data.connectionString || "",
       mode: node.data.writeMode || "overwrite",
       type: "database",
       options: {
-        table: node.data.table, // Move table to options
+        table: node.data.table || "",
         header: node.data.options?.header || true,
         inferSchema: node.data.options?.inferSchema || true,
         user: node.data.user || "",
@@ -155,10 +257,10 @@ export function mapNodeToOutputConfig(node: WorkflowNode) {
     }
   }
 
+  console.error("mapNodeToOutputConfig: Unsupported node type:", node.type)
   return null
 }
 
-// Filter Node Mapping
 export function mapFilterNodeToTransformationConfig(filterNode: WorkflowNode | null) {
   const result: {
     filter?: FilterGroup
@@ -171,7 +273,6 @@ export function mapFilterNodeToTransformationConfig(filterNode: WorkflowNode | n
     return result
   }
 
-  // Filter Logic
   const filterData = filterNode.data.filter as FilterGroup
   if (
     filterData &&
@@ -190,7 +291,6 @@ export function mapFilterNodeToTransformationConfig(filterNode: WorkflowNode | n
     console.log("DEBUG(schema-mapper): No valid filter conditions. 'filter' property will be omitted.")
   }
 
-  // Order By Logic
   if (filterNode.data.order_by && filterNode.data.order_by.length > 0) {
     result.order_by = filterNode.data.order_by
     console.log("DEBUG(schema-mapper): Order by found:", JSON.stringify(result.order_by))
@@ -198,7 +298,6 @@ export function mapFilterNodeToTransformationConfig(filterNode: WorkflowNode | n
     console.log("DEBUG(schema-mapper): No order by found. 'order_by' property will be omitted.")
   }
 
-  // Aggregation Logic
   const agg = filterNode.data.aggregation
   if (agg && (agg.group_by?.length > 0 || agg.aggregations?.length > 0)) {
     result.aggregation = agg
@@ -211,7 +310,6 @@ export function mapFilterNodeToTransformationConfig(filterNode: WorkflowNode | n
   return result
 }
 
-// Configuration Creation Functions
 export function createFileConversionConfigFromNodes(
   readNode: WorkflowNode,
   writeNode: WorkflowNode,
@@ -258,7 +356,6 @@ export function createFileToDatabaseConfig(
     throw new Error("Invalid file or database node configuration for file-to-database.")
   }
 
-  // Output is already correctly formatted from mapNodeToOutputConfig
   return {
     input,
     output,
@@ -291,66 +388,178 @@ export function createDatabaseToFileConfig(
   }
 }
 
-// CLI Operator Mapping Functions
-export function mapCopyFileToCliOperator(node: WorkflowNode, dagId: string): CliOperatorConfig {
-  if (!node || !node.data) {
-    throw new Error("Invalid copy file node data")
+// New inline configuration functions using EXACT payload structures
+export function createInlineToInlineConfig(
+  inlineInputNode: WorkflowNode,
+  inlineOutputNode: WorkflowNode,
+  filterNode: WorkflowNode | null,
+  dagId: string,
+) {
+  try {
+    console.log("Creating inline-to-inline config with nodes:", {
+      input: { id: inlineInputNode.id, type: inlineInputNode.type, data: inlineInputNode.data },
+      output: { id: inlineOutputNode.id, type: inlineOutputNode.type, data: inlineOutputNode.data },
+    })
+
+    const input = mapNodeToInputConfig(inlineInputNode)
+    const output = mapNodeToOutputConfig(inlineOutputNode)
+    const transformationConfig = mapFilterNodeToTransformationConfig(filterNode)
+
+    if (!input) {
+      throw new Error(
+        `Invalid inline input node configuration. Node type: ${inlineInputNode.type}, Data: ${JSON.stringify(inlineInputNode.data)}`,
+      )
+    }
+
+    if (!output) {
+      throw new Error(
+        `Invalid inline output node configuration. Node type: ${inlineOutputNode.type}, Data: ${JSON.stringify(inlineOutputNode.data)}`,
+      )
+    }
+
+    const config = {
+      input,
+      output,
+      ...transformationConfig,
+      spark_config: DEFAULT_SPARK_CONFIG,
+      dag_id: dagId,
+    }
+
+    console.log("Created inline-to-inline config:", config)
+    return config
+  } catch (error) {
+    console.error("Error in createInlineToInlineConfig:", error)
+    throw new Error(`Failed to create inline-to-inline configuration: ${error.message}`)
   }
-  const { source_path, destination_path, overwrite } = node.data
+}
+
+export function createInlineToFileConfig(
+  inlineInputNode: WorkflowNode,
+  writeFileNode: WorkflowNode,
+  filterNode: WorkflowNode | null,
+  dagId: string,
+) {
+  try {
+    console.log("Creating inline-to-file config with nodes:", {
+      input: { id: inlineInputNode.id, type: inlineInputNode.type, data: inlineInputNode.data },
+      output: { id: writeFileNode.id, type: writeFileNode.type, data: writeFileNode.data },
+    })
+
+    const input = mapNodeToInputConfig(inlineInputNode)
+    const output = mapNodeToOutputConfig(writeFileNode)
+    const transformationConfig = mapFilterNodeToTransformationConfig(filterNode)
+
+    if (!input) {
+      throw new Error(`Invalid inline input node configuration. Node type: ${inlineInputNode.type}`)
+    }
+
+    if (!output) {
+      throw new Error(`Invalid write file node configuration. Node type: ${writeFileNode.type}`)
+    }
+
+    const config = {
+      input,
+      output,
+      ...transformationConfig,
+      spark_config: DEFAULT_SPARK_CONFIG,
+      dag_id: dagId,
+    }
+
+    console.log("Created inline-to-file config:", config)
+    return config
+  } catch (error) {
+    console.error("Error in createInlineToFileConfig:", error)
+    throw new Error(`Failed to create inline-to-file configuration: ${error.message}`)
+  }
+}
+
+export function createFileToInlineConfig(
+  readFileNode: WorkflowNode,
+  inlineOutputNode: WorkflowNode,
+  filterNode: WorkflowNode | null,
+  dagId: string,
+) {
+  try {
+    console.log("Creating file-to-inline config with nodes:", {
+      input: { id: readFileNode.id, type: readFileNode.type, data: readFileNode.data },
+      output: { id: inlineOutputNode.id, type: inlineOutputNode.type, data: inlineOutputNode.data },
+    })
+
+    const input = mapNodeToInputConfig(readFileNode)
+    const output = mapNodeToOutputConfig(inlineOutputNode)
+    const transformationConfig = mapFilterNodeToTransformationConfig(filterNode)
+
+    if (!input) {
+      throw new Error(`Invalid read file node configuration. Node type: ${readFileNode.type}`)
+    }
+
+    if (!output) {
+      throw new Error(`Invalid inline output node configuration. Node type: ${inlineOutputNode.type}`)
+    }
+
+    const config = {
+      input,
+      output,
+      ...transformationConfig,
+      spark_config: DEFAULT_SPARK_CONFIG,
+      dag_id: dagId,
+    }
+
+    console.log("Created file-to-inline config:", config)
+    return config
+  } catch (error) {
+    console.error("Error in createFileToInlineConfig:", error)
+    throw new Error(`Failed to create file-to-inline configuration: ${error.message}`)
+  }
+}
+
+export function mapCopyFileToCliOperator(copyFileNode: WorkflowNode): CliOperatorConfig {
   return {
     operation: "copy",
-    source_path: source_path || "",
-    destination_path: destination_path || "",
+    source_path: copyFileNode.data.source_path || "",
+    destination_path: copyFileNode.data.destination_path || "",
     options: {
-      overwrite: overwrite || false,
+      overwrite: copyFileNode.data.overwrite || false,
+      includeSubDirectories: copyFileNode.data.includeSubDirectories || false,
+      createNonExistingDirs: copyFileNode.data.createNonExistingDirs || false,
     },
-    executed_by: "workflow_user",
-    dag_id: dagId,
+    executed_by: "cli",
   }
 }
 
-export function mapMoveFileToCliOperator(node: WorkflowNode, dagId: string): CliOperatorConfig {
-  if (!node || !node.data) {
-    throw new Error("Invalid move file node data")
-  }
-  const { source_path, destination_path, overwrite } = node.data
+export function mapMoveFileToCliOperator(moveFileNode: WorkflowNode): CliOperatorConfig {
   return {
     operation: "move",
-    source_path: source_path || "",
-    destination_path: destination_path || "",
+    source_path: moveFileNode.data.source_path || "",
+    destination_path: moveFileNode.data.destination_path || "",
     options: {
-      overwrite: overwrite || false,
+      overwrite: moveFileNode.data.overwrite || false,
+      includeSubDirectories: moveFileNode.data.includeSubDirectories || false,
+      createNonExistingDirs: moveFileNode.data.createNonExistingDirs || false,
     },
-    executed_by: "workflow_user",
-    dag_id: dagId,
+    executed_by: "cli",
   }
 }
 
-export function mapRenameFileToCliOperator(node: WorkflowNode, dagId: string): CliOperatorConfig {
-  if (!node || !node.data) {
-    throw new Error("Invalid rename file node data")
-  }
-  const { source_path, destination_path } = node.data
+export function mapRenameFileToCliOperator(renameFileNode: WorkflowNode): CliOperatorConfig {
   return {
     operation: "rename",
-    source_path: source_path || "",
-    destination_path: destination_path || "",
-    options: {},
-    executed_by: "workflow_user",
-    dag_id: dagId,
+    source_path: renameFileNode.data.source_path || "",
+    destination_path: renameFileNode.data.destination_path || "",
+    options: {
+      overwrite: renameFileNode.data.overwrite || false,
+    },
+    executed_by: "cli",
   }
 }
 
-export function mapDeleteFileToCliOperator(node: WorkflowNode, dagId: string): CliOperatorConfig {
-  if (!node || !node.data) {
-    throw new Error("Invalid delete file node data")
-  }
-  const { source_path } = node.data
+export function mapDeleteFileToCliOperator(deleteFileNode: WorkflowNode): CliOperatorConfig {
   return {
     operation: "delete",
-    source_path: source_path || "",
-    options: {},
-    executed_by: "workflow_user",
-    dag_id: dagId,
+    source_path: deleteFileNode.data.source_path || "",
+    options: {
+      recursive: deleteFileNode.data.recursive || false,
+    },
+    executed_by: "cli",
   }
 }

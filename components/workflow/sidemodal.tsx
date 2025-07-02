@@ -1,5 +1,3 @@
-//sidemodal-updated.tsx
-
 "use client"
 import { useState, useEffect } from "react"
 import type React from "react"
@@ -29,6 +27,7 @@ import {
   Database,
   FilePenLine,
   FileInput,
+    FileOutput,
   ScanText,
 } from "lucide-react"
 
@@ -51,6 +50,7 @@ interface NodeTypeDefinition {
     | "data"
     | "databaseoperations"
     | "salesforceoperations"
+    | "inlineoperations"
 }
 
 const nodeTypes: NodeTypeDefinition[] = [
@@ -96,7 +96,6 @@ const nodeTypes: NodeTypeDefinition[] = [
     description: "Copies a file or directory",
     category: "file",
   },
-
   {
     type: "rename-file",
     label: "Rename File",
@@ -246,6 +245,20 @@ const nodeTypes: NodeTypeDefinition[] = [
     category: "salesforceoperations",
   },
   {
+    type: "inline-input",
+    label: "Inline Input",
+    icon: <FileInput className="h-5 w-5 text-blue-600" />,
+    description: "Process inline data content directly",
+    category: "inlineoperations",
+  },
+  {
+    type: "inline-output",
+    label: "Inline Output",
+    icon: <FileOutput className="h-5 w-5 text-green-600" />,
+    description: "Convert and save processed data to file",
+    category: "inlineoperations",
+  },
+  {
     type: "end",
     label: "End",
     icon: <CheckCircle className="h-5 w-5 text-red-600" />,
@@ -281,6 +294,7 @@ type CategoryType =
   | "data"
   | "databaseoperations"
   | "salesforceoperations"
+  | "inlineoperations"
 
 export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps) {
   const [isVisible, setIsVisible] = useState(false)
@@ -335,6 +349,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
   const dataOperations = filteredNodeTypes.filter((node) => node.category === "data")
   const databaseOperations = filteredNodeTypes.filter((node) => node.category === "databaseoperations")
   const salesforceOperations = filteredNodeTypes.filter((node) => node.category === "salesforceoperations")
+  const inlineOperations = filteredNodeTypes.filter((node) => node.category === "inlineoperations")
 
   // Search input that appears on every view
   const searchInput = (
@@ -397,6 +412,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       const dataResults = allFilteredNodes.filter((node) => node.category === "data")
       const databaseResults = allFilteredNodes.filter((node) => node.category === "databaseoperations")
       const salesforceResults = allFilteredNodes.filter((node) => node.category === "salesforceoperations")
+      const inlineResults = allFilteredNodes.filter((node) => node.category === "inlineoperations")
 
       return (
         <>
@@ -489,6 +505,16 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
                   Salesforce Operations
                 </h3>
                 {renderNodeList(salesforceResults)}
+              </div>
+            )}
+
+            {inlineResults.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
+                  <FileInput className="h-4 w-4 text-blue-600" />
+                  Inline Operations
+                </h3>
+                {renderNodeList(inlineResults)}
               </div>
             )}
           </div>
@@ -597,6 +623,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
               <ChevronRight className="h-4 w-4 text-slate-500" />
             </div>
           </div>
+
           {/* Salesforce Operations Card */}
           <div
             className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
@@ -606,6 +633,20 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
               <div className="flex items-center space-x-2">
                 <Database className="h-5 w-5 text-blue-500" />
                 <span className="font-semibold">Salesforce Operations</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
+
+          {/* Inline Operations Card */}
+          <div
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
+            onClick={() => setCurrentView("inlineoperations")}
+          >
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
+              <div className="flex items-center space-x-2">
+                <FileInput className="h-5 w-5 text-blue-600" />
+                <span className="font-semibold">Inline Operations</span>
               </div>
               <ChevronRight className="h-4 w-4 text-slate-500" />
             </div>
@@ -625,7 +666,8 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       | "filenode"
       | "data"
       | "databaseoperations"
-      | "salesforceoperations",
+      | "salesforceoperations"
+      | "inlineoperations",
     title: string,
     icon: React.ReactNode,
   ) => {
@@ -672,25 +714,28 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
         return renderCategoryView("json", "JSON Operations", <FileCode className="h-5 w-5 text-violet-500" />)
       case "data":
         return renderCategoryView("data", "Data Operations", <Database className="h-5 w-5 text-blue-500" />)
-
       case "databaseoperations":
         return renderCategoryView(
           "databaseoperations",
           "Database Operations",
           <Database className="h-5 w-5 text-green-500" />,
         )
-
       case "salesforceoperations":
         return renderCategoryView(
           "salesforceoperations",
           "Salesforce Operations",
           <Database className="h-5 w-5 text-blue-500" />,
         )
-
       case "filenode":
         return renderCategoryView("filenode", "File Operation", <File className="h-5 w-5 text-violet-500" />)
       case "general":
         return renderCategoryView("general", "Workflow Controls", <Play className="h-5 w-5 text-green-500" />)
+      case "inlineoperations":
+        return renderCategoryView(
+          "inlineoperations",
+          "Inline Operations",
+          <FileInput className="h-5 w-5 text-blue-600" />,
+        )
       default:
         return renderMainView()
     }

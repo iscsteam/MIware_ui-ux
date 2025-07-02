@@ -33,6 +33,8 @@ export function getNodeIcon(type: NodeType) {
     "file-poller": "/icons/pollar.png",
     "rename-file": "/icons/write.png",
     "salesforce-cloud": "/icons/source.png",
+     "inline-input": "/icons/copy.png",
+    "inline-output": "/icons/copy.png",
     end: "/icons/stop.png",
     // Add ReadNode PNG icon if you have one, otherwise it will use Lucide icon below
     // "read-node": "/icons/read-node.png",
