@@ -27,7 +27,8 @@ import {
   Database,
   FilePenLine,
   FileInput,
-  FileOutput,
+    FileOutput,
+  ScanText,
 } from "lucide-react"
 
 import type { NodeType } from "@/services/interface"
@@ -128,6 +129,14 @@ const nodeTypes: NodeTypeDefinition[] = [
     label: "File Poller",
     icon: <Clock className="h-5 w-5 text-cyan-600" />,
     description: "Monitors a file or directory for changes",
+    category: "file",
+  },
+  // Add ReadNode to the list
+  {
+    type: "read-node",
+    label: "Read Node",
+    icon: <ScanText  className="h-5 w-5 text-blue-600" />,
+    description: "Reads content from files",
     category: "file",
   },
   {
@@ -704,19 +713,26 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       case "json":
         return renderCategoryView("json", "JSON Operations", <FileCode className="h-5 w-5 text-violet-500" />)
       case "data":
-        return renderCategoryView("data", "Data Operations", <Database className="h-5 w-5 text-blue-500" />)
+        return renderCategoryView(
+          "data",
+          "Data Operations",
+          <Database className="h-5 w-5 text-blue-500" />
+        );
+
       case "databaseoperations":
         return renderCategoryView(
           "databaseoperations",
           "Database Operations",
-          <Database className="h-5 w-5 text-green-500" />,
-        )
+          <Database className="h-5 w-5 text-green-500" />
+        );
+
       case "salesforceoperations":
         return renderCategoryView(
           "salesforceoperations",
           "Salesforce Operations",
-          <Database className="h-5 w-5 text-blue-500" />,
-        )
+          <Database className="h-5 w-5 text-blue-500" />
+        );
+
       case "filenode":
         return renderCategoryView("filenode", "File Operation", <File className="h-5 w-5 text-violet-500" />)
       case "general":

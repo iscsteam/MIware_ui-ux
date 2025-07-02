@@ -57,6 +57,8 @@ import InlineOutputNodeProperties, {
   inlineOutputSchema,
 } from "@/components/node-properties/inline-operations/inline-output-node-properties"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import ReadNodeProperties, { readNodeSchema } from "@/components/node-properties/ReadNodeProperties"
+
 
 const NodePropertyComponents: Record<string, React.FC<any>> = {
   "create-file": CreateFileNodeProperties,
@@ -89,7 +91,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "inline-output": InlineOutputNodeProperties,
 }
 
-// Component-specific schemas - use these instead of getNodeSchema for these node types
+// Component-specific schemas
 const componentSchemas: Record<string, any> = {
   "read-file": readFileSchema,
   "write-file": writeFileSchema,
@@ -107,11 +109,12 @@ const componentSchemas: Record<string, any> = {
   "transform-json": transformJSONSchema,
   "http-receiver": httpReceiverSchema,
   "send-http-request": httpSendRequestSchema,
-  file: fileNodeSchema,
-  database: databaseSchema,
-  "salesforce-cloud": salesforceCloudSchema,
+  "file": fileNodeSchema,
+  "database": databaseSchema,
+  "salesforce-cloud":salesforceCloudSchema, // Schema for Salesforce Read (Query)
+  // NEW: Add Salesforce Write schema to the schemas map
   "write-salesforce": salesforceCloudWriteSchema,
-  source: sourceSchema,
+  "source": sourceSchema,
   "send-http-response": httpSendResponseSchema,
   "parse-data": parseDataSchema,
   "render-data": renderDataSchema,
@@ -139,7 +142,7 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
 
   const node = getNodeById(nodeId)
 
-  // Get schema from component-specific schema if available, otherwise fall back to node-schemas.tsx
+  // Get schema from component-specific schema if available
   const nodeSchema = node ? componentSchemas[node.type] : undefined
 
   const NodePropsComponent = node ? NodePropertyComponents[node.type] : undefined
@@ -223,7 +226,9 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
   if (!node) return null
 
   const getNodeTitle = () => {
-    // For "write-salesforce", convert to "Salesforce Write"
+    if (node.type === "read-node") {
+      return "Read Node"
+    }
     if (node.type === "write-salesforce") {
       return "Salesforce Write"
     }
@@ -265,7 +270,6 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
 
     const schemaObj: Record<string, any> = {}
     schemaParams.forEach((param) => {
-      // Set default value based on datatype
       let defaultValue: any = null
       switch (param.datatype) {
         case "string":
@@ -281,8 +285,9 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
         case "complex":
           defaultValue = {}
           break
-        case "array": // Handle array types
+        case "array":
           defaultValue = []
+          break
           break
         default:
           defaultValue = null
@@ -292,6 +297,99 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
     })
 
     return JSON.stringify(schemaObj, null, 2)
+  }
+
+  // Special function to render ReadNode response in output section
+  const renderReadNodeOutput = () => {
+    if (node?.type !== "read-node" || !formData.lastResponse) {
+      return null
+    }
+
+    const response = formData.lastResponse
+
+    return (
+      <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded">
+        <h4 className="font-medium text-gray-900 mb-2">Last Response</h4>
+        <div className="space-y-2 text-sm">
+          <div>
+            <span className="font-medium">Status:</span>{" "}
+            <span className={response.success ? "text-green-600" : "text-red-600"}>
+              {response.success ? "Success" : "Failed"}
+            </span>
+          </div>
+
+          {response.success && (
+            <>
+              <div>
+                <span className="font-medium">File Path:</span>{" "}
+                <span className="text-blue-600 break-all">{response.file_path}</span>
+              </div>
+              <div>
+                <span className="font-medium">File Type:</span>{" "}
+                <span className="text-purple-600">{response.file_type}</span>
+              </div>
+              <div>
+                <span className="font-medium">Record Count:</span>{" "}
+                <span className="text-orange-600">{response.record_count}</span>
+                {response.limit && <span className="text-gray-500 ml-1">(limit: {response.limit})</span>}
+              </div>
+              <div>
+                <span className="font-medium">Content Preview:</span>
+                <div className="mt-1 p-3 bg-white border rounded-lg">
+                  <div
+                    className="max-h-80 overflow-y-auto custom-scrollbar"
+                    style={{
+                      scrollbarWidth: "thin",
+                      scrollbarColor: "#cbd5e1 #f1f5f9",
+                    }}
+                  >
+                    <pre className="text-xs whitespace-pre-wrap break-words font-mono leading-relaxed">
+                      {response.content}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {!response.success && response.error_message && (
+            <div>
+              <span className="font-medium">Error:</span>{" "}
+              <span className="text-red-600 break-words">{response.error_message}</span>
+            </div>
+          )}
+
+          <div className="text-xs text-gray-500">
+            <span className="font-medium">Timestamp:</span> {new Date(response.timestamp).toLocaleString()}
+          </div>
+        </div>
+
+        <style jsx>{`
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+            border: 1px solid #f1f5f9;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-corner {
+            background: #f1f5f9;
+          }
+        `}</style>
+      </div>
+    )
   }
 
   return (
@@ -394,6 +492,9 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
               ) : (
                 <div className="text-sm text-gray-500 italic">No output parameters</div>
               )}
+
+              {/* Special ReadNode response display */}
+              {renderReadNodeOutput()}
             </div>
           </div>
         </div>
@@ -408,3 +509,4 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
     </Dialog>
   )
 }
+

@@ -16,6 +16,10 @@ export const URLS = {
   manageCLIoperations: (clientId: number | string, configId: number | string) =>
     `clients/${clientId}/cli_operators_configs/${configId}`,
 
+  // Read File Operations
+  readFileWithContent: (clientId: number | string) =>
+    `clients/${clientId}/cli_operators_configs/read-file-with-content`,
+
   // Salesforce Read Configs
   listCreateSaleforceReadConfigs: (clientId: number | string) => `clients/${clientId}/read_salesforce_configs`,
   manageSaleforceReadConfigs: (clientId: number | string, configId: number | string) =>
@@ -34,6 +38,7 @@ export const URLS = {
 
   // DAG_runs
   forcestop: (dagId: string) => `dag_runs/${dagId}/force_stop_active_run`,
+  historyDAGRuns: (dagId: string) => `dag_runs/${dagId}/triggers`,
   stopActiveDAGRun: (dagId: string) => `dag_runs/${dagId}/force_stop_active_run`,
 
   // Uploads

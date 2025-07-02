@@ -17,6 +17,11 @@ import {
   CircleFadingPlus,
   CircleFadingArrowUp,
   Key,
+  X,
+  Info,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
 } from "lucide-react"
 import { useWorkflow } from "./workflow-context"
 import { Button } from "@/components/ui/button"
@@ -33,6 +38,108 @@ import type { ClientCreateResponse } from "@/services/interface"
 import { stopCurrentWorkflow } from "@/services/dagService"
 import { createAllConfigs, updateAllConfigs, runWorkflowOnly } from "@/services/workflow-utils"
 import { CreateCredentialsModal } from "@/components/auth/createcredentialsModal"
+
+// --- START: Corrected Toast Notification System ---
+
+type ToastVariant = "info" | "success" | "error" | "warning"
+
+interface ToastData {
+  id: number
+  title: string
+  message: string
+  type: ToastVariant
+}
+
+const toastStyles: Record<ToastVariant, { bg: string; iconBg: string; icon: React.ReactNode }> = {
+  info: {
+    bg: "bg-blue-800",
+    iconBg: "bg-blue-600",
+    icon: <Info className="h-5 w-5 text-white" />,
+  },
+  success: {
+    bg: "bg-green-700",
+    iconBg: "bg-green-500",
+    icon: <CheckCircle className="h-5 w-5 text-white" />,
+  },
+  error: {
+    bg: "bg-red-800",
+    iconBg: "bg-red-600",
+    icon: <XCircle className="h-5 w-5 text-white" />,
+  },
+  warning: {
+    bg: "bg-amber-700",
+    iconBg: "bg-amber-500",
+    icon: <AlertTriangle className="h-5 w-5 text-white" />,
+  },
+}
+
+const ToastMessage: React.FC<{ toast: ToastData; onClose: (id: number) => void }> = ({ toast, onClose }) => {
+  const [isVisible, setIsVisible] = useState(false)
+
+  const handleClose = () => {
+    setIsVisible(false)
+  }
+
+  useEffect(() => {
+    setIsVisible(true)
+    const timer = setTimeout(() => {
+      handleClose()
+    }, 3000)
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (!isVisible) {
+      const timer = setTimeout(() => {
+        onClose(toast.id)
+      }, 350)
+
+      return () => clearTimeout(timer)
+    }
+  }, [isVisible, onClose, toast.id])
+
+  const styles = toastStyles[toast.type]
+
+  return (
+    <div
+      className={cn(
+        "flex items-center p-2 pl-3 rounded-full shadow-lg text-white w-auto transition-all duration-300 ease-in-out",
+        styles.bg,
+        isVisible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0",
+      )}
+    >
+      <div className={cn("flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full", styles.iconBg)}>
+        {styles.icon}
+      </div>
+      <div className="ml-3 mr-2 flex-1">
+        <p className="text-sm font-semibold whitespace-nowrap">{toast.title}</p>
+        <p className="text-xs text-gray-200 whitespace-nowrap">{toast.message}</p>
+      </div>
+      <button
+        onClick={handleClose}
+        className="ml-auto flex-shrink-0 bg-black/20 hover:bg-black/40 rounded-full p-1.5 focus:outline-none focus:ring-2 focus:ring-white/50"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  )
+}
+
+const ToastContainer: React.FC<{ toasts: ToastData[]; removeToast: (id: number) => void }> = ({
+  toasts,
+  removeToast,
+}) => {
+  return (
+    <div className="fixed top-16 right-5 z-50 flex flex-col items-end space-y-3">
+      {toasts.map((toast) => (
+        <ToastMessage key={toast.id} toast={toast} onClose={removeToast} />
+      ))}
+    </div>
+  )
+}
+
+// --- END: Corrected Toast Notification System ---
 
 const topTabs = ["File", "Edit", "Project", "Run"]
 
@@ -75,6 +182,15 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
   const [userPopoverOpen, setUserPopoverOpen] = useState(false)
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [toasts, setToasts] = useState<ToastData[]>([])
+  const addToast = (toast: Omit<ToastData, "id">) => {
+    const id = Date.now()
+    setToasts((prevToasts) => [...prevToasts, { id, ...toast }])
+  }
+  const removeToast = (id: number) => {
+    setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id))
+  }
 
   useEffect(() => {
     const workflowId = getCurrentWorkflowId()
@@ -131,8 +247,10 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
     setIsSaving(true)
     try {
       await saveWorkflowToBackend()
+      addToast({ title: "Save Successful", message: "Your workflow has been saved.", type: "success" })
     } catch (error) {
       console.error("Failed to save workflow:", error)
+      addToast({ title: "Save Failed", message: "Could not save the workflow.", type: "error" })
     } finally {
       setIsSaving(false)
     }
@@ -140,12 +258,16 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
 
   const handleCreateConfigs = async () => {
     setIsCreatingConfigs(true)
-    setErrorMessage("")
     try {
       await createAllConfigs(nodes, connections, currentWorkflowId)
+      addToast({
+        title: "Configuration Created",
+        message: "Workflow configuration created successfully.",
+        type: "success",
+      })
     } catch (error) {
       console.error("Failed to create configs:", error)
-      setErrorMessage("Failed to create configurations")
+      addToast({ title: "Error", message: "Failed to create configurations.", type: "error" })
     } finally {
       setIsCreatingConfigs(false)
     }
@@ -153,12 +275,16 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
 
   const handleUpdateConfigs = async () => {
     setIsUpdatingConfigs(true)
-    setErrorMessage("")
     try {
       await updateAllConfigs(nodes, connections, currentWorkflowId)
+      addToast({
+        title: "Configuration Updated",
+        message: "Workflow configuration has been updated.",
+        type: "success",
+      })
     } catch (error) {
       console.error("Failed to update configs:", error)
-      setErrorMessage("Failed to update configurations")
+      addToast({ title: "Error", message: "Failed to update configurations.", type: "error" })
     } finally {
       setIsUpdatingConfigs(false)
     }
@@ -166,12 +292,12 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
 
   const handleRun = async () => {
     setIsRunning(true)
-    setErrorMessage("")
     try {
       await runWorkflowOnly(nodes, connections, currentWorkflowId)
+      addToast({ title: "Workflow Running", message: "The workflow has started successfully.", type: "info" })
     } catch (error) {
       console.error("Failed to run workflow:", error)
-      setErrorMessage("Failed to run workflow")
+      addToast({ title: "Run Failed", message: "Could not start the workflow.", type: "error" })
     } finally {
       setIsRunning(false)
     }
@@ -180,18 +306,19 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
   const handleStop = async () => {
     const currentWorkflowIdFromContext = getCurrentWorkflowId()
     if (!currentWorkflowIdFromContext) {
-      setErrorMessage("No active workflow found to stop")
+      addToast({ title: "Error", message: "No active workflow found to stop.", type: "error" })
       return
     }
     setIsStopping(true)
-    setErrorMessage("")
     try {
       const result = await stopCurrentWorkflow()
-      if (!result?.success) {
-        setErrorMessage(result?.message || "Failed to stop workflow")
+      if (result?.success) {
+        addToast({ title: "Workflow Stopped", message: "The workflow has been stopped successfully.", type: "success" })
+      } else {
+        addToast({ title: "Error", message: result?.message || "Failed to stop workflow.", type: "error" })
       }
     } catch (error) {
-      setErrorMessage("An error occurred while stopping the workflow")
+      addToast({ title: "Error", message: "An error occurred while stopping the workflow.", type: "error" })
     } finally {
       setIsStopping(false)
     }
@@ -211,9 +338,13 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-      setErrorMessage("")
+      addToast({
+        title: "Download Complete",
+        message: "Workflow downloaded successfully.",
+        type: "success",
+      })
     } catch (error) {
-      setErrorMessage("Failed to download workflow. Please try again.")
+      addToast({ title: "Download Failed", message: "Could not download the workflow file.", type: "error" })
     }
   }
 
@@ -226,9 +357,9 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
           const content = e.target?.result as string
           const parsedData = JSON.parse(content)
           loadWorkflow(parsedData)
-          setErrorMessage("")
+          addToast({ title: "Load Successful", message: "Workflow loaded successfully.", type: "success" })
         } catch (error) {
-          setErrorMessage("Failed to load workflow. Please ensure it's a valid JSON file.")
+          addToast({ title: "Load Failed", message: "Please ensure it's a valid workflow file.", type: "error" })
         }
       }
       reader.readAsText(file)
@@ -270,6 +401,7 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
 
   return (
     <div className="w-full relative">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       <div className="flex h-14 items-center justify-between border-b px-4 bg-background">
         {/* Left Side */}
         <div className="flex items-center space-x-6 h-full">
@@ -339,7 +471,11 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
                   disabled={isCreatingConfigs}
                   className="text-blue-600 hover:text-blue-700"
                 >
-                  {isCreatingConfigs ? <Loader2 className="h-5 w-5 animate-spin" /> : <CircleFadingPlus className="h-5 w-5" />}
+                  {isCreatingConfigs ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <CircleFadingPlus className="h-5 w-5" />
+                  )}
                   <span className="sr-only">Create Configs</span>
                 </Button>
               </TooltipTrigger>
@@ -357,7 +493,11 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
                   disabled={isUpdatingConfigs}
                   className="text-orange-600 hover:text-orange-700"
                 >
-                  {isUpdatingConfigs ? <Loader2 className="h-5 w-5 animate-spin" /> : <CircleFadingArrowUp className="h-5 w-5" />}
+                  {isUpdatingConfigs ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <CircleFadingArrowUp className="h-5 w-5" />
+                  )}
                   <span className="sr-only">Update Configs</span>
                 </Button>
               </TooltipTrigger>
@@ -476,7 +616,6 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
         </TooltipProvider>
       </div>
 
-      {/* Center Content: Absolutely positioned */}
       <div className="absolute left-1/2 top-11 z-10 -translate-x-1/2 flex items-center gap-1">
         {currentWorkflowName && (
           <div className="flex items-center gap-2 px-3 py-1 bg-purple-50 rounded-md border border-purple-200">

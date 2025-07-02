@@ -820,6 +820,7 @@ export async function createAllConfigs(
           use_bulk_api: salesforceNode.data.use_bulk_api || false,
           bulk_batch_size: salesforceNode.data.bulk_batch_size || 1000,
           file_path: salesforceNode.data.file_path,
+          update_objects: salesforceNode.data.update_objects || false,
         }
 
         console.log(`Creating Salesforce write config ${sequence.sequenceIndex + 1}:`, configPayload)
@@ -1023,6 +1024,7 @@ export async function updateAllConfigs(
           use_bulk_api: salesforceNode.data.use_bulk_api || false,
           bulk_batch_size: salesforceNode.data.bulk_batch_size || 1000,
           file_path: salesforceNode.data.file_path,
+          update_objects: salesforceNode.data.update_objects || false,
         }
 
         console.log(`Updating Salesforce write config ${configId}:`, configPayload)

@@ -72,44 +72,6 @@ export default function MoveFileNodeProperties({ formData, onChange }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  // const handleSubmit = async () => {
-  //   setLoading(true)
-  //   setError(null)
-  //   setSuccess(null)
-
-  //   try {
-  //     const response = await fetch("http://localhost:5000/api/file-operations/copy", {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //       },
-  //       body: JSON.stringify({
-  //         operation: "copy",
-  //         source_path: formData.source_path,
-  //         destination_path: formData.destination_path,
-  //         executed_by: "cli_user",
-  //         options: {
-  //           overwrite: formData.overwrite || false,
-  //           includeSubDirectories: formData.includeSubDirectories || false,
-  //           createNonExistingDirs: formData.createNonExistingDirs || false,
-  //         },
-  //       }),
-  //     })
-
-  //     const data = await response.json()
-
-  //     if (response.ok) {
-  //       setSuccess(data.message)
-  //     } else {
-  //       setError(data.message)
-  //     }
-  //   } catch (err) {
-  //     setError("Error connecting to the server.")
-  //   } finally {
-  //     setLoading(false)
-  //   }
-  // }
-
   return (
     <div className="space-y-4">
       {/* Source Path */}

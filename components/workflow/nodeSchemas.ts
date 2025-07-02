@@ -940,6 +940,83 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
     ],
   },
 
+  // ----- NEW SCHEMA ADDED BELOW -----
+  "read-node": {
+    label: "Read Node",
+    description:
+      "Reads content from files in various formats (XML, JSON, CSV, text) with configurable limits and formatting.",
+    inputSchema: [
+      {
+        name: "input_path",
+        datatype: "string",
+        description: "The absolute path to the file to read content from.",
+        required: true,
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "limit",
+        datatype: "integer",
+        description: "Maximum number of records/lines to read from the file (default: 50).",
+        required: false,
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "pretty",
+        datatype: "boolean",
+        description: "Whether to format the output in a readable format (default: false).",
+        required: false,
+        sourceNodeId: "",
+        originalName: "",
+      },
+    ],
+    outputSchema: [
+      {
+        name: "content",
+        datatype: "string",
+        description: "The content of the file in its original format (XML, JSON, CSV, or text).",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "file_path",
+        datatype: "string",
+        description: "The path of the file that was read (passed to next nodes).",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "file_type",
+        datatype: "string",
+        description: "The detected type/format of the file (xml, json, csv, text).",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "record_count",
+        datatype: "integer",
+        description: "Number of records/lines read from the file.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "success",
+        datatype: "boolean",
+        description: "Indicates whether the read operation was successful.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "error_message",
+        datatype: "string",
+        description: "Error message if the operation failed.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+    ],
+  },
+
   "transform-xml": {
     label: "Transform XML",
     description: "Transforms XML data using XSLT or custom transformations.",
