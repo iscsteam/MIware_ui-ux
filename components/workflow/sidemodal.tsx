@@ -713,26 +713,19 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       case "json":
         return renderCategoryView("json", "JSON Operations", <FileCode className="h-5 w-5 text-violet-500" />)
       case "data":
-        return renderCategoryView(
-          "data",
-          "Data Operations",
-          <Database className="h-5 w-5 text-blue-500" />
-        );
-
+        return renderCategoryView("data", "Data Operations", <Database className="h-5 w-5 text-blue-500" />)
       case "databaseoperations":
         return renderCategoryView(
           "databaseoperations",
           "Database Operations",
-          <Database className="h-5 w-5 text-green-500" />
-        );
-
+          <Database className="h-5 w-5 text-green-500" />,
+        )
       case "salesforceoperations":
         return renderCategoryView(
           "salesforceoperations",
           "Salesforce Operations",
-          <Database className="h-5 w-5 text-blue-500" />
-        );
-
+          <Database className="h-5 w-5 text-blue-500" />,
+        )
       case "filenode":
         return renderCategoryView("filenode", "File Operation", <File className="h-5 w-5 text-violet-500" />)
       case "general":
