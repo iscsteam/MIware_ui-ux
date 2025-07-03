@@ -88,7 +88,7 @@ export function WorkflowEditor() {
 
   // Grid and Minimap State
   const [gridSize] = useState(20); // Base grid size in pixels at 1x zoom
-  const [showGrid, setShowGrid] = useState(true);
+  const [showGrid, setShowGrid] = useState(false);
   const [showMinimap, setShowMinimap] = useState(true);
 
   const dynamicGridSize = useMemo(() => {

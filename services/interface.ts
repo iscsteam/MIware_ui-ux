@@ -35,6 +35,8 @@ export type NodeType =
   | "salesforce-cloud"
   | "write-salesforce"
   | "move-file"
+   | "inline-input"
+  | "inline-output"
   | "code"
   | "read-node" // Added ReadNode type
 

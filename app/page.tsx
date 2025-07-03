@@ -1,5 +1,4 @@
-
-// // // page.tsx
+// page.tsx
 "use client"
 import { useState, useEffect } from "react"
 import { WorkflowEditor } from "@/components/workflow/workflow-editor"
@@ -14,9 +13,13 @@ import { LoadingScreen } from "@/components/auth/loading-screen"
 import { ClientsPage } from "@/components/workflow/clients-page"
 
 interface User {
+  id: number
+  email: string
   name: string
+  unique_client_id: string
+  role: string
+  is_active: boolean
 }
-import '@/services/consolelog';
 
 export default function WorkflowAutomationDashboard() {
   // State to track active view: 'editor' for Studio, 'executions' for History, 'clients' for Clients
@@ -25,7 +28,7 @@ export default function WorkflowAutomationDashboard() {
   // State to track user authentication and loading
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [isCheckingCredentials, setIsCheckingCredentials] = useState(true) // Add this
+  const [isCheckingCredentials, setIsCheckingCredentials] = useState(true)
   const [user, setUser] = useState<User | null>(null)
 
   // Check for saved credentials on app load
@@ -39,13 +42,29 @@ export default function WorkflowAutomationDashboard() {
         const parsed = JSON.parse(savedCredentials)
         console.log("Parsed credentials:", parsed) // Debug log
         
-        if (parsed.name && parsed.password) {
-          console.log("Valid credentials found, auto-logging in...") // Debug log
-          // Auto-login with saved credentials
-          setUser({ name: parsed.name })
+        // Check for new format with user object
+        if (parsed.user && parsed.email && parsed.password) {
+          console.log("Valid new format credentials found, auto-logging in...") // Debug log
+          setUser(parsed.user)
+          setIsLoggedIn(true)
+        }
+        // Check for old format (backward compatibility)
+        else if (parsed.name && parsed.password) {
+          console.log("Old format credentials found, creating user object...") // Debug log
+          // Convert old format to new format
+          const userData: User = {
+            id: 0, // Will need to be updated after proper login
+            email: parsed.name + "@example.com", // Fallback
+            name: parsed.name,
+            unique_client_id: "",
+            role: "user",
+            is_active: true
+          }
+          setUser(userData)
           setIsLoggedIn(true)
         } else {
           console.log("Invalid credentials structure") // Debug log
+          localStorage.removeItem("userCredentials") // Clear invalid data
         }
       } catch (error) {
         console.error("Failed to parse saved credentials:", error)
@@ -71,7 +90,7 @@ export default function WorkflowAutomationDashboard() {
     setIsLoggedIn(true)
   }
 
-  // Handle logout (optional - you can add a logout button in your UI)
+  // Handle logout
   const handleLogout = () => {
     // Clear all stored data
     localStorage.removeItem("userCredentials")
@@ -174,3 +193,5 @@ export default function WorkflowAutomationDashboard() {
     </ThemeProvider>
   )
 }
+
+

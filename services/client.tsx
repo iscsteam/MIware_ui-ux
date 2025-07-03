@@ -1,7 +1,74 @@
+//client.tsx
 import { baseUrl } from "@/services/api"; // Assuming this handles base URLs etc.
 import { URLS } from "./url"; // Assuming this contains endpoint constants
 import { Client, ClientCreateResponse , DAG} from "@/services/interface"; // Ensure Client type is defined
 
+// Credentials interfaces
+export interface CredentialCreate {
+  email: string;
+  password: string;
+  role?: string;
+}
+
+export interface CredentialOut {
+  id: number;
+  email: string;
+  unique_client_id: string;
+  created_at: string;
+  role: string;
+  is_active: boolean;
+}
+
+// Login interfaces
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  message: string;
+  id: number;
+  email: string;
+  unique_client_id: string;
+  role: string;
+  is_active: boolean;
+}
+
+/**
+ * Authenticates user with email and password.
+ * @param credentials - User email and password
+ * @returns A promise that resolves to login response or null if an error occurs.
+ */
+export async function loginUser(credentials: LoginRequest): Promise<LoginResponse | null> {
+  try {
+    console.log("Attempting login for:", credentials.email);
+
+    const res = await fetch(baseUrl("/credentials/login"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentials),
+    });
+
+    if (!res.ok) {
+      let errorDetails = `Login failed: ${res.status}`;
+      try {
+        const errorBody = await res.json();
+        errorDetails = errorBody.detail || errorBody.message || JSON.stringify(errorBody);
+      } catch (e) {
+        errorDetails = `${res.status} ${res.statusText}`;
+      }
+      console.error("Failed to login:", errorDetails);
+      throw new Error(errorDetails);
+    }
+
+    const data: LoginResponse = await res.json();
+    console.log("Login successful:", data);
+    return data;
+  } catch (error) {
+    console.error("Error in loginUser:", error);
+    return null;
+  }
+}
 
 /**
  * Fetches a list of all clients.
@@ -169,40 +236,6 @@ export async function deleteClient(clientId: string | number): Promise<boolean> 
   }
 }
 
-// Make sure your URLS and baseUrl are correctly defined, e.g.:
-// ./url.ts
-// export const URLS = {
-//   listCreateClients: "/api/v1/clients",
-//   manageClient: (clientId: string | number) => `/api/v1/clients/${clientId}`,
-// };
-
-// ./api.ts
-// const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
-// export function baseUrl(path: string): string {
-//   // Ensure path doesn't start with a slash if API_BASE_URL ends with one, or vice-versa
-//   return `${API_BASE_URL}${path.startsWith('/') ? path : '/' + path}`;
-// }
-
-
-// export async function getClients() {
-//   const res = await fetch(`${process.env.API_BASE}/list_create_clients`);
-//   return res.json();
-// }
-
-// export async function getFileConversionConfigs(clientId: number) {
-//   const res = await fetch(`${process.env.API_BASE}/list_create_file_conversion_configs/${clientId}`);
-//   return res.json();
-// }
-
-// export async function getDAGStatus(dagId: string, triggerId: string) {
-//   const res = await fetch(`${process.env.API_BASE}/dag_runs/get_trigger_history_dag_runs__dag_id__triggers__${triggerId}`);
-//   return res.json();
-// }
-
-
-// import { baseUrl } from "./api";
-// import { URLS } from "./url";
-
 /**
  * Fetch file conversion configs for a specific client.
  * @param clientId 
@@ -244,10 +277,6 @@ export async function fetchDagTriggerHistory(dagId: string, triggerId: string) {
   }
 }
 
-
-
-// services/client.ts
-
 export async function fetchDagByClient(clientId: number): Promise<DAG | null> {
   try {
     // Adjust the URL based on your API route
@@ -260,6 +289,66 @@ export async function fetchDagByClient(clientId: number): Promise<DAG | null> {
     return data; // Assuming data shape { id: string, status: string }
   } catch (error) {
     console.error("Error fetching DAG by client:", error);
+    return null;
+  }
+}
+
+/**
+ * Creates new credentials.
+ * @param credentialData - The credential data to create.
+ * @returns A promise that resolves to the created credential response or null if an error occurs.
+ */
+export async function createCredentials(credentialData: CredentialCreate): Promise<CredentialOut | null> {
+  try {
+    console.log("Creating credentials with payload:", credentialData);
+
+    const res = await fetch(baseUrl("/credentials"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentialData),
+    });
+
+    if (!res.ok) {
+      let errorDetails = `Create credentials failed: ${res.status}`;
+      try {
+        const errorBody = await res.json();
+        errorDetails = errorBody.detail || errorBody.message || JSON.stringify(errorBody);
+      } catch (e) {
+        errorDetails = `${res.status} ${res.statusText}, Body: ${await res.text().catch(() => 'Could not read body')}`;
+      }
+      console.error("Failed to create credentials:", errorDetails);
+      throw new Error(`Create credentials failed: ${errorDetails}`);
+    }
+
+    const data: CredentialOut = await res.json();
+    return data;
+  } catch (error) {
+    console.error("Error in createCredentials:", error);
+    return null;
+  }
+}
+
+/**
+ * Fetches a list of all credentials.
+ * @returns A promise that resolves to an array of credentials or null if an error occurs.
+ */
+export async function fetchCredentials(): Promise<CredentialOut[] | null> {
+  try {
+    const res = await fetch(baseUrl("/credentials"));
+    if (!res.ok) {
+      let errorDetails = "Failed to fetch credentials";
+      try {
+        const errorBody = await res.json();
+        errorDetails = errorBody.detail || errorBody.message || JSON.stringify(errorBody);
+      } catch (e) {
+        errorDetails = `${res.status} ${res.statusText}`;
+      }
+      console.error("Failed to fetch credentials:", errorDetails);
+      throw new Error(`Fetch credentials failed: ${errorDetails}`);
+    }
+    return await res.json();
+  } catch (error) {
+    console.error("Error in fetchCredentials:", error);
     return null;
   }
 }

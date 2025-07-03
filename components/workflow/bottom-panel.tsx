@@ -70,7 +70,7 @@ interface BottomPanelProps {
 
 export function BottomPanel({ className }: BottomPanelProps) {
   const { logs, clearLogs, nodes } = useWorkflow();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [height, setHeight] = useState(300); // Default height
   const [isResizing, setIsResizing] = useState(false);
   const [apiLogs, setApiLogs] = useState<APILogEntry[]>([]);
