@@ -71,7 +71,7 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
   const { updateNode, selectedNodeId } = useWorkflow()
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
-  // Initialize filter data structure if not present
+  // Initialize filter data structure with proper defaults
   const filter = formData.filter || {
     operator: "AND",
     conditions: [],
@@ -116,6 +116,29 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
   const handleOperatorChange = (value: string) => {
     const updatedFilter = { ...filter, operator: value }
     onChange("filter", updatedFilter)
+  }
+
+  // Clear entire filter section
+  const clearAllFilters = () => {
+    const emptyFilter = {
+      operator: "AND",
+      conditions: [],
+    }
+    onChange("filter", emptyFilter)
+  }
+
+  // Clear entire order by section
+  const clearAllOrderBy = () => {
+    onChange("order_by", [])
+  }
+
+  // Clear entire aggregation section
+  const clearAllAggregations = () => {
+    const emptyAggregation = {
+      group_by: [],
+      aggregations: [],
+    }
+    onChange("aggregation", emptyAggregation)
   }
 
   // Add a new condition to the specified path
@@ -544,8 +567,17 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
         {/* Filter Tab */}
         <TabsContent value="filter" className="space-y-4">
           <Card>
-            <CardHeader className="py-3">
+            <CardHeader className="py-3 flex flex-row items-center justify-between">
               <CardTitle className="text-sm">Filter Conditions</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearAllFilters}
+                className="text-red-500 hover:text-red-700 bg-transparent"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Clear All
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -598,8 +630,17 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
         {/* Order By Tab */}
         <TabsContent value="orderby" className="space-y-4">
           <Card>
-            <CardHeader className="py-3">
+            <CardHeader className="py-3 flex flex-row items-center justify-between">
               <CardTitle className="text-sm">Sort Order</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearAllOrderBy}
+                className="text-red-500 hover:text-red-700 bg-transparent"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Clear All
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -654,8 +695,20 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
         {/* Aggregation Tab */}
         <TabsContent value="aggregation" className="space-y-4">
           <Card>
-            <CardHeader className="py-3">
+            <CardHeader className="py-3 flex flex-row items-center justify-between">
               <CardTitle className="text-sm">Group By</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newAggregation = { ...aggregation, group_by: [] }
+                  onChange("aggregation", newAggregation)
+                }}
+                className="text-red-500 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Clear All
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -695,8 +748,20 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
           </Card>
 
           <Card>
-            <CardHeader className="py-3">
+            <CardHeader className="py-3 flex flex-row items-center justify-between">
               <CardTitle className="text-sm">Aggregations</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newAggregation = { ...aggregation, aggregations: [] }
+                  onChange("aggregation", newAggregation)
+                }}
+                className="text-red-500 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Clear All
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -751,6 +816,22 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
                   <PlusCircle className="h-4 w-4 mr-2" /> Add Aggregation
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Clear All Aggregations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="outline"
+                onClick={clearAllAggregations}
+                className="w-full text-red-500 hover:text-red-700 bg-transparent"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All Group By & Aggregations
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

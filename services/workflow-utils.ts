@@ -1,4 +1,5 @@
-// // workflow-utils.ts
+// File: services/workflow-utils.ts
+
 import type { WorkflowNode, NodeConnection } from "@/components/workflow/workflow-context"
 import {
   createFileConversionConfig,
@@ -77,6 +78,69 @@ const createdConfigs: {
   cliOperatorConfigs: new Map(),
   salesforceReadConfigs: new Map(),
   salesforceWriteConfigs: new Map(),
+}
+
+// Helper function to ensure proper empty structures for backend API
+function normalizeFilterData(filterNode: WorkflowNode | null) {
+  if (!filterNode || !filterNode.data) {
+    return {
+      filter: {},
+      order_by: [],
+      aggregation: {},
+    }
+  }
+
+  const data = filterNode.data
+
+  // Normalize filter structure
+  let normalizedFilter = {}
+  if (data.filter && typeof data.filter === "object") {
+    if (data.filter.conditions && Array.isArray(data.filter.conditions) && data.filter.conditions.length > 0) {
+      normalizedFilter = {
+        operator: data.filter.operator || "AND",
+        conditions: data.filter.conditions,
+      }
+    }
+  }
+
+  // Normalize order_by structure
+  let normalizedOrderBy = []
+  if (data.order_by && Array.isArray(data.order_by) && data.order_by.length > 0) {
+    normalizedOrderBy = data.order_by.filter(
+      (order) => Array.isArray(order) && order.length === 2 && order[0] && order[1],
+    )
+  }
+
+  // Normalize aggregation structure
+  let normalizedAggregation = {}
+  if (data.aggregation && typeof data.aggregation === "object") {
+    const hasGroupBy =
+      data.aggregation.group_by &&
+      Array.isArray(data.aggregation.group_by) &&
+      data.aggregation.group_by.length > 0 &&
+      data.aggregation.group_by.some((field) => field && field.trim() !== "")
+
+    const hasAggregations =
+      data.aggregation.aggregations &&
+      Array.isArray(data.aggregation.aggregations) &&
+      data.aggregation.aggregations.length > 0 &&
+      data.aggregation.aggregations.some((agg) => Array.isArray(agg) && agg.length === 2 && agg[0] && agg[1])
+
+    if (hasGroupBy || hasAggregations) {
+      normalizedAggregation = {
+        group_by: hasGroupBy ? data.aggregation.group_by.filter((field) => field && field.trim() !== "") : [],
+        aggregations: hasAggregations
+          ? data.aggregation.aggregations.filter((agg) => Array.isArray(agg) && agg.length === 2 && agg[0] && agg[1])
+          : [],
+      }
+    }
+  }
+
+  return {
+    filter: normalizedFilter,
+    order_by: normalizedOrderBy,
+    aggregation: normalizedAggregation,
+  }
 }
 
 function findNextNode(
@@ -906,7 +970,7 @@ export async function updateAllConfigs(
     console.log(`Updating configs for ${cliOperationSequences.length} CLI operation sequences`)
     console.log(`Updating configs for ${salesforceSequences.length} Salesforce sequences`)
 
-    // Update file conversion sequences (including inline)
+    // Update file conversion sequences (including inline) with proper filter normalization
     for (const sequence of fileConversionSequences) {
       const { readNode, writeNode, filterNode, type } = sequence
       const configId = createdConfigs.fileConversionConfigs.get(readNode.id)
@@ -931,7 +995,24 @@ export async function updateAllConfigs(
         configPayload = createInlineToInlineConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
       }
 
-      console.log(`Updating ${type} config ${configId}:`, configPayload)
+      // Apply filter normalization to ensure proper empty structures
+      if (configPayload && filterNode) {
+        const normalizedFilterData = normalizeFilterData(filterNode)
+        configPayload = {
+          ...configPayload,
+          ...normalizedFilterData,
+        }
+      } else if (configPayload) {
+        // Ensure empty structures when no filter node exists
+        configPayload = {
+          ...configPayload,
+          filter: {},
+          order_by: [],
+          aggregation: {},
+        }
+      }
+
+      console.log(`Updating ${type} config ${configId}:`, JSON.stringify(configPayload, null, 2))
 
       const configResponse = await updateFileConversionConfig(clientId, configId, configPayload)
       if (!configResponse) {
@@ -1060,6 +1141,7 @@ export async function updateAllConfigs(
   }
 }
 
+// Rest of the existing functions remain the same...
 export async function runWorkflowOnly(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
