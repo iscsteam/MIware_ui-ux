@@ -176,126 +176,133 @@ interface NodeModalProps {
   onClose: () => void;
 }
 
+// JSON Syntax Highlighter Component
+const JsonHighlighter: React.FC<{ jsonString: string }> = ({ jsonString }) => {
+  const highlightJson = (str: string) => {
+    return str
+      .replace(/"([^"]+)":/g, '<span class="text-blue-400 font-medium">"$1"</span>:')
+      .replace(/:\s*"([^"]+)"/g, ': <span class="text-green-400">"$1"</span>')
+      .replace(/:\s*(\d+)/g, ': <span class="text-purple-400">$1</span>')
+      .replace(/:\s*(true|false)/g, ': <span class="text-orange-400">$1</span>')
+      .replace(/:\s*(null)/g, ': <span class="text-gray-400">$1</span>')
+  }
+
+  return (
+    <pre className="text-sm leading-relaxed">
+      <code 
+        className="text-gray-300"
+        dangerouslySetInnerHTML={{ __html: highlightJson(jsonString) }}
+      />
+    </pre>
+  )
+}
+
 export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
-  const { getNodeById, updateNode } = useWorkflow();
-  const [formData, setFormData] = useState<Record<string, any>>({});
-  const containerRef = useRef<HTMLDivElement>(null);
-  const leftResizerRef = useRef<HTMLDivElement>(null);
-  const rightResizerRef = useRef<HTMLDivElement>(null);
+  const { getNodeById, updateNode } = useWorkflow()
+  const [formData, setFormData] = useState<Record<string, any>>({})
+  const containerRef = useRef<HTMLDivElement>(null)
+  const leftResizerRef = useRef<HTMLDivElement>(null)
+  const rightResizerRef = useRef<HTMLDivElement>(null)
 
-  const [leftWidth, setLeftWidth] = useState(33.33);
-  const [rightWidth, setRightWidth] = useState(33.33);
+  const [leftWidth, setLeftWidth] = useState(33.33)
+  const [rightWidth, setRightWidth] = useState(33.33)
 
-  const node = getNodeById(nodeId);
+  const node = getNodeById(nodeId)
 
-  // Get schema from component-specific schema if available
-  const nodeSchema = node ? componentSchemas[node.type] : undefined;
+  // Get schema from component-specific schema if available, otherwise fall back to node-schemas.tsx
+  const nodeSchema = node ? componentSchemas[node.type] : undefined
 
-  const NodePropsComponent = node
-    ? NodePropertyComponents[node.type]
-    : undefined;
+  const NodePropsComponent = node ? NodePropertyComponents[node.type] : undefined
 
   useEffect(() => {
     if (node) {
       setFormData((prev) => ({
         ...prev,
         ...node.data,
-      }));
+      }))
     }
-  }, [nodeId, node]);
+  }, [nodeId, node])
 
   const handleChange = (name: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
 
   const handleSave = () => {
-    updateNode(nodeId, { data: formData });
-    onClose();
-  };
+    updateNode(nodeId, { data: formData })
+    onClose()
+  }
 
   // Column resize logic
   useEffect(() => {
-    const container = containerRef.current;
-    const leftResizer = leftResizerRef.current;
-    const rightResizer = rightResizerRef.current;
+    const container = containerRef.current
+    const leftResizer = leftResizerRef.current
+    const rightResizer = rightResizerRef.current
 
-    let startX = 0;
-    let startLeft = 0;
-    let startRight = 0;
-    let resizingLeft = false;
-    let resizingRight = false;
+    let startX = 0
+    let startLeft = 0
+    let startRight = 0
+    let resizingLeft = false
+    let resizingRight = false
 
     const onMouseDown = (e: MouseEvent, side: "left" | "right") => {
-      e.preventDefault();
-      startX = e.clientX;
-      const totalWidth = container?.getBoundingClientRect().width || 1;
-      startLeft = leftWidth;
-      startRight = rightWidth;
+      e.preventDefault()
+      startX = e.clientX
+      const totalWidth = container?.getBoundingClientRect().width || 1
+      startLeft = leftWidth
+      startRight = rightWidth
 
-      resizingLeft = side === "left";
-      resizingRight = side === "right";
+      resizingLeft = side === "left"
+      resizingRight = side === "right"
 
-      document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("mouseup", onMouseUp);
-    };
+      document.addEventListener("mousemove", onMouseMove)
+      document.addEventListener("mouseup", onMouseUp)
+    }
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!container) return;
-      const deltaX = e.clientX - startX;
-      const containerWidth = container.getBoundingClientRect().width;
+      if (!container) return
+      const deltaX = e.clientX - startX
+      const containerWidth = container.getBoundingClientRect().width
 
       if (resizingLeft) {
-        const newLeft = Math.max(
-          10,
-          Math.min(50, startLeft + (deltaX / containerWidth) * 100)
-        );
-        const center = 100 - newLeft - rightWidth;
-        if (center >= 20) setLeftWidth(newLeft);
+        const newLeft = Math.max(10, Math.min(50, startLeft + (deltaX / containerWidth) * 100))
+        const center = 100 - newLeft - rightWidth
+        if (center >= 20) setLeftWidth(newLeft)
       } else if (resizingRight) {
-        const newRight = Math.max(
-          10,
-          Math.min(50, startRight - (deltaX / containerWidth) * 100)
-        );
-        const center = 100 - leftWidth - newRight;
-        if (center >= 20) setRightWidth(newRight);
+        const newRight = Math.max(10, Math.min(50, startRight - (deltaX / containerWidth) * 100))
+        const center = 100 - leftWidth - newRight
+        if (center >= 20) setRightWidth(newRight)
       }
-    };
+    }
 
     const onMouseUp = () => {
-      resizingLeft = false;
-      resizingRight = false;
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-    };
+      resizingLeft = false
+      resizingRight = false
+      document.removeEventListener("mousemove", onMouseMove)
+      document.removeEventListener("mouseup", onMouseUp)
+    }
 
-    leftResizer?.addEventListener("mousedown", (e) => onMouseDown(e, "left"));
-    rightResizer?.addEventListener("mousedown", (e) => onMouseDown(e, "right"));
+    leftResizer?.addEventListener("mousedown", (e) => onMouseDown(e, "left"))
+    rightResizer?.addEventListener("mousedown", (e) => onMouseDown(e, "right"))
 
     return () => {
-      leftResizer?.removeEventListener("mousedown", (e) =>
-        onMouseDown(e, "left")
-      );
-      rightResizer?.removeEventListener("mousedown", (e) =>
-        onMouseDown(e, "right")
-      );
-    };
-  }, [leftWidth, rightWidth]);
+      leftResizer?.removeEventListener("mousedown", (e) => onMouseDown(e, "left"))
+      rightResizer?.removeEventListener("mousedown", (e) => onMouseDown(e, "right"))
+    }
+  }, [leftWidth, rightWidth])
 
-  if (!node) return null;
+  if (!node) return null
 
   const getNodeTitle = () => {
-    if (node.type === "read-node") {
-      return "Read Node";
-    }
+    // For "write-salesforce", convert to "Salesforce Write"
     if (node.type === "write-salesforce") {
-      return "Salesforce Write";
+      return "Salesforce Write"
     }
     // For inline operations
     if (node.type === "inline-input") {
-      return "Inline Input";
+      return "Inline Input"
     }
     if (node.type === "inline-output") {
-      return "Inline Output";
+      return "Inline Output"
     }
     // Existing logic for other node types
     return (
@@ -304,323 +311,267 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
         .split("-")
         .map((w) => w[0].toUpperCase() + w.slice(1))
         .join(" ")
-    );
-  };
+    )
+  }
 
   const renderParameterTooltip = (param: any) => {
     return (
-      <TooltipContent className="max-w-[300px] p-3">
+      <TooltipContent className="max-w-[300px] p-3 bg-gray-800 border-gray-700">
         <div className="space-y-2">
-          <p className="font-medium">{param.name}</p>
-          <p className="text-sm text-gray-500">{param.description}</p>
+          <p className="font-medium text-white">{param.name}</p>
+          <p className="text-sm text-gray-300">{param.description}</p>
           <div className="flex space-x-2 text-xs">
-            <span className="bg-gray-100 px-2 py-1 rounded">
-              {param.datatype}
-            </span>
-            {param.required && (
-              <span className="bg-red-100 text-red-700 px-2 py-1 rounded">
-                Required
-              </span>
-            )}
+            <span className="bg-gray-700 text-gray-200 px-2 py-1 rounded">{param.datatype}</span>
+            {param.required && <span className="bg-red-500 text-white px-2 py-1 rounded">Required</span>}
           </div>
         </div>
       </TooltipContent>
-    );
-  };
+    )
+  }
 
   // Create JSON representation of schema parameters for display
   const createSchemaJson = (schemaParams: any[]) => {
-    if (!schemaParams || !schemaParams.length) return "{}";
+    if (!schemaParams || !schemaParams.length) return "{}"
 
-    const schemaObj: Record<string, any> = {};
+    const schemaObj: Record<string, any> = {}
     schemaParams.forEach((param) => {
-      let defaultValue: any = null;
+      // Set default value based on datatype
+      let defaultValue: any = null
       switch (param.datatype) {
         case "string":
-          defaultValue = param.required ? "required" : "";
-          break;
+          defaultValue = param.required ? "required" : ""
+          break
         case "integer":
         case "number":
-          defaultValue = 0;
-          break;
+          defaultValue = 0
+          break
         case "boolean":
-          defaultValue = false;
-          break;
+          defaultValue = false
+          break
         case "complex":
-          defaultValue = {};
-          break;
-        case "array":
-          defaultValue = [];
-          break;
-          break;
+          defaultValue = {}
+          break
+        case "array": // Handle array types
+          defaultValue = []
+          break
         default:
-          defaultValue = null;
+          defaultValue = null
       }
 
-      schemaObj[param.name] = defaultValue;
-    });
+      schemaObj[param.name] = defaultValue
+    })
 
-    return JSON.stringify(schemaObj, null, 2);
-  };
-
-  // Special function to render ReadNode response in output section
-  const renderReadNodeOutput = () => {
-    if (node?.type !== "read-node" || !formData.lastResponse) {
-      return null;
-    }
-
-    const response = formData.lastResponse;
-
-    return (
-      <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded">
-        <h4 className="font-medium text-gray-900 mb-2">Last Response</h4>
-        <div className="space-y-2 text-sm">
-          <div>
-            <span className="font-medium">Status:</span>{" "}
-            <span
-              className={response.success ? "text-green-600" : "text-red-600"}
-            >
-              {response.success ? "Success" : "Failed"}
-            </span>
-          </div>
-
-          {response.success && (
-            <>
-              <div>
-                <span className="font-medium">File Path:</span>{" "}
-                <span className="text-blue-600 break-all">
-                  {response.file_path}
-                </span>
-              </div>
-              <div>
-                <span className="font-medium">File Type:</span>{" "}
-                <span className="text-purple-600">{response.file_type}</span>
-              </div>
-              <div>
-                <span className="font-medium">Record Count:</span>{" "}
-                <span className="text-orange-600">{response.record_count}</span>
-                {response.limit && (
-                  <span className="text-gray-500 ml-1">
-                    (limit: {response.limit})
-                  </span>
-                )}
-              </div>
-              <div>
-                <span className="font-medium">Content Preview:</span>
-                <div className="mt-1 p-3 bg-white border rounded-lg">
-                  <div
-                    className="max-h-80 overflow-y-auto custom-scrollbar"
-                    style={{
-                      scrollbarWidth: "thin",
-                      scrollbarColor: "#cbd5e1 #f1f5f9",
-                    }}
-                  >
-                    <pre className="text-xs whitespace-pre-wrap break-words font-mono leading-relaxed">
-                      {response.content}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {!response.success && response.error_message && (
-            <div>
-              <span className="font-medium">Error:</span>{" "}
-              <span className="text-red-600 break-words">
-                {response.error_message}
-              </span>
-            </div>
-          )}
-
-          <div className="text-xs text-gray-500">
-            <span className="font-medium">Timestamp:</span>{" "}
-            {new Date(response.timestamp).toLocaleString()}
-          </div>
-        </div>
-
-        <style jsx>{`
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-          }
-
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 4px;
-          }
-
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-            border: 1px solid #f1f5f9;
-          }
-
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-          }
-
-          .custom-scrollbar::-webkit-scrollbar-corner {
-            background: #f1f5f9;
-          }
-        `}</style>
-      </div>
-    );
-  };
+    return JSON.stringify(schemaObj, null, 2)
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-[90vw] p-0 overflow-hidden max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[90vw] p-0 overflow-hidden max-h-[90vh] flex flex-col bg-gray-50">
         {/* Header */}
-        <DialogHeader className="p-4 border-b flex justify-between items-center">
-          <DialogTitle>{getNodeTitle()}</DialogTitle>
+        <DialogHeader className="p-4 border-b bg-white shadow-sm">
+          <DialogTitle className="text-lg font-semibold text-gray-800">{getNodeTitle()}</DialogTitle>
+          <p className="text-sm text-gray-500 mt-1">Configure node properties and parameters</p>
         </DialogHeader>
 
         {/* Body with resizable columns */}
         <div ref={containerRef} className="flex flex-1 overflow-hidden h-full">
           {/* Input */}
-          <div
-            className="bg-white border-r flex flex-col"
-            style={{ width: `${leftWidth}%` }}
-          >
-            <div className="px-4 py-2 font-medium text-sm border-b bg-white">
+          <div className="bg-white border-r border-gray-200 flex flex-col" style={{ width: `${leftWidth}%` }}>
+            <div className="px-4 py-3 font-medium text-sm bg-slate-700 text-white flex items-center">
+              <div className="w-2 h-2 bg-red-400 rounded-full mr-2"></div>
               INPUT
             </div>
-            <div className="overflow-y-auto p-4 flex-1">
+            <div className="overflow-y-auto p-4 flex-1 bg-gray-50">
               {nodeSchema?.inputSchema?.length ? (
-                <div className="rounded bg-gray-50 p-4">
-                  <pre className="text-xs overflow-auto">
-                    <code>{createSchemaJson(nodeSchema.inputSchema)}</code>
-                  </pre>
-                  <div className="mt-3 space-y-2">
-                    {nodeSchema.inputSchema.map((param, index) => {
-                      const value = formData[param.name];
-                      return (
-                        <TooltipProvider key={index}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex flex-col cursor-help">
-                                <div className="flex items-center text-sm">
-                                  <span className="text-blue-600 font-mono">
-                                    {param.name}
-                                  </span>
-                                  {param.required && (
-                                    <span className="text-red-500 ml-1">*</span>
-                                  )}
-                                  <span className="text-gray-500 ml-2">
-                                    ({param.datatype})
-                                  </span>
-                                </div>
-                                {value !== undefined && (
-                                  <div className="text-xs text-gray-600 ml-1 pl-1 border-l border-gray-300">
-                                    {typeof value === "object" && value !== null
-                                      ? JSON.stringify(value)
-                                      : String(value)}
+                <div className="space-y-4">
+                  {/* Schema Preview */}
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <div className="w-1 h-4 bg-orange-500 mr-2"></div>
+                      <h3 className="text-sm font-semibold text-orange-600 uppercase tracking-wide">
+                        SCHEMA PREVIEW
+                      </h3>
+                    </div>
+                    <div className="rounded-lg bg-gray-900 p-4 overflow-auto">
+                      <JsonHighlighter jsonString={createSchemaJson(nodeSchema.inputSchema)} />
+                    </div>
+                  </div>
+
+                  {/* Parameters */}
+                  <div>
+                    <div className="flex items-center mb-3">
+                      <div className="w-1 h-4 bg-orange-500 mr-2"></div>
+                      <h3 className="text-sm font-semibold text-orange-600 uppercase tracking-wide">
+                        Parameters
+                      </h3>
+                    </div>
+                    <div className="space-y-3">
+                      {nodeSchema.inputSchema.map((param, index) => {
+                        const value = formData[param.name]
+                        return (
+                          <TooltipProvider key={index}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="bg-white p-3 rounded-lg border border-gray-200 cursor-help hover:border-gray-300 transition-colors">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center">
+                                      <span className="text-blue-600 font-mono text-sm font-medium">
+                                        {param.name}
+                                      </span>
+                                      {param.required && <span className="text-red-500 ml-1 text-xs">*</span>}
+                                    </div>
+                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                      {param.datatype}
+                                    </span>
                                   </div>
-                                )}
-                              </div>
-                            </TooltipTrigger>
-                            {renderParameterTooltip(param)}
-                          </Tooltip>
-                        </TooltipProvider>
-                      );
-                    })}
+                                  {value !== undefined && (
+                                    <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded mt-2 border-l-2 border-orange-300">
+                                      {typeof value === "object" && value !== null
+                                        ? JSON.stringify(value, null, 2)
+                                        : String(value)}
+                                    </div>
+                                  )}
+                                </div>
+                              </TooltipTrigger>
+                              {renderParameterTooltip(param)}
+                            </Tooltip>
+                          </TooltipProvider>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-gray-500 italic">
-                  No input parameters
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-center">
+                    <div className="text-gray-400 text-2xl mb-2">📝</div>
+                    <div className="text-sm text-gray-500 italic">No input parameters</div>
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
           {/* Resizer Left */}
-          <div
-            ref={leftResizerRef}
-            className="w-1 bg-gray-200 hover:bg-blue-500 cursor-col-resize"
-          />
+          <div 
+            ref={leftResizerRef} 
+            className="w-1 bg-gray-300 hover:bg-blue-500 cursor-col-resize transition-colors relative group"
+          >
+            <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-blue-500/20"></div>
+          </div>
 
           {/* Configuration */}
-          <div
-            className="flex flex-col border-r"
-            style={{ width: `${100 - leftWidth - rightWidth}%` }}
-          >
-            <div className="px-4 py-2 font-medium text-sm border-b bg-white">
+          <div className="flex flex-col border-r border-gray-200" style={{ width: `${100 - leftWidth - rightWidth}%` }}>
+            <div className="px-4 py-3 font-medium text-sm bg-slate-700 text-white flex items-center">
+              <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2"></div>
               CONFIGURATION
             </div>
-            <div className="p-4 overflow-y-auto flex-1">
+            <div className="p-4 overflow-y-auto flex-1 bg-white">
               {NodePropsComponent ? (
-                <NodePropsComponent
-                  formData={formData}
-                  onChange={handleChange}
-                />
+                <div className="space-y-4">
+                  <NodePropsComponent formData={formData} onChange={handleChange} />
+                </div>
               ) : (
-                <div className="italic text-sm text-gray-500">
-                  No configuration for this node type.
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-center">
+                    <div className="text-gray-400 text-2xl mb-2">⚙️</div>
+                    <div className="italic text-sm text-gray-500">No configuration for this node type.</div>
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
           {/* Resizer Right */}
-          <div
-            ref={rightResizerRef}
-            className="w-1 bg-gray-200 hover:bg-blue-500 cursor-col-resize"
-          />
+          <div 
+            ref={rightResizerRef} 
+            className="w-1 bg-gray-300 hover:bg-blue-500 cursor-col-resize transition-colors relative group"
+          >
+            <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-blue-500/20"></div>
+          </div>
 
           {/* Output */}
-          <div
-            className="bg-white flex flex-col"
-            style={{ width: `${rightWidth}%` }}
-          >
-            <div className="px-4 py-2 font-medium text-sm border-b bg-white">
+          <div className="bg-white flex flex-col" style={{ width: `${rightWidth}%` }}>
+            <div className="px-4 py-3 font-medium text-sm bg-slate-700 text-white flex items-center">
+              <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
               OUTPUT
             </div>
-            <div className="p-4 overflow-y-auto flex-1">
+            <div className="p-4 overflow-y-auto flex-1 bg-gray-50">
               {nodeSchema?.outputSchema?.length ? (
-                <div className="rounded bg-gray-50 p-4">
-                  <pre className="text-xs overflow-auto">
-                    <code>{createSchemaJson(nodeSchema.outputSchema)}</code>
-                  </pre>
-                  <div className="mt-3 space-y-2">
-                    {nodeSchema.outputSchema.map((param, index) => (
-                      <TooltipProvider key={index}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center text-sm cursor-help">
-                              <span className="text-blue-600 font-mono">
-                                {param.name}
-                              </span>
-                              <span className="text-gray-500 ml-2">
-                                ({param.datatype})
-                              </span>
-                            </div>
-                          </TooltipTrigger>
-                          {renderParameterTooltip(param)}
-                        </Tooltip>
-                      </TooltipProvider>
-                    ))}
+                <div className="space-y-4">
+                  {/* Schema Preview */}
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <div className="w-1 h-4 bg-orange-500 mr-2"></div>
+                      <h3 className="text-sm font-semibold text-orange-600 uppercase tracking-wide">
+                        SCHEMA PREVIEW
+                      </h3>
+                    </div>
+                    <div className="rounded-lg bg-gray-900 p-4 overflow-auto">
+                      <JsonHighlighter jsonString={createSchemaJson(nodeSchema.outputSchema)} />
+                    </div>
+                  </div>
+
+                  {/* Parameters */}
+                  <div>
+                    <div className="flex items-center mb-3">
+                      <div className="w-1 h-4 bg-orange-500 mr-2"></div>
+                      <h3 className="text-sm font-semibold text-orange-600 uppercase tracking-wide">
+                        Parameters
+                      </h3>
+                    </div>
+                    <div className="space-y-3">
+                      {nodeSchema.outputSchema.map((param, index) => (
+                        <TooltipProvider key={index}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="bg-white p-3 rounded-lg border border-gray-200 cursor-help hover:border-gray-300 transition-colors">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-blue-600 font-mono text-sm font-medium">
+                                    {param.name}
+                                  </span>
+                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                    {param.datatype}
+                                  </span>
+                                </div>
+                              </div>
+                            </TooltipTrigger>
+                            {renderParameterTooltip(param)}
+                          </Tooltip>
+                        </TooltipProvider>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-gray-500 italic">
-                  No output parameters
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-center">
+                    <div className="text-gray-400 text-2xl mb-2">📤</div>
+                    <div className="text-sm text-gray-500 italic">No output parameters</div>
+                  </div>
                 </div>
               )}
-
-              {/* Special ReadNode response display */}
-              {renderReadNodeOutput()}
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-center gap-2 p-4 border-t shrink-0 bg-white">
-          <Button className="w-full max-w-[200px]" onClick={handleSave}>
-            Save
+        <div className="flex justify-end gap-3 p-4 border-t bg-white">
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+            className="px-6"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSave}
+            className="px-6 bg-blue-600 hover:bg-blue-700"
+          >
+            Save Changes
           </Button>
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
