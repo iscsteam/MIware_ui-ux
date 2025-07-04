@@ -11,7 +11,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { LoginPage } from "@/components/auth/loginpage" 
 import { LoadingScreen } from "@/components/auth/loading-screen" 
 import { ClientsPage } from "@/components/workflow/clients-page"
-
+import "@/services/consolelog";
 interface User {
   id: number
   email: string
