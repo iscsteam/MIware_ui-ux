@@ -1,4 +1,4 @@
-// File: services/workflow-utils.ts
+//File: services/workflow-utils.ts
 
 import type { WorkflowNode, NodeConnection } from "@/components/workflow/workflow-context"
 import {
@@ -28,6 +28,7 @@ import { getCurrentClientId } from "@/components/workflow/workflow-context"
 import { createSalesforceReadConfig, updateSalesforceReadConfig } from "@/services/salesforce/salesforceread"
 import { createSalesforceWriteConfig, updateSalesforceWriteConfig } from "@/services/salesforce/salesforcewrite"
 
+// Helper function to ensure Python-compatible IDs
 function makePythonSafeId(id: string): string {
   let safeId = id.replace(/[^a-zA-Z0-9_]/g, "_")
   if (!/^[a-zA-Z_]/.test(safeId)) {
@@ -36,10 +37,11 @@ function makePythonSafeId(id: string): string {
   return safeId
 }
 
+// Interface for file conversion sequence - ENHANCED to include all types
 interface FileConversionSequence {
   readNode: WorkflowNode
   writeNode: WorkflowNode
-  filterNode?: WorkflowNode
+  filterNode?: WorkflowNode // Changed from null to undefined
   sequenceIndex: number
   type:
     | "file-to-file"
@@ -50,17 +52,20 @@ interface FileConversionSequence {
     | "inline-to-inline"
 }
 
+// Interface for CLI operation sequence
 interface CliOperationSequence {
   operationNode: WorkflowNode
   sequenceIndex: number
 }
 
+// Interface for Salesforce sequence
 interface SalesforceSequence {
   salesforceNode: WorkflowNode
   sequenceIndex: number
   type: "read" | "write"
 }
 
+// Interface for operation config
 interface OperationConfig {
   type: "file_conversion" | "cli_operator" | "read_salesforce" | "write_salesforce"
   configId: number
@@ -68,6 +73,7 @@ interface OperationConfig {
   sequenceIndex: number
 }
 
+// Store for created configs
 const createdConfigs: {
   fileConversionConfigs: Map<string, number>
   cliOperatorConfigs: Map<string, number>
@@ -104,10 +110,10 @@ function normalizeFilterData(filterNode: WorkflowNode | null) {
   }
 
   // Normalize order_by structure
-  let normalizedOrderBy = []
+  let normalizedOrderBy: any[] = []
   if (data.order_by && Array.isArray(data.order_by) && data.order_by.length > 0) {
     normalizedOrderBy = data.order_by.filter(
-      (order) => Array.isArray(order) && order.length === 2 && order[0] && order[1],
+      (order: any) => Array.isArray(order) && order.length === 2 && order[0] && order[1],
     )
   }
 
@@ -118,19 +124,21 @@ function normalizeFilterData(filterNode: WorkflowNode | null) {
       data.aggregation.group_by &&
       Array.isArray(data.aggregation.group_by) &&
       data.aggregation.group_by.length > 0 &&
-      data.aggregation.group_by.some((field) => field && field.trim() !== "")
+      data.aggregation.group_by.some((field: any) => field && field.trim() !== "")
 
     const hasAggregations =
       data.aggregation.aggregations &&
       Array.isArray(data.aggregation.aggregations) &&
       data.aggregation.aggregations.length > 0 &&
-      data.aggregation.aggregations.some((agg) => Array.isArray(agg) && agg.length === 2 && agg[0] && agg[1])
+      data.aggregation.aggregations.some((agg: any) => Array.isArray(agg) && agg.length === 2 && agg[0] && agg[1])
 
     if (hasGroupBy || hasAggregations) {
       normalizedAggregation = {
-        group_by: hasGroupBy ? data.aggregation.group_by.filter((field) => field && field.trim() !== "") : [],
+        group_by: hasGroupBy ? data.aggregation.group_by.filter((field: any) => field && field.trim() !== "") : [],
         aggregations: hasAggregations
-          ? data.aggregation.aggregations.filter((agg) => Array.isArray(agg) && agg.length === 2 && agg[0] && agg[1])
+          ? data.aggregation.aggregations.filter(
+              (agg: any) => Array.isArray(agg) && agg.length === 2 && agg[0] && agg[1],
+            )
           : [],
       }
     }
@@ -143,6 +151,7 @@ function normalizeFilterData(filterNode: WorkflowNode | null) {
   }
 }
 
+// Find the next node in the workflow based on connections
 function findNextNode(
   currentNodeId: string,
   connections: NodeConnection[],
@@ -154,10 +163,11 @@ function findNextNode(
   return nodes.find((node) => node.id === connection.targetId) || null
 }
 
+// ENHANCED function to find all file conversion sequences (including inline and database operations)
 function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeConnection[]): FileConversionSequence[] {
   const sequences: FileConversionSequence[] = []
 
-  // Find read-file and inline-input nodes
+  // Find all possible input nodes
   const readFileNodes = nodes.filter((node) => node.type === "read-file")
   const inlineInputNodes = nodes.filter((node) => node.type === "inline-input")
   const databaseSourceNodes = nodes.filter((node) => node.type === "source")
@@ -168,7 +178,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
   for (const readNode of readFileNodes) {
     let currentNode: WorkflowNode | null = readNode
     let writeNode: WorkflowNode | null = null
-    let filterNode: WorkflowNode | null = null
+    let filterNode: WorkflowNode | undefined = undefined
 
     while (currentNode) {
       const nextNode = findNextNode(currentNode.id, connections, nodes)
@@ -233,7 +243,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
   for (const inlineInputNode of inlineInputNodes) {
     let currentNode: WorkflowNode | null = inlineInputNode
     let writeNode: WorkflowNode | null = null
-    let filterNode: WorkflowNode | null = null
+    let filterNode: WorkflowNode | undefined = undefined
 
     while (currentNode) {
       const nextNode = findNextNode(currentNode.id, connections, nodes)
@@ -282,7 +292,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
           writeNode,
           filterNode,
           sequenceIndex: sequenceIndex++,
-          type: "inline-to-file",
+          type: "inline-to-file", // This should probably be "inline-to-database"
         })
         break
       } else if (nextNode.type === "filter") {
@@ -298,7 +308,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
   for (const dbSourceNode of databaseSourceNodes) {
     let currentNode: WorkflowNode | null = dbSourceNode
     let writeNode: WorkflowNode | null = null
-    let filterNode: WorkflowNode | null = null
+    let filterNode: WorkflowNode | undefined = undefined
 
     while (currentNode) {
       const nextNode = findNextNode(currentNode.id, connections, nodes)
@@ -332,7 +342,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
           writeNode,
           filterNode,
           sequenceIndex: sequenceIndex++,
-          type: "database-to-file",
+          type: "database-to-file", // This should probably be "database-to-inline"
         })
         break
       } else if (nextNode.type === "filter") {
@@ -347,6 +357,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
   return sequences
 }
 
+// Find all CLI operation sequences in the workflow
 function findCliOperationSequences(nodes: WorkflowNode[], connections: NodeConnection[]): CliOperationSequence[] {
   const sequences: CliOperationSequence[] = []
   const cliOperationNodes = nodes.filter(
@@ -369,6 +380,7 @@ function findCliOperationSequences(nodes: WorkflowNode[], connections: NodeConne
   return sequences
 }
 
+// Find all Salesforce sequences in the workflow
 function findSalesforceSequences(nodes: WorkflowNode[], connections: NodeConnection[]): SalesforceSequence[] {
   const sequences: SalesforceSequence[] = []
   const salesforceReadNodes = nodes.filter((node) => node.type === "salesforce-cloud")
@@ -395,25 +407,31 @@ function findSalesforceSequences(nodes: WorkflowNode[], connections: NodeConnect
   return sequences
 }
 
+// Find all operations in workflow order (mixed file conversions, CLI operations, and Salesforce)
 function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnection[]): OperationConfig[] {
   const operations: OperationConfig[] = []
 
+  // Find start node
   const startNode = nodes.find((node) => node.type === "start")
   if (!startNode) return operations
 
   let currentNode = startNode
   let operationIndex = 0
 
+  // Traverse the workflow from start to end
   while (currentNode) {
     const nextNode = findNextNode(currentNode.id, connections, nodes)
     if (!nextNode) break
 
+    // Check if current node starts a file conversion sequence
     if (nextNode.type === "read-file" || nextNode.type === "source" || nextNode.type === "inline-input") {
+      // Find the complete file conversion sequence
       const readNode = nextNode
       let writeNode: WorkflowNode | null = null
       let filterNode: WorkflowNode | null = null
       let sequenceNode = readNode
 
+      // Traverse to find write node or database node
       while (sequenceNode) {
         const seqNextNode = findNextNode(sequenceNode.id, connections, nodes)
         if (!seqNextNode) break
@@ -425,12 +443,13 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
         ) {
           writeNode = seqNextNode
 
+          // Check for filter after write
           const nodeAfterWrite = findNextNode(writeNode.id, connections, nodes)
           if (nodeAfterWrite && nodeAfterWrite.type === "filter") {
             filterNode = nodeAfterWrite
-            currentNode = filterNode
+            currentNode = filterNode // Continue from filter
           } else {
-            currentNode = writeNode
+            currentNode = writeNode // Continue from write
           }
           break
         } else if (seqNextNode.type === "filter") {
@@ -450,7 +469,9 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
           sequenceIndex: operationIndex++,
         })
       }
-    } else if (
+    }
+    // Check if current node is a CLI operation
+    else if (
       nextNode.type === "copy-file" ||
       nextNode.type === "move-file" ||
       nextNode.type === "rename-file" ||
@@ -464,7 +485,9 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
         sequenceIndex: operationIndex++,
       })
       currentNode = nextNode
-    } else if (nextNode.type === "salesforce-cloud") {
+    }
+    // Check if current node is a Salesforce read operation
+    else if (nextNode.type === "salesforce-cloud") {
       const configId = createdConfigs.salesforceReadConfigs.get(nextNode.id) || -1
       operations.push({
         type: "read_salesforce",
@@ -473,7 +496,9 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
         sequenceIndex: operationIndex++,
       })
       currentNode = nextNode
-    } else if (nextNode.type === "write-salesforce") {
+    }
+    // Check if current node is a Salesforce write operation
+    else if (nextNode.type === "write-salesforce") {
       const configId = createdConfigs.salesforceWriteConfigs.get(nextNode.id) || -1
       operations.push({
         type: "write_salesforce",
@@ -490,6 +515,7 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
   return operations
 }
 
+// Create DAG sequence for mixed operations
 function createMixedOperationsDagSequence(
   operationConfigs: OperationConfig[],
   startNode: WorkflowNode,
@@ -499,6 +525,7 @@ function createMixedOperationsDagSequence(
 
   if (operationConfigs.length === 0) return dagSequence
 
+  // Start node
   const firstConfig = operationConfigs[0]
   let firstNodeId: string
 
@@ -519,6 +546,7 @@ function createMixedOperationsDagSequence(
     next: [firstNodeId],
   })
 
+  // Operation nodes
   for (let i = 0; i < operationConfigs.length; i++) {
     const config = operationConfigs[i]
     const nextConfig = operationConfigs[i + 1]
@@ -557,6 +585,7 @@ function createMixedOperationsDagSequence(
     })
   }
 
+  // End node
   dagSequence.push({
     id: makePythonSafeId(endNode.id),
     type: "end",
@@ -567,6 +596,7 @@ function createMixedOperationsDagSequence(
   return dagSequence
 }
 
+// Clear all stored configs (useful when workflow structure changes significantly)
 export function clearAllConfigs(): void {
   createdConfigs.fileConversionConfigs.clear()
   createdConfigs.cliOperatorConfigs.clear()
@@ -580,6 +610,7 @@ export function clearAllConfigs(): void {
   })
 }
 
+// Get current config counts for debugging
 export function getConfigCounts(): {
   fileConversion: number
   cliOperator: number
@@ -594,6 +625,7 @@ export function getConfigCounts(): {
   }
 }
 
+// ENHANCED: Create all configurations with support for all conversion types
 export async function createAllConfigs(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
@@ -647,6 +679,7 @@ export async function createAllConfigs(
   })
 
   try {
+    // Find all operations in the workflow
     const fileConversionSequences = findFileConversionSequences(nodes, connections)
     const cliOperationSequences = findCliOperationSequences(nodes, connections)
     const salesforceSequences = findSalesforceSequences(nodes, connections)
@@ -716,7 +749,7 @@ export async function createAllConfigs(
       }
 
       // Create config payload based on sequence type with error handling
-      let configPayload
+      let configPayload: any = null
       try {
         console.log(`Creating ${type} config for sequence ${sequence.sequenceIndex + 1}`)
 
@@ -755,18 +788,19 @@ export async function createAllConfigs(
           title: "Config Created",
           description: `${type} configuration ${configResponse.id} created successfully!`,
         })
-      } catch (configError) {
+      } catch (configError: unknown) {
+        const errorMessage = configError instanceof Error ? configError.message : "Unknown error occurred"
         console.error(`❌ Error creating ${type} config:`, configError)
         toast({
           title: "Config Creation Failed",
-          description: `Failed to create ${type} config: ${configError.message}`,
+          description: `Failed to create ${type} config: ${errorMessage}`,
           variant: "destructive",
         })
         return false
       }
     }
 
-    // Process CLI operation sequences (existing code remains the same)
+    // Process CLI operation sequences (same as before)
     for (const sequence of cliOperationSequences) {
       const { operationNode } = sequence
       let cliConfigPayload
@@ -832,7 +866,7 @@ export async function createAllConfigs(
       console.log(`Created CLI operator config ${configResponse.id} for ${operationNode.type} operation`)
     }
 
-    // Process Salesforce sequences (existing code remains the same)
+    // Process Salesforce sequences (same as before)
     for (const sequence of salesforceSequences) {
       const { salesforceNode, type } = sequence
 
@@ -913,15 +947,17 @@ export async function createAllConfigs(
     return true
   } catch (error) {
     console.error("Error in createAllConfigs:", error)
+    const errorMessage = error instanceof Error ? error.message : "Failed to create configurations."
     toast({
       title: "Config Creation Error",
-      description: error instanceof Error ? error.message : "Failed to create configurations.",
+      description: errorMessage,
       variant: "destructive",
     })
     return false
   }
 }
 
+// ENHANCED: Update all configurations with proper filter normalization
 export async function updateAllConfigs(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
@@ -961,6 +997,15 @@ export async function updateAllConfigs(
     return false
   }
 
+  if (!currentWorkflowId) {
+    toast({
+      title: "Error",
+      description: "Workflow ID is required to update configurations.",
+      variant: "destructive",
+    })
+    return false
+  }
+
   try {
     const fileConversionSequences = findFileConversionSequences(nodes, connections)
     const cliOperationSequences = findCliOperationSequences(nodes, connections)
@@ -980,7 +1025,7 @@ export async function updateAllConfigs(
         continue
       }
 
-      let configPayload
+      let configPayload: any = null
       if (type === "file-to-file") {
         configPayload = createFileToFileConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
       } else if (type === "file-to-database") {
@@ -995,14 +1040,19 @@ export async function updateAllConfigs(
         configPayload = createInlineToInlineConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
       }
 
+      if (!configPayload) {
+        console.log(`Failed to create config payload for ${type}, skipping update`)
+        continue
+      }
+
       // Apply filter normalization to ensure proper empty structures
-      if (configPayload && filterNode) {
+      if (filterNode) {
         const normalizedFilterData = normalizeFilterData(filterNode)
         configPayload = {
           ...configPayload,
           ...normalizedFilterData,
         }
-      } else if (configPayload) {
+      } else {
         // Ensure empty structures when no filter node exists
         configPayload = {
           ...configPayload,
@@ -1022,7 +1072,7 @@ export async function updateAllConfigs(
       console.log(`Updated ${type} config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
     }
 
-    // Update CLI operation sequences
+    // Update CLI operation sequences (same as before)
     for (const sequence of cliOperationSequences) {
       const { operationNode } = sequence
       const configId = createdConfigs.cliOperatorConfigs.get(operationNode.id)
@@ -1061,7 +1111,7 @@ export async function updateAllConfigs(
       console.log(`Updated CLI operator config ${configId} for ${operationNode.type} operation`)
     }
 
-    // Update Salesforce sequences
+    // Update Salesforce sequences (same as before)
     for (const sequence of salesforceSequences) {
       const { salesforceNode, type } = sequence
 
@@ -1132,16 +1182,17 @@ export async function updateAllConfigs(
     return true
   } catch (error) {
     console.error("Error in updateAllConfigs:", error)
+    const errorMessage = error instanceof Error ? error.message : "Failed to update configurations."
     toast({
       title: "Config Update Error",
-      description: error instanceof Error ? error.message : "Failed to update configurations.",
+      description: errorMessage,
       variant: "destructive",
     })
     return false
   }
 }
 
-// Rest of the existing functions remain the same...
+// Rest of the functions remain the same as your original version...
 export async function runWorkflowOnly(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
@@ -1250,9 +1301,10 @@ export async function runWorkflowOnly(
     return true
   } catch (error) {
     console.error("Error in runWorkflowOnly:", error)
+    const errorMessage = error instanceof Error ? error.message : "Failed to run workflow."
     toast({
       title: "Workflow Error",
-      description: error instanceof Error ? error.message : "Failed to run workflow.",
+      description: errorMessage,
       variant: "destructive",
     })
     return false
