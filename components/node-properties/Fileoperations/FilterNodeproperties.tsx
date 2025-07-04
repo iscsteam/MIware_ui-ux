@@ -428,22 +428,26 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
         const isExpanded = expandedGroups[currentPath] || false
 
         return (
-          <div key={currentPath} className="ml-4 border-l-2 border-slate-200 pl-4 my-2">
-            <div className="flex items-center mb-2">
+          <div key={currentPath} className="ml-2 sm:ml-4 border-l-2 border-slate-200 pl-2 sm:pl-4 my-2">
+            <div className="flex items-center mb-2 gap-1 sm:gap-2">
               <button
                 type="button"
                 onClick={() => toggleGroupExpansion(currentPath)}
-                className="mr-2 text-slate-500 hover:text-slate-700"
+                className="p-1 text-slate-500 hover:text-slate-700 flex-shrink-0"
               >
-                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                {isExpanded ? (
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                )}
               </button>
 
               <Select
                 value={condition.operator}
                 onValueChange={(value) => updateConditionField(currentPath, "operator", value)}
               >
-                <SelectTrigger className="w-24">
-                  <SelectValue placeholder="Operator" />
+                <SelectTrigger className="w-16 sm:w-20 h-7 sm:h-8 text-xs">
+                  <SelectValue placeholder="Op" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="AND">AND</SelectItem>
@@ -453,40 +457,40 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
 
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => removeCondition(currentPath)}
-                className="ml-2 text-red-500 hover:text-red-700"
+                className="h-7 w-7 p-0 text-red-500 hover:text-red-700 flex-shrink-0"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3 w-3" />
               </Button>
             </div>
 
             {isExpanded && (
-              <div className="space-y-2">
+              <div className="space-y-2 overflow-hidden">
                 {condition.conditions && condition.conditions.length > 0 ? (
                   renderConditions(condition.conditions, `${currentPath}.conditions`)
                 ) : (
-                  <div className="text-sm text-slate-500 italic ml-6">No conditions added</div>
+                  <div className="text-xs text-slate-500 italic ml-4 sm:ml-6">No conditions added</div>
                 )}
 
-                <div className="flex space-x-2 mt-2">
+                <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 mt-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => addCondition(currentPath)}
-                    className="text-xs"
+                    className="h-7 text-xs px-2 flex-1 sm:flex-none"
                   >
-                    <PlusCircle className="h-3 w-3 mr-1" /> Add Condition
+                    <PlusCircle className="h-3 w-3 mr-1" /> Condition
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => addConditionGroup(currentPath)}
-                    className="text-xs"
+                    className="h-7 text-xs px-2 flex-1 sm:flex-none"
                   >
-                    <PlusCircle className="h-3 w-3 mr-1" /> Add Group
+                    <PlusCircle className="h-3 w-3 mr-1" /> Group
                   </Button>
                 </div>
               </div>
@@ -496,22 +500,25 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
       } else {
         // This is a simple condition - IMPROVED RESPONSIVE LAYOUT
         return (
-          <div key={currentPath} className="flex flex-wrap items-center gap-2 mb-2 ml-4">
-            <div className="w-full sm:w-auto flex-1 min-w-[120px]">
+          <div
+            key={currentPath}
+            className="grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-2 ml-2 sm:ml-4 items-center"
+          >
+            <div className="sm:col-span-2 lg:col-span-2 min-w-0">
               <Input
                 placeholder="Field"
                 value={condition.field || ""}
                 onChange={(e) => updateConditionField(currentPath, "field", e.target.value)}
-                className="w-full"
+                className="w-full h-8 text-xs"
               />
             </div>
 
-            <div className="w-full sm:w-auto min-w-[140px]">
+            <div className="sm:col-span-1 lg:col-span-2 min-w-0">
               <Select
                 value={condition.operation || "eq"}
                 onValueChange={(value) => updateConditionField(currentPath, "operation", value)}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full h-8 text-xs">
                   <SelectValue placeholder="Operation" />
                 </SelectTrigger>
                 <SelectContent>
@@ -530,23 +537,23 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
               </Select>
             </div>
 
-            <div className="w-full sm:w-auto flex-1 min-w-[120px]">
+            <div className="sm:col-span-1 lg:col-span-2 min-w-0">
               <Input
                 placeholder="Value"
                 value={typeof condition.value === "undefined" ? "" : String(condition.value)}
                 onChange={(e) => handleValueChange(currentPath, e.target.value)}
-                className="w-full"
+                className="w-full h-8 text-xs"
               />
             </div>
 
-            <div className="flex-shrink-0">
+            <div className="flex justify-end sm:col-span-1 lg:col-span-1">
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => removeCondition(currentPath)}
-                className="text-red-500 hover:text-red-700"
+                className="h-7 w-7 p-0 text-red-500 hover:text-red-700 flex-shrink-0"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3 w-3" />
               </Button>
             </div>
           </div>
@@ -556,71 +563,77 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 p-2 sm:p-4 max-w-full overflow-hidden">
       <Tabs defaultValue="filter" className="w-full">
-        <TabsList className="grid grid-cols-3">
-          <TabsTrigger value="filter">Filter</TabsTrigger>
-          <TabsTrigger value="orderby">Order By</TabsTrigger>
-          <TabsTrigger value="aggregation">Aggregation</TabsTrigger>
+        <TabsList className="grid grid-cols-3 w-full h-8 text-xs">
+          <TabsTrigger value="filter" className="text-xs">
+            Filter
+          </TabsTrigger>
+          <TabsTrigger value="orderby" className="text-xs">
+            Order By
+          </TabsTrigger>
+          <TabsTrigger value="aggregation" className="text-xs">
+            Aggregation
+          </TabsTrigger>
         </TabsList>
 
         {/* Filter Tab */}
-        <TabsContent value="filter" className="space-y-4">
-          <Card>
-            <CardHeader className="py-3 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm">Filter Conditions</CardTitle>
+        <TabsContent value="filter" className="space-y-3 mt-3">
+          <Card className="overflow-hidden">
+            <CardHeader className="py-2 px-3 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium">Filter Conditions</CardTitle>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={clearAllFilters}
-                className="text-red-500 hover:text-red-700 bg-transparent"
+                className="h-7 px-2 text-xs text-red-500 hover:text-red-700 bg-transparent"
               >
-                <Trash2 className="h-4 w-4 mr-1" />
+                <Trash2 className="h-3 w-3 mr-1" />
                 Clear All
               </Button>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Label htmlFor="operator" className="whitespace-nowrap">
-                    Root Operator:
-                  </Label>
-                  <Select value={filter.operator} onValueChange={handleOperatorChange}>
-                    <SelectTrigger id="operator" className="w-24">
-                      <SelectValue placeholder="Operator" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="AND">AND</SelectItem>
-                      <SelectItem value="OR">OR</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+            <CardContent className="p-3 space-y-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                <Label htmlFor="operator" className="text-xs whitespace-nowrap">
+                  Root Operator:
+                </Label>
+                <Select value={filter.operator} onValueChange={handleOperatorChange}>
+                  <SelectTrigger id="operator" className="w-20 h-8 text-xs">
+                    <SelectValue placeholder="Op" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AND">AND</SelectItem>
+                    <SelectItem value="OR">OR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div className="border rounded-md p-4 bg-slate-50">
-                  {filter.conditions && filter.conditions.length > 0 ? (
-                    renderConditions(filter.conditions)
-                  ) : (
-                    <div className="text-sm text-slate-500 italic">No conditions added</div>
-                  )}
+              <div className="border rounded-md p-2 sm:p-3 bg-slate-50 overflow-hidden">
+                {filter.conditions && filter.conditions.length > 0 ? (
+                  <div className="space-y-2 overflow-x-auto">{renderConditions(filter.conditions)}</div>
+                ) : (
+                  <div className="text-xs text-slate-500 italic text-center py-4">No conditions added</div>
+                )}
 
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => addCondition()}
-                      className="flex-1 sm:flex-none"
-                    >
-                      <PlusCircle className="h-4 w-4 mr-2" /> Add Condition
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => addConditionGroup()}
-                      className="flex-1 sm:flex-none"
-                    >
-                      <PlusCircle className="h-4 w-4 mr-2" /> Add Condition Group
-                    </Button>
-                  </div>
+                <div className="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addCondition()}
+                    className="h-8 text-xs px-3 flex-1 sm:flex-none"
+                  >
+                    <PlusCircle className="h-3 w-3 mr-1" /> Add Condition
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addConditionGroup()}
+                    className="h-8 text-xs px-3 flex-1 sm:flex-none"
+                  >
+                    <PlusCircle className="h-3 w-3 mr-1" /> Add Group
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -628,37 +641,37 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
         </TabsContent>
 
         {/* Order By Tab */}
-        <TabsContent value="orderby" className="space-y-4">
-          <Card>
-            <CardHeader className="py-3 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm">Sort Order</CardTitle>
+        <TabsContent value="orderby" className="space-y-3 mt-3">
+          <Card className="overflow-hidden">
+            <CardHeader className="py-2 px-3 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium">Sort Order</CardTitle>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={clearAllOrderBy}
-                className="text-red-500 hover:text-red-700 bg-transparent"
+                className="h-7 px-2 text-xs text-red-500 hover:text-red-700 bg-transparent"
               >
-                <Trash2 className="h-4 w-4 mr-1" />
+                <Trash2 className="h-3 w-3 mr-1" />
                 Clear All
               </Button>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {orderBy.length > 0 ? (
-                  orderBy.map((order: [string, string], index: number) => (
-                    <div key={index} className="flex flex-wrap items-center gap-2">
-                      <div className="w-full sm:w-auto flex-1 min-w-[120px]">
+            <CardContent className="p-3 space-y-3">
+              {orderBy.length > 0 ? (
+                <div className="space-y-2">
+                  {orderBy.map((order: [string, string], index: number) => (
+                    <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <div className="min-w-0">
                         <Input
                           placeholder="Field"
                           value={order[0]}
                           onChange={(e) => updateOrderBy(index, "field", e.target.value)}
-                          className="w-full"
+                          className="w-full h-8 text-xs"
                         />
                       </div>
 
-                      <div className="w-full sm:w-auto min-w-[140px]">
+                      <div className="min-w-0">
                         <Select value={order[1]} onValueChange={(value) => updateOrderBy(index, "direction", value)}>
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger className="w-full h-8 text-xs">
                             <SelectValue placeholder="Direction" />
                           </SelectTrigger>
                           <SelectContent>
@@ -668,35 +681,41 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
                         </Select>
                       </div>
 
-                      <div className="flex-shrink-0">
+                      <div className="flex justify-end">
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="sm"
                           onClick={() => removeOrderBy(index)}
-                          className="text-red-500 hover:text-red-700"
+                          className="h-7 w-7 p-0 text-red-500 hover:text-red-700 flex-shrink-0"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-slate-500 italic">No sort order defined</div>
-                )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-500 italic text-center py-4">No sort order defined</div>
+              )}
 
-                <Button type="button" variant="outline" onClick={addOrderBy}>
-                  <PlusCircle className="h-4 w-4 mr-2" /> Add Sort Field
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addOrderBy}
+                className="h-8 text-xs px-3 w-full sm:w-auto bg-transparent"
+              >
+                <PlusCircle className="h-3 w-3 mr-1" /> Add Sort Field
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* Aggregation Tab */}
-        <TabsContent value="aggregation" className="space-y-4">
-          <Card>
-            <CardHeader className="py-3 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm">Group By</CardTitle>
+        <TabsContent value="aggregation" className="space-y-3 mt-3">
+          <Card className="overflow-hidden">
+            <CardHeader className="py-2 px-3 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium">Group By</CardTitle>
               <Button
                 variant="outline"
                 size="sm"
@@ -704,52 +723,56 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
                   const newAggregation = { ...aggregation, group_by: [] }
                   onChange("aggregation", newAggregation)
                 }}
-                className="text-red-500 hover:text-red-700"
+                className="h-7 px-2 text-xs text-red-500 hover:text-red-700"
               >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Clear All
+                <Trash2 className="h-3 w-3 mr-1" />
+                Clear
               </Button>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {aggregation.group_by.length > 0 ? (
-                  aggregation.group_by.map((field: string, index: number) => (
-                    <div key={index} className="flex flex-wrap items-center gap-2">
-                      <div className="w-full sm:w-auto flex-1 min-w-[120px]">
+            <CardContent className="p-3 space-y-3">
+              {aggregation.group_by.length > 0 ? (
+                <div className="space-y-2">
+                  {aggregation.group_by.map((field: string, index: number) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <div className="flex-1 min-w-0">
                         <Input
                           placeholder="Field"
                           value={field}
                           onChange={(e) => updateGroupBy(index, e.target.value)}
-                          className="w-full"
+                          className="w-full h-8 text-xs"
                         />
                       </div>
 
-                      <div className="flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeGroupBy(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeGroupBy(index)}
+                        className="h-7 w-7 p-0 text-red-500 hover:text-red-700 flex-shrink-0"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-slate-500 italic">No group by fields defined</div>
-                )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-500 italic text-center py-4">No group by fields defined</div>
+              )}
 
-                <Button type="button" variant="outline" onClick={addGroupBy}>
-                  <PlusCircle className="h-4 w-4 mr-2" /> Add Group By Field
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addGroupBy}
+                className="h-8 text-xs px-3 w-full sm:w-auto bg-transparent"
+              >
+                <PlusCircle className="h-3 w-3 mr-1" /> Add Group By Field
+              </Button>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="py-3 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm">Aggregations</CardTitle>
+          <Card className="overflow-hidden">
+            <CardHeader className="py-2 px-3 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium">Aggregations</CardTitle>
               <Button
                 variant="outline"
                 size="sm"
@@ -757,32 +780,32 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
                   const newAggregation = { ...aggregation, aggregations: [] }
                   onChange("aggregation", newAggregation)
                 }}
-                className="text-red-500 hover:text-red-700"
+                className="h-7 px-2 text-xs text-red-500 hover:text-red-700"
               >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Clear All
+                <Trash2 className="h-3 w-3 mr-1" />
+                Clear
               </Button>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {aggregation.aggregations.length > 0 ? (
-                  aggregation.aggregations.map((agg: [string, string], index: number) => (
-                    <div key={index} className="flex flex-wrap items-center gap-2">
-                      <div className="w-full sm:w-auto flex-1 min-w-[120px]">
+            <CardContent className="p-3 space-y-3">
+              {aggregation.aggregations.length > 0 ? (
+                <div className="space-y-2">
+                  {aggregation.aggregations.map((agg: [string, string], index: number) => (
+                    <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <div className="min-w-0">
                         <Input
                           placeholder="Field"
                           value={agg[0]}
                           onChange={(e) => updateAggregationField(index, "field", e.target.value)}
-                          className="w-full"
+                          className="w-full h-8 text-xs"
                         />
                       </div>
 
-                      <div className="w-full sm:w-auto min-w-[140px]">
+                      <div className="min-w-0">
                         <Select
                           value={agg[1]}
                           onValueChange={(value) => updateAggregationField(index, "function", value)}
                         >
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger className="w-full h-8 text-xs">
                             <SelectValue placeholder="Function" />
                           </SelectTrigger>
                           <SelectContent>
@@ -796,40 +819,46 @@ export default function FilterNodeProperties({ formData, onChange }: Props) {
                         </Select>
                       </div>
 
-                      <div className="flex-shrink-0">
+                      <div className="flex justify-end">
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="sm"
                           onClick={() => removeAggregationField(index)}
-                          className="text-red-500 hover:text-red-700"
+                          className="h-7 w-7 p-0 text-red-500 hover:text-red-700 flex-shrink-0"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-slate-500 italic">No aggregations defined</div>
-                )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-500 italic text-center py-4">No aggregations defined</div>
+              )}
 
-                <Button type="button" variant="outline" onClick={addAggregationField}>
-                  <PlusCircle className="h-4 w-4 mr-2" /> Add Aggregation
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addAggregationField}
+                className="h-8 text-xs px-3 w-full sm:w-auto bg-transparent"
+              >
+                <PlusCircle className="h-3 w-3 mr-1" /> Add Aggregation
+              </Button>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="py-3">
-              <CardTitle className="text-sm">Clear All Aggregations</CardTitle>
+          <Card className="overflow-hidden">
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="text-sm font-medium">Clear All Aggregations</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3">
               <Button
                 variant="outline"
                 onClick={clearAllAggregations}
-                className="w-full text-red-500 hover:text-red-700 bg-transparent"
+                className="w-full h-8 text-xs text-red-500 hover:text-red-700 bg-transparent"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-3 w-3 mr-1" />
                 Clear All Group By & Aggregations
               </Button>
             </CardContent>
