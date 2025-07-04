@@ -156,6 +156,7 @@ export const getFormatOptions = (format: string, isInput = true) => {
         return {
           delimiter: "|",
           singleFile: true,
+           header: "true",
         }
       default:
         return {}
