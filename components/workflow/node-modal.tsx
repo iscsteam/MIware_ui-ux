@@ -3,6 +3,7 @@ import type React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useWorkflow } from "./workflow-context";
 import { Button } from "@/components/ui/button";
+import { WorkflowNodeData } from "@/services/interface";
 import {
   Dialog,
   DialogContent,
@@ -103,6 +104,8 @@ import {
 import ReadNodeProperties, {
   readNodeSchema,
 } from "@/components/node-properties/ReadNodeProperties";
+
+// import {WorkflowNodeData} from "@/services/interface"
 
 const NodePropertyComponents: Record<string, React.FC<any>> = {
   "create-file": CreateFileNodeProperties,
@@ -227,12 +230,50 @@ export function NodeModal({ nodeId, isOpen, onClose }: NodeModalProps) {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSave = () => {
-    updateNode(nodeId, { data: formData })
-    onClose()
-  }
+  
+  // const handleSave = () => {
+  //    console.log("1. [NodeModal] Saving data:", { nodeId, formData });
+  //   updateNode(nodeId, { data: formData })
+
+  //   onClose()
+  // }
 
   // Column resize logic
+  
+
+  const handleSave = () => {
+  if (!node) return;
+
+  const originalData = node.data || {};
+  const currentMappings = originalData.inputMappings || {};
+  const newMappings = { ...currentMappings };
+  const dataToSave = { ...formData };
+
+  let mappingsChanged = false;
+
+  // Detect fields with existing mappings and check if user manually changed them
+  for (const key in currentMappings) {
+    if (
+      Object.prototype.hasOwnProperty.call(dataToSave, key) &&
+      dataToSave[key] !== originalData[key]
+    ) {
+      console.log(`[NodeModal] Field '${key}' manually edited. Removing mapping.`);
+      delete newMappings[key];
+      mappingsChanged = true;
+    }
+  }
+
+  // If any mappings were updated, persist them
+  if (mappingsChanged) {
+    dataToSave.inputMappings = newMappings;
+  }
+
+  console.log("[NodeModal] Saving data with mapping check:", { nodeId, dataToSave });
+  updateNode(nodeId, { data: dataToSave });
+  onClose();
+};
+
+  
   useEffect(() => {
     const container = containerRef.current
     const leftResizer = leftResizerRef.current

@@ -2,24 +2,21 @@
 
 import type React from "react";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import {
-  useWorkflow,
-  type WorkflowNode,
-  type NodeConnection,
-} from "./workflow-context";
-import { NodeComponent } from "./node-component";
+import { useWorkflow, type NodeConnection } from "./workflow-context";
+import { WorkflowNode, WorkflowNodeData , SchemaModalData, SchemaItem , NodeType} from "@/services/interface";
+import { NodeComponent } from "@/components/workflow/mapping/node-component";
 import { ConnectionLine } from "./connection-line";
 import { NodeModal } from "./node-modal";
 import { ExecutionModal } from "./execution-modal";
 import { SideModal } from "./sidemodal";
-import SchemaModal from "./SchemaModal";
-import { getNodeSchema } from "./nodeSchemas";
-import {
-  type SchemaItem,
-  type SchemaModalData,
-  NodeType,
-} from "@/services/interface";
-import {Minimap} from "@/components/minimap/Minimap"
+import SchemaModal from "@/components/workflow/mapping/SchemaModal";
+import { getNodeSchema } from "@/components/workflow/mapping/nodeSchemas";
+// import {
+//   type SchemaItem,
+//   type SchemaModalData,
+//   NodeType,
+// } from "@/services/interface";
+import { Minimap } from "@/components/minimap/Minimap";
 
 // Lucide Icons for UI controls
 import {
@@ -101,7 +98,7 @@ export function WorkflowEditor() {
 
   const canvasBackgroundStyle = useMemo(() => {
     const plainBgColor = "hsl(var(--background))"; // Example: using CSS var for background
-                                                  // or specific: '#f0f4f8' (light blueish gray)
+    // or specific: '#f0f4f8' (light blueish gray)
 
     if (!showGrid) {
       return { backgroundColor: plainBgColor };
@@ -139,7 +136,8 @@ export function WorkflowEditor() {
     };
   }, [canvasOffset, canvasScale, dynamicGridSize, showGrid]);
 
-  const handleOpenSchemaModal = useCallback(/* ... as in your original code ... */
+  const handleOpenSchemaModal = useCallback(
+    /* ... as in your original code ... */
     (nodeId: string) => {
       const targetNode = nodes.find((n) => n.id === nodeId);
       if (!targetNode) {
@@ -151,14 +149,19 @@ export function WorkflowEditor() {
       const baseSchema = getNodeSchema(nodeType);
 
       if (!baseSchema) {
-        console.warn("Schema not found for node type:", nodeType, "- using empty schema.");
+        console.warn(
+          "Schema not found for node type:",
+          nodeType,
+          "- using empty schema."
+        );
         setSchemaModalData({
-           nodeId,
+          nodeId,
           nodeType,
           baseInputSchema: [],
           baseOutputSchema: [],
           availableInputsFromPrevious: [],
           nodeLabel: targetNode.data?.label || nodeType,
+          currentNodeData: targetNode.data || {},
         });
         setIsSchemaModalOpen(true);
         return;
@@ -211,6 +214,7 @@ export function WorkflowEditor() {
         baseOutputSchema: baseSchema.outputSchema || [],
         availableInputsFromPrevious: availableInputs,
         nodeLabel: targetNode.data?.label || nodeType,
+        currentNodeData: targetNode.data || {},
       });
       setIsSchemaModalOpen(true);
     },
@@ -222,7 +226,8 @@ export function WorkflowEditor() {
     setIsSchemaModalOpen(false);
   };
 
-  const handleDrop = useCallback(/* ... as in your original code ... */
+  const handleDrop = useCallback(
+    /* ... as in your original code ... */
     (e: React.DragEvent) => {
       e.preventDefault();
       const nodeType = e.dataTransfer.getData("nodeType") as NodeType;
@@ -236,9 +241,13 @@ export function WorkflowEditor() {
     [addNode, canvasScale, canvasOffset]
   );
 
-  const handleDragOver = useCallback((e: React.DragEvent) => e.preventDefault(), []);
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => e.preventDefault(),
+    []
+  );
 
-  const startNodeDrag = useCallback(/* ... as in your original code ... */
+  const startNodeDrag = useCallback(
+    /* ... as in your original code ... */
     (nodeId: string, e: React.MouseEvent) => {
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
@@ -247,8 +256,10 @@ export function WorkflowEditor() {
       const canvasRect = canvasRef.current?.getBoundingClientRect();
       if (!canvasRect) return;
       // Offset is mouse position relative to top-left of node, scaled by current zoom
-      const scaledNodeX = node.position.x * canvasScale + canvasOffset.x * canvasScale;
-      const scaledNodeY = node.position.y * canvasScale + canvasOffset.y * canvasScale;
+      const scaledNodeX =
+        node.position.x * canvasScale + canvasOffset.x * canvasScale;
+      const scaledNodeY =
+        node.position.y * canvasScale + canvasOffset.y * canvasScale;
       setDragOffset({
         x: e.clientX - canvasRect.left - scaledNodeX,
         y: e.clientY - canvasRect.top - scaledNodeY,
@@ -257,26 +268,36 @@ export function WorkflowEditor() {
     [nodes, selectNode, canvasScale, canvasOffset]
   );
 
-  const handleMouseMove = useCallback(/* ... as in your original code ... */
+  const handleMouseMove = useCallback(
+    /* ... as in your original code ... */
     (e: MouseEvent) => {
       const canvasRect = canvasRef.current?.getBoundingClientRect();
       if (!canvasRect) return;
 
-      const currentMouseX = (e.clientX - canvasRect.left);
-      const currentMouseY = (e.clientY - canvasRect.top);
+      const currentMouseX = e.clientX - canvasRect.left;
+      const currentMouseY = e.clientY - canvasRect.top;
 
       setMousePosition({
-        x: (currentMouseX / canvasScale) - canvasOffset.x,
-        y: (currentMouseY / canvasScale) - canvasOffset.y,
+        x: currentMouseX / canvasScale - canvasOffset.x,
+        y: currentMouseY / canvasScale - canvasOffset.y,
       });
 
       if (isDragging && selectedNodeId) {
-        const newX = (currentMouseX - dragOffset.x) / canvasScale - canvasOffset.x;
-        const newY = (currentMouseY - dragOffset.y) / canvasScale - canvasOffset.y;
+        const newX =
+          (currentMouseX - dragOffset.x) / canvasScale - canvasOffset.x;
+        const newY =
+          (currentMouseY - dragOffset.y) / canvasScale - canvasOffset.y;
         updateNode(selectedNodeId, { position: { x: newX, y: newY } });
       }
     },
-    [isDragging, selectedNodeId, dragOffset, updateNode, canvasScale, canvasOffset]
+    [
+      isDragging,
+      selectedNodeId,
+      dragOffset,
+      updateNode,
+      canvasScale,
+      canvasOffset,
+    ]
   );
 
   const handleMouseUp = useCallback(() => setIsDragging(false), []);
@@ -290,7 +311,8 @@ export function WorkflowEditor() {
     }
   }, [pendingConnection, setPendingConnection, selectNode]);
 
-  useEffect(() => { /* ... event listeners as in your original code ... */
+  useEffect(() => {
+    /* ... event listeners as in your original code ... */
     const handleGlobalMouseMove = (e: MouseEvent) => handleMouseMove(e);
     const handleGlobalMouseUp = () => handleMouseUp();
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -311,13 +333,12 @@ export function WorkflowEditor() {
     };
   }, [handleMouseMove, handleMouseUp, setPendingConnection]);
 
-  
-
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.preventDefault();
       const scrollSensitivity = 0.1; // Make it consistent with first example
-      const deltaFactor = e.deltaY > 0 ? 1 - scrollSensitivity : 1 + scrollSensitivity;
+      const deltaFactor =
+        e.deltaY > 0 ? 1 - scrollSensitivity : 1 + scrollSensitivity;
       const newScale = Math.max(0.2, Math.min(2.5, canvasScale * deltaFactor));
 
       const canvasRect = canvasRef.current?.getBoundingClientRect();
@@ -328,8 +349,10 @@ export function WorkflowEditor() {
 
       // Calculate new offset to zoom towards mouse position
       // Tx_new = (MouseX_vp / S_new) - (MouseX_vp / S_old - Tx_old)
-      const newOffsetX = mouseX / newScale - (mouseX / canvasScale - canvasOffset.x);
-      const newOffsetY = mouseY / newScale - (mouseY / canvasScale - canvasOffset.y);
+      const newOffsetX =
+        mouseX / newScale - (mouseX / canvasScale - canvasOffset.x);
+      const newOffsetY =
+        mouseY / newScale - (mouseY / canvasScale - canvasOffset.y);
 
       setCanvasScale(newScale);
       setCanvasOffset({ x: newOffsetX, y: newOffsetY });
@@ -337,60 +360,66 @@ export function WorkflowEditor() {
     [canvasScale, canvasOffset]
   );
 
-useEffect(() => {
-  const el = canvasRef.current;
-  if (!el) return;
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
 
-  // Native wheel event handler that delegates to handleWheel
-  const nativeWheelHandler = (e: WheelEvent) => {
-    // Create a synthetic React-like event object for handleWheel
-    // but only pass the native event, since handleWheel expects a React.WheelEvent
-    // We'll need to adapt handleWheel to accept native events
-    // Or, just inline the logic here (recommended for clarity)
-    e.preventDefault();
-    const scrollSensitivity = 0.1;
-    const deltaFactor = e.deltaY > 0 ? 1 - scrollSensitivity : 1 + scrollSensitivity;
-    const newScale = Math.max(0.2, Math.min(2.5, canvasScale * deltaFactor));
+    // Native wheel event handler that delegates to handleWheel
+    const nativeWheelHandler = (e: WheelEvent) => {
+      // Create a synthetic React-like event object for handleWheel
+      // but only pass the native event, since handleWheel expects a React.WheelEvent
+      // We'll need to adapt handleWheel to accept native events
+      // Or, just inline the logic here (recommended for clarity)
+      e.preventDefault();
+      const scrollSensitivity = 0.1;
+      const deltaFactor =
+        e.deltaY > 0 ? 1 - scrollSensitivity : 1 + scrollSensitivity;
+      const newScale = Math.max(0.2, Math.min(2.5, canvasScale * deltaFactor));
 
-    const canvasRect = el.getBoundingClientRect();
-    if (!canvasRect) return;
+      const canvasRect = el.getBoundingClientRect();
+      if (!canvasRect) return;
 
-    const mouseX = e.clientX - canvasRect.left;
-    const mouseY = e.clientY - canvasRect.top;
+      const mouseX = e.clientX - canvasRect.left;
+      const mouseY = e.clientY - canvasRect.top;
 
-    const newOffsetX = mouseX / newScale - (mouseX / canvasScale - canvasOffset.x);
-    const newOffsetY = mouseY / newScale - (mouseY / canvasScale - canvasOffset.y);
+      const newOffsetX =
+        mouseX / newScale - (mouseX / canvasScale - canvasOffset.x);
+      const newOffsetY =
+        mouseY / newScale - (mouseY / canvasScale - canvasOffset.y);
 
-    setCanvasScale(newScale);
-    setCanvasOffset({ x: newOffsetX, y: newOffsetY });
-  };
+      setCanvasScale(newScale);
+      setCanvasOffset({ x: newOffsetX, y: newOffsetY });
+    };
 
-  el.addEventListener("wheel", nativeWheelHandler, { passive: false });
+    el.addEventListener("wheel", nativeWheelHandler, { passive: false });
 
-  return () => {
-    el.removeEventListener("wheel", nativeWheelHandler);
-  };
-}, [canvasScale, canvasOffset]);
-
+    return () => {
+      el.removeEventListener("wheel", nativeWheelHandler);
+    };
+  }, [canvasScale, canvasOffset]);
 
   const getPendingConnectionSourceNode = useCallback(() => {
     if (!pendingConnection) return null;
     return nodes.find((node) => node.id === pendingConnection.sourceId) || null;
   }, [pendingConnection, nodes]);
 
-  const handleInsertNode = useCallback(/* ... as in your original code ... */
+  const handleInsertNode = useCallback(
+    /* ... as in your original code ... */
     (connection: NodeConnection, position: { x: number; y: number }) => {
       setConnectionToSplit(connection);
       setInsertPosition(position);
       setSideModalOpen(true);
-    }, []
+    },
+    []
   );
 
-  const handleNodeTypeSelect = useCallback(/* ... as in your original code ... */
+  const handleNodeTypeSelect = useCallback(
+    /* ... as in your original code ... */
     (nodeType: NodeType) => {
       if (connectionToSplit) {
         const newNodeId = addNode(nodeType, insertPosition);
-        if (newNodeId) { // Check if addNode returned an ID
+        if (newNodeId) {
+          // Check if addNode returned an ID
           addConnection(connectionToSplit.sourceId, newNodeId);
           addConnection(newNodeId, connectionToSplit.targetId);
           removeConnection(connectionToSplit.id);
@@ -399,38 +428,53 @@ useEffect(() => {
       } else {
         const canvasRect = canvasRef.current?.getBoundingClientRect();
         if (canvasRect) {
-          const centerX = (canvasRect.width / 2 / canvasScale) - canvasOffset.x;
-          const centerY = (canvasRect.height / 2 / canvasScale) - canvasOffset.y;
+          const centerX = canvasRect.width / 2 / canvasScale - canvasOffset.x;
+          const centerY = canvasRect.height / 2 / canvasScale - canvasOffset.y;
           addNode(nodeType, { x: centerX, y: centerY });
         }
       }
       setSideModalOpen(false);
     },
-    [connectionToSplit, insertPosition, addNode, addConnection, removeConnection, canvasScale, canvasOffset]
+    [
+      connectionToSplit,
+      insertPosition,
+      addNode,
+      addConnection,
+      removeConnection,
+      canvasScale,
+      canvasOffset,
+    ]
   );
 
-  const handleExecuteNode = useCallback(/* ... as in your original code ... */
+  const handleExecuteNode = useCallback(
+    /* ... as in your original code ... */
     (nodeId: string) => {
       setExecutingNodeId(nodeId);
       setExecutionModalOpen(true);
       executeNode(nodeId);
-    }, [executeNode]
+    },
+    [executeNode]
   );
 
   const toggleSideModal = useCallback(() => {
     setSideModalOpen((prev) => !prev);
   }, []);
 
-  const handleOpenProperties = useCallback((nodeId: string) => {
-    selectNode(nodeId);
-    setModalOpen(true); // This opens NodeModal
-  }, [selectNode]);
+  const handleOpenProperties = useCallback(
+    (nodeId: string) => {
+      selectNode(nodeId);
+      setModalOpen(true); // This opens NodeModal
+    },
+    [selectNode]
+  );
 
   const handleCloseProperties = useCallback(() => setModalOpen(false), []);
 
   // New UI Control Handlers
-  const handleZoomIn = () => setCanvasScale((prev) => Math.min(2.5, prev * 1.2));
-  const handleZoomOut = () => setCanvasScale((prev) => Math.max(0.2, prev / 1.2));
+  const handleZoomIn = () =>
+    setCanvasScale((prev) => Math.min(2.5, prev * 1.2));
+  const handleZoomOut = () =>
+    setCanvasScale((prev) => Math.max(0.2, prev / 1.2));
   const handleResetView = () => {
     setCanvasScale(1);
     setCanvasOffset({ x: 0, y: 0 }); // Reset to origin of content space
@@ -442,24 +486,35 @@ useEffect(() => {
       return;
     }
     const padding = 50; // Screen pixels padding
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
 
-    nodes.forEach(n => {
+    nodes.forEach((n) => {
       minX = Math.min(minX, n.position.x);
       minY = Math.min(minY, n.position.y);
       maxX = Math.max(maxX, n.position.x + NODE_WIDTH);
       maxY = Math.max(maxY, n.position.y + NODE_HEIGHT);
     });
 
-    if (maxX === -Infinity) { handleResetView(); return; }
+    if (maxX === -Infinity) {
+      handleResetView();
+      return;
+    }
 
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
 
     const canvasRect = canvasRef.current.getBoundingClientRect();
-    if (canvasRect.width <= 0 || canvasRect.height <= 0 || contentWidth <=0 || contentHeight <=0) {
-        handleResetView();
-        return;
+    if (
+      canvasRect.width <= 0 ||
+      canvasRect.height <= 0 ||
+      contentWidth <= 0 ||
+      contentHeight <= 0
+    ) {
+      handleResetView();
+      return;
     }
 
     const scaleX = (canvasRect.width - 2 * padding) / contentWidth;
@@ -468,18 +523,33 @@ useEffect(() => {
 
     setCanvasScale(newScale);
     // New offset to center the content bounding box (with padding)
-    const newOffsetX = (padding / newScale) - minX;
-    const newOffsetY = (padding / newScale) - minY;
+    const newOffsetX = padding / newScale - minX;
+    const newOffsetY = padding / newScale - minY;
     setCanvasOffset({ x: newOffsetX, y: newOffsetY });
   };
 
   // Minimap click handler
-  const handleMinimapClick = useCallback((newContentOffset: { x: number; y: number }) => {
-    setCanvasOffset(newContentOffset);
-  }, []);
+  const handleMinimapClick = useCallback(
+    (newContentOffset: { x: number; y: number }) => {
+      setCanvasOffset(newContentOffset);
+    },
+    []
+  );
 
+  const handleSaveSchemaMappings = useCallback(
+    (nodeId: string, dataToUpdate: Partial<WorkflowNodeData>) => {
+      console.log(
+        "[WorkflowEditor] Receiving data from SchemaModal, updating node:",
+        { nodeId, dataToUpdate }
+      );
+      updateNode(nodeId, { data: dataToUpdate });
+      setSchemaModalData(null); // Close modal
+    },
+    [updateNode]
+  );
 
-  function DotsBackground() { /* ... as in your original code ... */
+  function DotsBackground() {
+    /* ... as in your original code ... */
     return (
       <svg
         className="absolute inset-0 pointer-events-none"
@@ -487,7 +557,12 @@ useEffect(() => {
         style={{ width: "100%", height: "100%" }}
       >
         <defs>
-          <pattern id="dot-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <pattern
+            id="dot-grid"
+            width="20"
+            height="20"
+            patternUnits="userSpaceOnUse"
+          >
             <circle cx="1" cy="1" r="1.2" fill="rgba(38, 37, 37, 0.2)" />
           </pattern>
         </defs>
@@ -504,7 +579,12 @@ useEffect(() => {
         <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-card dark:bg-card p-1.5 rounded-md shadow-lg border">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleSideModal}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={toggleSideModal}
+              >
                 <Plus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -512,18 +592,31 @@ useEffect(() => {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomOut}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleZoomOut}
+              >
                 <ZoomOut className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Zoom Out</TooltipContent>
           </Tooltip>
-          <Badge variant="outline" className="px-2 py-0.5 text-xs min-w-[50px] text-center h-7 flex items-center select-none">
+          <Badge
+            variant="outline"
+            className="px-2 py-0.5 text-xs min-w-[50px] text-center h-7 flex items-center select-none"
+          >
             {Math.round(canvasScale * 100)}%
           </Badge>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomIn}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleZoomIn}
+              >
                 <ZoomIn className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -531,7 +624,12 @@ useEffect(() => {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleResetView}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleResetView}
+              >
                 <RotateCcw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -539,7 +637,12 @@ useEffect(() => {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleFitToScreen}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleFitToScreen}
+              >
                 <Maximize2 className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -547,7 +650,12 @@ useEffect(() => {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant={showGrid ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setShowGrid(s => !s)}>
+              <Button
+                variant={showGrid ? "secondary" : "ghost"}
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setShowGrid((s) => !s)}
+              >
                 <Grid3X3 className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -555,8 +663,17 @@ useEffect(() => {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant={showMinimap ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setShowMinimap(s => !s)}>
-                {showMinimap ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              <Button
+                variant={showMinimap ? "secondary" : "ghost"}
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setShowMinimap((s) => !s)}
+              >
+                {showMinimap ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
               </Button>
             </TooltipTrigger>
             <TooltipContent>Toggle Minimap</TooltipContent>
@@ -566,19 +683,19 @@ useEffect(() => {
 
       {/* Minimap */}
       {showMinimap && canvasRef.current && (
-          <div className="absolute top-2 right-2 z-10 bg-card dark:bg-card rounded-md shadow-lg border dark:border-border overflow-hidden">
-              <Minimap
-                  nodes={nodes}
-                  connections={connections}
-                  canvasOffset={canvasOffset}
-                  canvasScale={canvasScale}
-                  viewportWidth={canvasRef.current.clientWidth}
-                  viewportHeight={canvasRef.current.clientHeight}
-                  onMinimapClick={handleMinimapClick}
-                  nodeWidth={NODE_WIDTH}
-                  nodeHeight={NODE_HEIGHT}
-              />
-          </div>
+        <div className="absolute top-2 right-2 z-10 bg-card dark:bg-card rounded-md shadow-lg border dark:border-border overflow-hidden">
+          <Minimap
+            nodes={nodes}
+            connections={connections}
+            canvasOffset={canvasOffset}
+            canvasScale={canvasScale}
+            viewportWidth={canvasRef.current.clientWidth}
+            viewportHeight={canvasRef.current.clientHeight}
+            onMinimapClick={handleMinimapClick}
+            nodeWidth={NODE_WIDTH}
+            nodeHeight={NODE_HEIGHT}
+          />
+        </div>
       )}
 
       <div
@@ -590,10 +707,6 @@ useEffect(() => {
         // onWheel={handleWheel}
         onClick={handleCanvasClick}
       >
-
-        
-
-
         {!showGrid && <DotsBackground />} {/* Show dots if grid is off */}
         <div
           className="h-full w-full" // transformOrigin is default 0 0
@@ -607,7 +720,13 @@ useEffect(() => {
             {connections.map((connection) => {
               const source = nodes.find((n) => n.id === connection.sourceId);
               const target = nodes.find((n) => n.id === connection.targetId);
-              if (!source || !target || source.data?.active === false || target.data?.active === false) return null;
+              if (
+                !source ||
+                !target ||
+                source.data?.active === false ||
+                target.data?.active === false
+              )
+                return null;
               return (
                 <ConnectionLine
                   key={connection.id}
@@ -633,9 +752,17 @@ useEffect(() => {
               key={node.id}
               node={node}
               selected={node.id === selectedNodeId}
-              isConnecting={!!pendingConnection && pendingConnection.sourceId === node.id}
+              isConnecting={
+                !!pendingConnection && pendingConnection.sourceId === node.id
+              }
               onSelect={() => {
-                if (isSchemaModalOpen || modalOpen || sideModalOpen || executionModalOpen) return;
+                if (
+                  isSchemaModalOpen ||
+                  modalOpen ||
+                  sideModalOpen ||
+                  executionModalOpen
+                )
+                  return;
                 selectNode(node.id);
               }}
               onDragStart={startNodeDrag}
@@ -647,13 +774,17 @@ useEffect(() => {
         </div>
       </div>
 
-      {pendingConnection && ( /* ... Connection helper text ... */
+      {pendingConnection /* ... Connection helper text ... */ && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm z-50">
           Click on an input port to complete connection • Press ESC to cancel
         </div>
       )}
-      {selectedNodeId && ( /* ... Node Modal ... */
-        <NodeModal nodeId={selectedNodeId} isOpen={modalOpen} onClose={handleCloseProperties} />
+      {selectedNodeId /* ... Node Modal ... */ && (
+        <NodeModal
+          nodeId={selectedNodeId}
+          isOpen={modalOpen}
+          onClose={handleCloseProperties}
+        />
       )}
       <SideModal /* ... Side modal ... */
         isOpen={sideModalOpen}
@@ -665,24 +796,29 @@ useEffect(() => {
         onClose={() => setExecutionModalOpen(false)}
         nodeId={executingNodeId}
       />
-      {schemaModalData && ( /* ... Schema Modal ... */
+      {schemaModalData && (
         <SchemaModal
           nodeId={schemaModalData.nodeId}
           nodeType={schemaModalData.nodeType}
           nodeLabel={schemaModalData.nodeLabel}
-          baseInputSchema={schemaModalData.baseInputSchema}
           baseOutputSchema={schemaModalData.baseOutputSchema}
-          availableInputsFromPrevious={schemaModalData.availableInputsFromPrevious}
+          baseInputSchema={schemaModalData.baseInputSchema}
+          availableInputsFromPrevious={
+            schemaModalData.availableInputsFromPrevious
+          }
+          currentNodeData={schemaModalData.currentNodeData}
           onClose={handleCloseSchemaModal}
-          // Assuming SchemaModal has an onSave or similar prop if needed
+          onSaveMappings={(dataToUpdate) =>
+            handleSaveSchemaMappings(schemaModalData.nodeId, dataToUpdate)
+          }
         />
       )}
     </div>
   );
 }
 
-function PendingConnectionLine({ /* ... as in your original code ... */
-  sourceNode,
+function PendingConnectionLine({
+  /* ... as in your original code ... */ sourceNode,
   mousePosition,
 }: {
   sourceNode: WorkflowNode | null;
@@ -692,7 +828,22 @@ function PendingConnectionLine({ /* ... as in your original code ... */
   const sourceX = sourceNode.position.x + NODE_WIDTH; // Node width
   const sourceY = sourceNode.position.y + NODE_HEIGHT / 2; // Port at middle-right
 
-  const controlPointOffset = Math.max(50, Math.abs(mousePosition.x - sourceX) * 0.3);
-  const path = `M ${sourceX} ${sourceY} C ${sourceX + controlPointOffset} ${sourceY}, ${mousePosition.x - controlPointOffset} ${mousePosition.y}, ${mousePosition.x} ${mousePosition.y}`;
-  return <path d={path} stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" fill="none" />;
+  const controlPointOffset = Math.max(
+    50,
+    Math.abs(mousePosition.x - sourceX) * 0.3
+  );
+  const path = `M ${sourceX} ${sourceY} C ${
+    sourceX + controlPointOffset
+  } ${sourceY}, ${mousePosition.x - controlPointOffset} ${mousePosition.y}, ${
+    mousePosition.x
+  } ${mousePosition.y}`;
+  return (
+    <path
+      d={path}
+      stroke="#3b82f6"
+      strokeWidth="2"
+      strokeDasharray="5,5"
+      fill="none"
+    />
+  );
 }

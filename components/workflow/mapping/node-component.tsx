@@ -10,8 +10,8 @@ import {
   MoreHorizontal,
   AlignJustify,
 } from "lucide-react";
-import { type WorkflowNode, useWorkflow } from "./workflow-context";
-import { getNodeIcon } from "./node-utils";
+import { type WorkflowNode, useWorkflow } from "../workflow-context";
+import { getNodeIcon } from "../node-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,7 +28,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { NodeType } from "@/services/interface";
-import SchemaModal from "./SchemaModal"; // Adjust path
+import SchemaModal from "@/components/workflow/mapping/SchemaModal"; // Adjust path
 
 // --- Interfaces ---
 export interface NodeComponentProps {
@@ -45,8 +45,6 @@ export interface NodeComponentProps {
 
   onOpenProperties: (nodeId: string) => void;
   // --- NEW Callback Prop ---
-  // onOpenSchemaModal: (nodeType: NodeType) => void;
-  // onShowModal: () => void; // Remove if replaced by onOpenSchemaModal
   onOpenSchemaModal: (nodeId: string) => void;
 
 }
