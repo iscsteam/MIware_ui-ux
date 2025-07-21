@@ -1,3 +1,4 @@
+//schema-mapper.ts
 import type { WorkflowNode } from "@/components/workflow/workflow-context"
 import type {
   FilterGroup,
@@ -156,7 +157,7 @@ export const getFormatOptions = (format: string, isInput = true) => {
         return {
           delimiter: "|",
           singleFile: true,
-           header: "true",
+          header: "true",
         }
       default:
         return {}
@@ -563,4 +564,54 @@ export function mapDeleteFileToCliOperator(deleteFileNode: WorkflowNode): CliOpe
     },
     executed_by: "cli",
   }
+}
+
+// Updated write-node mapping function for schema-mapper
+export function mapWriteNodeToCliOperator(writeNode: WorkflowNode): CliOperatorConfig {
+  if (!writeNode || !writeNode.data) {
+    throw new Error("Invalid write node data")
+  }
+
+  const { source_path, destination_path, options } = writeNode.data
+
+  if (!destination_path) {
+    throw new Error("Write node is missing a destination path.")
+  }
+
+  // Extract textContent with proper priority handling
+  const textContent = options?.textContent || writeNode.data.textContent || writeNode.data.content || ""
+
+  console.log("🔍 Schema-mapper: Mapping write-node to CLI operator:", {
+    nodeId: writeNode.id,
+    hasTextContent: !!textContent,
+    textContentLength: textContent.length,
+    source: options?.textContent
+      ? "options.textContent"
+      : writeNode.data.textContent
+        ? "data.textContent"
+        : writeNode.data.content
+          ? "data.content"
+          : "none",
+  })
+
+  const cliConfig: CliOperatorConfig = {
+    operation: "write",
+    source_path: source_path || "",
+    destination_path,
+    options: {
+      append: options?.append || false,
+      textContent: textContent, // Ensure textContent is explicitly included
+      addLineSeparator: options?.addLineSeparator || false,
+      create_dirs: options?.create_dirs || false,
+      compress: options?.compress || "none",
+    },
+    executed_by: "cli",
+  }
+
+  console.log("✅ Schema-mapper: Created CLI config with textContent:", {
+    hasTextContent: !!cliConfig.options?.textContent,
+    textContentPreview: cliConfig.options?.textContent?.substring(0, 50) + "...",
+  })
+
+  return cliConfig
 }

@@ -1,5 +1,4 @@
 // File: services/workflow-utils.ts
-
 import type { WorkflowNode, NodeConnection } from "@/components/workflow/workflow-context"
 import {
   createFileConversionConfig,
@@ -22,6 +21,7 @@ import {
   mapMoveFileToCliOperator,
   mapRenameFileToCliOperator,
   mapDeleteFileToCliOperator,
+  mapWriteNodeToCliOperator, // Added mapWriteNodeToCliOperator with textContent support
 } from "@/services/cli-operator-service"
 import { toast } from "@/components/ui/use-toast"
 import { getCurrentClientId } from "@/components/workflow/workflow-context"
@@ -354,7 +354,8 @@ function findCliOperationSequences(nodes: WorkflowNode[], connections: NodeConne
       node.type === "copy-file" ||
       node.type === "move-file" ||
       node.type === "rename-file" ||
-      node.type === "delete-file",
+      node.type === "delete-file" ||
+      node.type === "write-node", // Added write-node
   )
 
   let sequenceIndex = 0
@@ -454,7 +455,8 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
       nextNode.type === "copy-file" ||
       nextNode.type === "move-file" ||
       nextNode.type === "rename-file" ||
-      nextNode.type === "delete-file"
+      nextNode.type === "delete-file" ||
+      nextNode.type === "write-node" // Added write-node support
     ) {
       const configId = createdConfigs.cliOperatorConfigs.get(nextNode.id) || -1
       operations.push({
@@ -634,8 +636,8 @@ export async function createAllConfigs(
     currentNodeTypes.includes("write-file") ||
     currentNodeTypes.includes("inline-input") ||
     currentNodeTypes.includes("inline-output")
-  const hasCliOperations = currentNodeTypes.some((type) =>
-    ["copy-file", "move-file", "rename-file", "delete-file"].includes(type),
+  const hasCliOperations = currentNodeTypes.some(
+    (type) => ["copy-file", "move-file", "rename-file", "delete-file", "write-node"].includes(type), // Added write-node
   )
   const hasSalesforce = currentNodeTypes.includes("salesforce-cloud") || currentNodeTypes.includes("write-salesforce")
 
@@ -755,7 +757,7 @@ export async function createAllConfigs(
           title: "Config Created",
           description: `${type} configuration ${configResponse.id} created successfully!`,
         })
-      } catch (configError) {
+      } catch (configError: any) {
         console.error(`❌ Error creating ${type} config:`, configError)
         toast({
           title: "Config Creation Failed",
@@ -766,10 +768,16 @@ export async function createAllConfigs(
       }
     }
 
-    // Process CLI operation sequences (existing code remains the same)
+    // Process CLI operation sequences with enhanced write-node support
     for (const sequence of cliOperationSequences) {
       const { operationNode } = sequence
       let cliConfigPayload
+
+      console.log(`🔧 Processing CLI operation: ${operationNode.type}`, {
+        nodeId: operationNode.id,
+        nodeData: operationNode.data,
+        hasTextContent: !!(operationNode.data.options?.textContent || operationNode.data.textContent),
+      })
 
       switch (operationNode.type) {
         case "copy-file":
@@ -816,20 +824,75 @@ export async function createAllConfigs(
           }
           cliConfigPayload = mapDeleteFileToCliOperator(operationNode)
           break
+        case "write-node": // Enhanced write-node handling with textContent validation
+          if (!operationNode.data.destination_path) {
+            toast({
+              title: "Error",
+              description: "Write node requires a destination path.",
+              variant: "destructive",
+            })
+            return false
+          }
+          if (
+            (operationNode.data.write_mode === "copy" ||
+              operationNode.data.write_mode === "append" ||
+              operationNode.data.write_mode === "compressed_copy") &&
+            !operationNode.data.source_path
+          ) {
+            toast({
+              title: "Error",
+              description: `Write node in '${operationNode.data.write_mode}' mode requires a source path.`,
+              variant: "destructive",
+            })
+            return false
+          }
+
+          // Log textContent validation for write-node
+          const textContent =
+            operationNode.data.options?.textContent || operationNode.data.textContent || operationNode.data.content
+          console.log(`📝 Write-node textContent validation:`, {
+            nodeId: operationNode.id,
+            writeMode: operationNode.data.write_mode,
+            hasTextContent: !!textContent,
+            textContentLength: textContent?.length || 0,
+            textContentSource: operationNode.data.options?.textContent
+              ? "options.textContent"
+              : operationNode.data.textContent
+                ? "data.textContent"
+                : operationNode.data.content
+                  ? "data.content"
+                  : "none",
+          })
+
+          cliConfigPayload = mapWriteNodeToCliOperator(operationNode)
+          break
         default:
           throw new Error(`Unsupported CLI operation type: ${operationNode.type}`)
       }
 
-      console.log(`Creating CLI operator config (${operationNode.type}) with:`, cliConfigPayload)
+      console.log(`Creating CLI operator config (${operationNode.type}) with:`, {
+        operation: cliConfigPayload.operation,
+        destination_path: cliConfigPayload.destination_path,
+        hasTextContent: !!cliConfigPayload.options?.textContent,
+        textContentLength: cliConfigPayload.options?.textContent?.length || 0,
+      })
 
       const configResponse = await createCliOperatorConfig(clientId, cliConfigPayload)
       if (!configResponse) {
         throw new Error(`Failed to create CLI operator config for ${operationNode.type} operation`)
       }
 
-      createdConfigs.cliOperatorConfigs.set(operationNode.id, configResponse.id)
+      // Log successful creation with textContent verification
+      console.log(`✅ Created CLI operator config ${configResponse.id} for ${operationNode.type} operation`)
+      if (operationNode.type === "write-node" && configResponse.options?.textContent) {
+        console.log(`📝 textContent successfully preserved in response:`, {
+          configId: configResponse.id,
+          textContentLength: configResponse.options.textContent.length,
+          textContentPreview: configResponse.options.textContent.substring(0, 100) + "...",
+        })
+      }
 
-      console.log(`Created CLI operator config ${configResponse.id} for ${operationNode.type} operation`)
+      createdConfigs.cliOperatorConfigs.set(operationNode.id, configResponse.id)
     }
 
     // Process Salesforce sequences (existing code remains the same)
@@ -911,7 +974,7 @@ export async function createAllConfigs(
     })
 
     return true
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in createAllConfigs:", error)
     toast({
       title: "Config Creation Error",
@@ -1022,7 +1085,7 @@ export async function updateAllConfigs(
       console.log(`Updated ${type} config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
     }
 
-    // Update CLI operation sequences
+    // Update CLI operation sequences with enhanced write-node support
     for (const sequence of cliOperationSequences) {
       const { operationNode } = sequence
       const configId = createdConfigs.cliOperatorConfigs.get(operationNode.id)
@@ -1033,6 +1096,12 @@ export async function updateAllConfigs(
       }
 
       let cliConfigPayload
+
+      console.log(`🔄 Updating CLI operation: ${operationNode.type}`, {
+        configId,
+        nodeId: operationNode.id,
+        hasTextContent: !!(operationNode.data.options?.textContent || operationNode.data.textContent),
+      })
 
       switch (operationNode.type) {
         case "copy-file":
@@ -1047,21 +1116,51 @@ export async function updateAllConfigs(
         case "delete-file":
           cliConfigPayload = mapDeleteFileToCliOperator(operationNode)
           break
+        case "write-node": // Enhanced write-node update with textContent preservation
+          const textContent =
+            operationNode.data.options?.textContent || operationNode.data.textContent || operationNode.data.content
+          console.log(`📝 Updating write-node textContent:`, {
+            configId,
+            hasTextContent: !!textContent,
+            textContentLength: textContent?.length || 0,
+            textContentSource: operationNode.data.options?.textContent
+              ? "options.textContent"
+              : operationNode.data.textContent
+                ? "data.textContent"
+                : operationNode.data.content
+                  ? "data.content"
+                  : "none",
+          })
+          cliConfigPayload = mapWriteNodeToCliOperator(operationNode)
+          break
         default:
           throw new Error(`Unsupported CLI operation type: ${operationNode.type}`)
       }
 
-      console.log(`Updating CLI operator config ${configId} (${operationNode.type}) with:`, cliConfigPayload)
+      console.log(`Updating CLI operator config ${configId} (${operationNode.type}) with:`, {
+        operation: cliConfigPayload.operation,
+        destination_path: cliConfigPayload.destination_path,
+        hasTextContent: !!cliConfigPayload.options?.textContent,
+        textContentLength: cliConfigPayload.options?.textContent?.length || 0,
+      })
 
       const configResponse = await updateCliOperatorConfig(clientId, configId, cliConfigPayload)
       if (!configResponse) {
         throw new Error(`Failed to update CLI operator config ${configId}`)
       }
 
-      console.log(`Updated CLI operator config ${configId} for ${operationNode.type} operation`)
+      // Log successful update with textContent verification
+      console.log(`✅ Updated CLI operator config ${configId} for ${operationNode.type} operation`)
+      if (operationNode.type === "write-node" && configResponse.options?.textContent) {
+        console.log(`📝 textContent successfully preserved in update response:`, {
+          configId: configResponse.id,
+          textContentLength: configResponse.options.textContent.length,
+          textContentPreview: configResponse.options.textContent.substring(0, 100) + "...",
+        })
+      }
     }
 
-    // Update Salesforce sequences
+    // Update Salesforce sequences (existing code remains the same)
     for (const sequence of salesforceSequences) {
       const { salesforceNode, type } = sequence
 
@@ -1130,7 +1229,7 @@ export async function updateAllConfigs(
     })
 
     return true
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in updateAllConfigs:", error)
     toast({
       title: "Config Update Error",
@@ -1141,7 +1240,6 @@ export async function updateAllConfigs(
   }
 }
 
-// Rest of the existing functions remain the same...
 export async function runWorkflowOnly(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
@@ -1248,7 +1346,7 @@ export async function runWorkflowOnly(
     })
 
     return true
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in runWorkflowOnly:", error)
     toast({
       title: "Workflow Error",
@@ -1311,7 +1409,7 @@ export function validateWorkflowStructure(
     }
 
     if (sequence.type === "inline-to-file" || sequence.type === "inline-to-inline") {
-      if (!sequence.readNode.data.content) {
+      if (sequence.readNode.data.content === undefined || sequence.readNode.data.content === null) {
         errors.push(`Inline input node in sequence ${sequence.sequenceIndex + 1} is missing content`)
       }
 
@@ -1346,17 +1444,37 @@ export function validateWorkflowStructure(
   for (const sequence of cliOperationSequences) {
     const { operationNode } = sequence
 
-    if (!operationNode.data.source_path) {
-      errors.push(`${operationNode.type} node in sequence ${sequence.sequenceIndex + 1} is missing a source path`)
-    }
+    if (operationNode.type === "write-node") {
+      if (!operationNode.data.destination_path) {
+        errors.push(`Write node in sequence ${sequence.sequenceIndex + 1} is missing a destination path.`)
+      }
+      if (
+        (operationNode.data.write_mode === "copy" ||
+          operationNode.data.write_mode === "append" ||
+          operationNode.data.write_mode === "compressed_copy") &&
+        !operationNode.data.source_path
+      ) {
+        errors.push(
+          `Write node in '${operationNode.data.write_mode}' mode in sequence ${sequence.sequenceIndex + 1} requires a source path.`,
+        )
+      }
+      // No content validation for 'new_file' as it can be empty
+    } else {
+      // Existing CLI operation validations
+      if (!operationNode.data.source_path) {
+        errors.push(`${operationNode.type} node in sequence ${sequence.sequenceIndex + 1} is missing a source path`)
+      }
 
-    if (
-      (operationNode.type === "copy-file" ||
-        operationNode.type === "move-file" ||
-        operationNode.type === "rename-file") &&
-      !operationNode.data.destination_path
-    ) {
-      errors.push(`${operationNode.type} node in sequence ${sequence.sequenceIndex + 1} is missing a destination path`)
+      if (
+        (operationNode.type === "copy-file" ||
+          operationNode.type === "move-file" ||
+          operationNode.type === "rename-file") &&
+        !operationNode.data.destination_path
+      ) {
+        errors.push(
+          `${operationNode.type} node in sequence ${sequence.sequenceIndex + 1} is missing a destination path`,
+        )
+      }
     }
   }
 
@@ -1393,5 +1511,3 @@ export function validateWorkflowStructure(
     errors,
   }
 }
-
-export { findFileConversionSequences, findCliOperationSequences, findSalesforceSequences, findAllOperationsInOrder }
