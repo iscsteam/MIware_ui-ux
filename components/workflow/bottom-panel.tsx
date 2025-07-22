@@ -30,21 +30,21 @@ import {
   Clock,
   Globe,
 } from "lucide-react";
-import { useWorkflow } from "./workflow-context";
+import { useWorkflow , APILogEntry } from "./workflow-context";
 import { checkDAGRunStatus } from "@/services/dagService";
 // FIX: Import the shared type definition
 import type { DAGStatusResponse } from "@/services/interface";
 
-interface APILogEntry {
-  id: string;
-  timestamp: Date;
-  method: string;
-  endpoint: string;
-  status: number;
-  response?: string;
-  error?: string;
-  duration?: number;
-}
+// interface APILogEntry {
+//   id: string;
+//   timestamp: Date;
+//   method: string;
+//   endpoint: string;
+//   status: number;
+//   response?: string;
+//   error?: string;
+//   duration?: number;
+// }
 
 interface ExecutionLog {
   id: string;
