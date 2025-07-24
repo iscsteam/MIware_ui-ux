@@ -238,7 +238,7 @@
 //                     <button
 //                       type="button"
 //                       onClick={() => setShowPassword(!showPassword)}
-//                       className="absolute right-4 top-1/2 transform -translate-y-1/2"
+//                       className="absolute right-4 top-1/2 transform -trangray-y-1/2"
 //                       disabled={isLoading}
 //                     >
 //                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -282,8 +282,6 @@
 //   );
 // }
 
-
-
 "use client";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -310,7 +308,7 @@ export default function AuthCard() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50 p-4">
       <div className="flex w-full max-w-5xl  backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden border border-white/20">
         {/* Left panel: either image/text (login) or tabs + register form */}
-        <div className="w-1/2 p-10 bg-gradient-to-br from-slate-200 to-blue-50/30 flex flex-col items-center justify-center relative overflow-hidden">
+        <div className="w-1/2 p-10 bg-gradient-to-br from-gray-200 to-blue-50/30 flex flex-col items-center justify-center relative overflow-hidden">
           <AnimatePresence mode="wait">
             {isLogin ? (
               <motion.div
@@ -346,15 +344,14 @@ export default function AuthCard() {
                 onSubmit={handleSubmit}
                 className="w-full space-y-5 relative z-10"
               >
-             
-                <div className="flex w-[200px] justify-center space-x-1 mb-8  bg-slate-200/50 backdrop-blur-sm p-1  shadow-inner border border-white/30 rounded-xl">
+                <div className="flex w-[200px] justify-center space-x-1 mb-8  bg-gray-200/50 backdrop-blur-sm p-1  shadow-inner border border-white/30 rounded-xl">
                   <button
                     type="button"
                     onClick={toggleMode}
                     className={`px-4 py-2 font-semibold rounded-lg transition-all duration-300 ${
                       isLogin
                         ? "text-white shadow-lg transform scale-105"
-                        : "text-slate-600"
+                        : "text-gray-600"
                     }`}
                   >
                     Sign In
@@ -364,17 +361,26 @@ export default function AuthCard() {
                     className={`px-4 py-2 font-semibold rounded-lg transition-all duration-300 ${
                       !isLogin
                         ? " text-gray-900  bg-gray-300 transform scale-105"
-                        : "text-slate-700 hover:bg-white/60"
+                        : "text-gray-700 hover:bg-white/60"
                     }`}
                   >
                     Sign Up
                   </button>
                 </div>
 
+                <div className="">
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-950 bg-clip-text text-transparent">
+                    Create your new account
+                  </h2>
+                  <p className="">
+                    Join us to access exclusive features and stay connected.
+                  </p>
+                </div>
+
                 <div>
                   <Label
                     htmlFor="r-name"
-                    className="text-slate-700 font-semibold mb-2 block"
+                    className="text-gray-700 font-semibold mb-2 block"
                   >
                     Full Name
                   </Label>
@@ -382,14 +388,14 @@ export default function AuthCard() {
                     id="r-name"
                     required
                     placeholder="Enter Your Full Name"
-                    className="h-10  border-2 border-slate-200 focus:outline-none focus:ring-0   bg-white/80 backdrop-blur-sm "
+                    className="h-10  border-2 border-gray-200 focus:outline-none focus:ring-0   bg-white/80 backdrop-blur-sm "
                   />
                 </div>
 
                 <div>
                   <Label
                     htmlFor="r-email"
-                    className="text-slate-700 font-semibold mb-2 block"
+                    className="text-gray-700 font-semibold mb-2 block"
                   >
                     Email
                   </Label>
@@ -398,7 +404,7 @@ export default function AuthCard() {
                     type="email"
                     required
                     placeholder="Enter Your Email"
-                    className="h-10  border-2 border-slate-200 focus:outline-none focus:ring-0   bg-white/80 backdrop-blur-sm "
+                    className="h-10  border-2 border-gray-200 focus:outline-none focus:ring-0   bg-white/80 backdrop-blur-sm "
                   />
                 </div>
 
@@ -415,7 +421,7 @@ export default function AuthCard() {
                       type={showPwd ? "text" : "password"}
                       required
                       placeholder="Enter your Password"
-                      className="h-10  border-2 border-slate-200 focus:outline-none focus:ring-0   bg-white/80 backdrop-blur-sm "
+                      className="h-10  border-2 border-gray-200 focus:outline-none focus:ring-0   bg-white/80 backdrop-blur-sm "
                     />
                     <button
                       type="button"
@@ -442,7 +448,7 @@ export default function AuthCard() {
                   )}
                 </Button>
 
-                <p className="text-center text-sm text-slate-500 pt-2">
+                <p className="text-center text-sm text-gray-500 pt-2">
                   Already have an account?{" "}
                   <button
                     type="button"
@@ -469,13 +475,13 @@ export default function AuthCard() {
                 className="space-y-6 relative z-10"
               >
                 {/* Enhanced Tabs */}
-                <div className="flex w-[200px] justify-center space-x-1 mb-8 bg-slate-200/50 backdrop-blur-sm p-1  shadow-inner border border-slate-200/30 rounded-xl">
+                <div className="flex w-[200px] justify-center space-x-1 mb-8 bg-gray-200/50 backdrop-blur-sm p-1  shadow-inner border border-gray-200/30 rounded-xl">
                   <button
                     type="button"
                     className={`px-4 py-2 font-semibold rounded-lg transition-all duration-300 ${
                       isLogin
                         ? " text-gray-900 bg-gray-300 transform scale-105"
-                        : "text-slate-700 hover:bg-white/60"
+                        : "text-gray-700 hover:bg-white/60"
                     }`}
                   >
                     Sign In
@@ -486,7 +492,7 @@ export default function AuthCard() {
                     className={`px-4 py-2 font-semibold rounded-lg transition-all duration-300 ${
                       !isLogin
                         ? " text-white shadow-lg transform scale-105"
-                        : "text-slate-600"
+                        : "text-gray-600"
                     }`}
                   >
                     Sign Up
@@ -497,7 +503,7 @@ export default function AuthCard() {
                   <div>
                     <Label
                       htmlFor="l-email"
-                      className="text-slate-700 font-semibold mb-2 block"
+                      className="text-gray-700 font-semibold mb-2 block"
                     >
                       Email
                     </Label>
@@ -507,7 +513,7 @@ export default function AuthCard() {
                         type="email"
                         required
                         placeholder="Enter You Email"
-                        className="h-10  border-2 border-slate-200    focus:outline-none focus:ring-0"
+                        className="h-10  border-2 border-gray-200    focus:outline-none focus:ring-0"
                       />
                     </div>
                   </div>
@@ -515,7 +521,7 @@ export default function AuthCard() {
                   <div>
                     <Label
                       htmlFor="l-password"
-                      className="text-slate-700 font-semibold mb-2 block"
+                      className="text-gray-700 font-semibold mb-2 block"
                     >
                       Password
                     </Label>
@@ -525,7 +531,7 @@ export default function AuthCard() {
                         type={showPwd ? "text" : "password"}
                         placeholder="Enter Your Password"
                         required
-                        className="h-10  border-2 border-slate-200 focus:outline-none focus:ring-0   bg-white/80 backdrop-blur-sm "
+                        className="h-10  border-2 border-gray-200 focus:outline-none focus:ring-0   bg-white/80 backdrop-blur-sm "
                       />
                       <button
                         type="button"
@@ -541,9 +547,9 @@ export default function AuthCard() {
                     <label className="flex items-center space-x-2 cursor-pointer">
                       <input
                         type="checkbox"
-                        className="w-4 h-4 text-blue-600 bg-white border-2 border-slate-300 rounded focus:ring-blue-500 focus:ring-2 transition-colors duration-200"
+                        className="w-4 h-4 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 transition-colors duration-200"
                       />
-                      <span className="text-slate-600 font-medium">
+                      <span className="text-gray-600 font-medium">
                         Remember me
                       </span>
                     </label>
@@ -570,7 +576,7 @@ export default function AuthCard() {
                     )}
                   </Button>
 
-                  <p className="text-center text-sm text-slate-500 pt-2">
+                  <p className="text-center text-sm text-gray-500 pt-2">
                     Don't have an account?{" "}
                     <button
                       type="button"
