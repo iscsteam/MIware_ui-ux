@@ -3,41 +3,48 @@ import FlipCard from "./FlipCard";
 const FeaturesGrid = () => {
   const features = [
     {
-      icon: "📱",
+    
       title: "Custom Apps",
-      backText: "We build tailored apps to automate workflows and boost productivity.",
-      ctaText: "App Solutions"
+      frontImg : "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80",
+      backText:
+        "We build tailored apps to automate workflows and boost productivity.",
+      ctaText: "App Solutions",
     },
     {
-      icon: "📊",
+     
       title: "Data Analytics",
+      frontImg : "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80",
       backText: "Turn raw data into insights that drive smarter decisions.",
-      ctaText: "Analytics Services"
+      ctaText: "Analytics Services",
     },
     {
-      icon: "☁️",
+    
       title: "Cloud Integration",
+      frontImg : "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80",
       backText: "Seamlessly link on-prem, cloud, and hybrid systems.",
-      ctaText: "Cloud & DevOps"
+      ctaText: "Cloud & DevOps",
     },
     {
-      icon: "🔐",
+     
       title: "Security & Compliance",
+      frontImg : "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80",
       backText: "Safeguard IP and meet industry regulations with ease.",
-      ctaText: "Security Audit"
+      ctaText: "Security Audit",
     },
     {
-      icon: "🛠️",
+     
       title: "Out-of-the-Box Suites",
+      frontImg : "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80",
       backText: "Deploy proven ERP, POS, and HR suites in weeks, not months.",
-      ctaText: "Product Catalog"
+      ctaText: "Product Catalog",
     },
     {
-      icon: "🤝",
+    
       title: "Consult & Support",
+      frontImg : "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80",
       backText: "24/7 support and SLA-backed delivery keep you online.",
-      ctaText: "Support Plans"
-    }
+      ctaText: "Support Plans",
+    },
   ];
 
   return (
@@ -48,17 +55,19 @@ const FeaturesGrid = () => {
             Everything your business needs
           </h2>
           <p className="font-inter text-xl text-muted-foreground max-w-3xl mx-auto">
-            From custom development to ready-made solutions, we deliver technology that scales with your ambitions.
+            From custom development to ready-made solutions, we deliver
+            technology that scales with your ambitions.
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center">
           {features.map((feature, index) => (
             <FlipCard
               key={index}
-              icon={feature.icon}
+            
               title={feature.title}
               backText={feature.backText}
+              frontImg={feature.frontImg}
               ctaText={feature.ctaText}
             />
           ))}

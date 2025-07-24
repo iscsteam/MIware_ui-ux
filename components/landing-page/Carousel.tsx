@@ -17,21 +17,21 @@ const Carousel = () => {
   const slides: Slide[] = [
     {
       id: 1,
-      headline: "Retail ERP across Africa",
+      headline: "Real-Time Observability & Monitoring",
       overlayText:
-        "Cut stock-outs by 32% and trimmed month-end close from 9 days to 2.",
+        "Built high-throughput Producer-Broker-Consumer architecture using RabbitMQ message queues and MongoDB for durable event storage",
       backgroundImage: analyticsImage,
     },
     {
       id: 2,
-      headline: "Logistics & Supply-chain Portal",
-      overlayText: "Consolidated 12 carriers into one real-time dashboard.",
+      headline: "DevOps & Infrastructure Excellence ",
+      overlayText: " Managed entire platform using Helm for third-party applications and Kustomize for custom microservices with GitOps workflows",
       backgroundImage: logisticsImage,
     },
     {
       id: 3,
-      headline: "24/7 Support",
-      overlayText: "SLA-backed response in under 30 min, every day.",
+      headline: "Business Impact & Transformation",
+      overlayText: " Reduced pipeline development time from weeks to hours (80% improvement) through configuration-driven approach ",
       backgroundImage: supportImage,
     },
   ];
@@ -49,24 +49,16 @@ const Carousel = () => {
     return () => clearInterval(timer);
   }, [isPlaying, slides.length]);
 
-  const goToSlide = (index: number) => {
-    setCurrentSlide(index);
-  };
-
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
-
-  const prevSlide = () => {
+  const goToSlide = (index: number) => setCurrentSlide(index);
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
+  const prevSlide = () =>
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
 
   return (
     <section
-      // className="relative overflow-hidden"
       role="region"
       aria-label="Image Carousel"
-      className="relative overflow-hidden justify-center align-middle"
+      className="relative overflow-hidden"
       onMouseEnter={() => setIsPlaying(false)}
       onMouseLeave={() => setIsPlaying(true)}
     >
@@ -80,10 +72,11 @@ const Carousel = () => {
             backgroundRepeat: "no-repeat",
             transform: `scale(1.1) translateX(${currentSlide * -2}px)`,
           }}
+          aria-hidden="true"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-primary/80 via-primary/60 to-transparent z-[5]" />
 
-        <div className="carousel-content relative z-10 text-center max-w-3xl mx-auto px-4 py-10">
+        <div className="carousel-content relative z-10 max-w-3xl mx-auto px-2">
           <h2 className="font-poppins font-bold text-4xl md:text-6xl text-white mb-6">
             {slides[currentSlide].headline}
           </h2>
@@ -96,24 +89,21 @@ const Carousel = () => {
       {/* Navigation Arrows */}
       <button
         onClick={prevSlide}
-        className="absolute left-6 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30
-                    rounded-full p-3 transition-all duration-300 backdrop-blur-sm"
+        className="absolute left-6 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 rounded-full p-3 transition-all duration-300 backdrop-blur-sm z-20"
         aria-label="Previous slide"
       >
         <ChevronLeft className="w-6 h-6 text-white" />
       </button>
-
       <button
         onClick={nextSlide}
-        className="absolute right-6 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30
-                    rounded-full p-3 transition-all duration-300 backdrop-blur-sm"
+        className="absolute right-6 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 rounded-full p-3 transition-all duration-300 backdrop-blur-sm z-20"
         aria-label="Next slide"
       >
         <ChevronRight className="w-6 h-6 text-white" />
       </button>
 
       {/* Pagination Dots */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-3">
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-3 z-20">
         {slides.map((_, index) => (
           <button
             key={index}

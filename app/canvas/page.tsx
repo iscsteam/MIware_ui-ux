@@ -116,38 +116,38 @@ export default function WorkflowAutomationDashboard() {
   };
 
   // If still checking for saved credentials, show loading
-  if (isCheckingCredentials) {
-    return (
-      <ThemeProvider defaultTheme="light" storageKey="workflow-theme">
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-white text-lg">Loading MI-WARE...</p>
-          </div>
-        </div>
-      </ThemeProvider>
-    );
-  }
+  // if (isCheckingCredentials) {
+  //   return (
+  //     <ThemeProvider defaultTheme="light" storageKey="workflow-theme">
+  //       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+  //         <div className="text-center">
+  //           <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+  //           <p className="text-white text-lg">Loading MI-WARE...</p>
+  //         </div>
+  //       </div>
+  //     </ThemeProvider>
+  //   );
+  // }
 
   // If not logged in and not loading, show login page
-  if (!isLoggedIn && !isLoading) {
-    return (
-      <ThemeProvider defaultTheme="light" storageKey="workflow-theme">
-        <LoginPage/>
+  // if (!isLoggedIn && !isLoading) {
+  //   return (
+  //     <ThemeProvider defaultTheme="light" storageKey="workflow-theme">
+  //       <LoginPage/>
 
         
-      </ThemeProvider>
-    );
-  }
+  //     </ThemeProvider>
+  //   );
+  // }
 
-  // If loading, show loading screen
-  if (isLoading) {
-    return (
-      <ThemeProvider defaultTheme="light" storageKey="workflow-theme">
-        <LoadingScreen onLoadingComplete={handleLoadingComplete} />
-      </ThemeProvider>
-    );
-  }
+  // // If loading, show loading screen
+  // if (isLoading) {
+  //   return (
+  //     <ThemeProvider defaultTheme="light" storageKey="workflow-theme">
+  //       <LoadingScreen onLoadingComplete={handleLoadingComplete} />
+  //     </ThemeProvider>
+  //   );
+  // }
 
   // If on clients page, show only the clients page
   if (activeView === "clients") {
