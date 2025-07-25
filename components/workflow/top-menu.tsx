@@ -37,7 +37,7 @@ import { createClient } from "@/services/client"
 import type { ClientCreateResponse } from "@/services/interface"
 import { stopCurrentWorkflow } from "@/services/dagService"
 import { createAllConfigs, updateAllConfigs, runWorkflowOnly } from "@/services/workflow-utils"
-import { CreateCredentialsModal } from "@/app/(auth)/registerclient/createcredentialsModal"
+// import { CreateCredentialsModal } from "@/app/(auth)/registerclient/createcredentialsModal"
 
 // --- START: Corrected Toast Notification System ---
 
@@ -721,10 +721,10 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
       </Dialog>
 
       {/* Create Credentials Modal */}
-      <CreateCredentialsModal 
+      {/* <CreateCredentialsModal 
         open={createCredentialsDialogOpen} 
         onOpenChange={setCreateCredentialsDialogOpen} 
-      />
+      /> */}
     </div>
   )
 }
