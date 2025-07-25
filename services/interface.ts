@@ -12,6 +12,7 @@ export type NodeType =
   | "read-file"
   | "write-file"
   | "copy-file"
+  |"write-node"
   | "rename-file"
   | "delete-file"
   | "list-files"
@@ -142,6 +143,7 @@ export interface SchemaItem {
   required?: boolean
   originalName?: string
   sourceNodeId?: string
+   properties?: SchemaItem[] // Add this line to support nested properties for complex types
 }
 
 export interface SchemaModalData {

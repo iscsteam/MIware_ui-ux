@@ -137,6 +137,9 @@ export interface WorkflowNodeData {
   update_objects?: boolean;
   input_path?: string;
   pretty?: boolean;
+  // Added for write-node (CLI operation)
+  write_mode?: "copy" | "append" | "new_file" | "compressed_copy"
+  compressionFormat?: string
 }
 
 export interface WorkflowNode {
@@ -520,14 +523,13 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             displayName,
             path: config.output.path,
             provider: config.output.provider,
-            format: config.output.format,
-            mode: config.output.mode,
+              mode: config.output.mode,
             options: config.output.options || {},
             content: config.output.content || "",
             ...(isDatabase && {
               connectionString: config.output.connectionString,
               table: config.output.table,
-              writeMode: config.output.writeMode || "append",
+              writeMode: config.output.writeMode || "overwrite",
             }),
             active: true,
           },
@@ -591,31 +593,77 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
-      let nodeType: NodeType;
-      let displayName: string;
+    let nodeType: NodeType
+    let displayName: string
+    let nodeData: WorkflowNodeData = { active: true }
 
-      switch (config.operation) {
-        case "copy":
-          nodeType = "copy-file";
-          displayName = "Copy File";
-          break;
-        case "move":
-          nodeType = "move-file";
-          displayName = "Move File";
-          break;
-        case "rename":
-          nodeType = "rename-file";
-          displayName = "Rename File";
-          break;
-        case "delete":
-          nodeType = "delete-file";
-          displayName = "Delete File";
-          break;
-        default:
-          console.warn("Unknown CLI operation:", config.operation);
-          nodeType = "copy-file";
-          displayName = "File Operation";
-      }
+    switch (config.operation) {
+      case "copy":
+        nodeType = "copy-file"
+        displayName = "Copy File"
+        nodeData = {
+          ...nodeData,
+          source_path: config.source_path,
+          destination_path: config.destination_path,
+          overwrite: config.options?.overwrite || false,
+          includeSubDirectories: config.options?.includeSubDirectories || false,
+          createNonExistingDirs: config.options?.createNonExistingDirs || false,
+        }
+        break
+      case "move":
+        nodeType = "move-file"
+        displayName = "Move File"
+        nodeData = {
+          ...nodeData,
+          source_path: config.source_path,
+          destination_path: config.destination_path,
+          overwrite: config.options?.overwrite || false,
+        }
+        break
+      case "rename":
+        nodeType = "rename-file"
+        displayName = "Rename File"
+        nodeData = {
+          ...nodeData,
+          source_path: config.source_path,
+          destination_path: config.destination_path,
+          overwrite: config.options?.overwrite || false,
+        }
+        break
+      case "delete":
+        nodeType = "delete-file"
+        displayName = "Delete File"
+        nodeData = {
+          ...nodeData,
+          source_path: config.source_path,
+          recursive: config.options?.recursive || false,
+        }
+        break
+      case "write": // Added for write-node with textContent handling
+        nodeType = "write-node"
+        displayName = "Write File (CLI)"
+        nodeData = {
+          ...nodeData,
+          source_path: config.source_path,
+          destination_path: config.destination_path,
+          write_mode: config.options?.mode,
+          content: config.options?.content || config.options?.textContent,
+          textContent: config.options?.textContent || config.options?.content, // Ensure textContent is preserved
+          addLineSeparator: config.options?.addLineSeparator,
+          compressionFormat: config.options?.compressionFormat,
+          overwrite: config.options?.overwrite || false,
+          options: {
+            ...config.options,
+            textContent: config.options?.textContent || config.options?.content, // Preserve in options too
+          },
+        }
+        break
+      default:
+        console.warn("Unknown CLI operation:", config.operation)
+        nodeType = "copy-file" // Fallback
+        displayName = "File Operation"
+        break
+    }
 
       const operationNodeId = `${config.operation}_${
         dagNode.config_id || uuidv4()
@@ -896,8 +944,11 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
               nodeType = "read-file";
               break;
             case "write-file":
-              nodeType = "write-file";
-              break;
+              nodeType = "write-file"
+              break
+            case "write-node":
+              nodeType = "write-node"
+              break
             case "database":
               nodeType = "database";
               break;
@@ -1183,12 +1234,31 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       }
     ) => {
       setNodes((prevNodes) =>
-        prevNodes.map((node) =>
-          node.id === id
-            ? { ...node, ...updates, data: { ...node.data, ...updates.data } }
-            : node
-        )
-      );
+        prevNodes.map((node) => {
+          if (node.id === id) {
+            const updatedNode = { ...node, ...updates, data: { ...node.data, ...updates.data } }
+
+            // Special handling for write-node textContent preservation
+            if (node.type === "write-node" && updates.data) {
+              console.log("🔄 Updating write-node with textContent preservation:", {
+                nodeId: id,
+                oldTextContent: node.data.textContent,
+                newTextContent: updates.data.textContent,
+                optionsTextContent: updates.data.options?.textContent,
+              })
+
+              // Ensure textContent is preserved in multiple locations
+              if (updates.data.options?.textContent) {
+                updatedNode.data.textContent = updates.data.options.textContent
+                updatedNode.data.content = updates.data.options.textContent
+              }
+            }
+
+            return updatedNode
+          }
+          return node
+        }),
+      )
     },
     []
   );
@@ -1560,8 +1630,20 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             output = { content: `Content of ${nodeData.path}` };
             break;
           case "write-file":
-            output = { filePath: nodeData.path, written: true };
-            break;
+            output = { filePath: nodeData.path, written: true }
+            break
+          case "write-node": // Enhanced write-node execution with textContent handling
+            const textContent = nodeData.options?.textContent || nodeData.textContent || nodeData.content || ""
+            output = {
+              message: `File operation '${nodeData.write_mode}' completed for ${nodeData.destination_path}`,
+              source_path: nodeData.source_path,
+              destination_path: nodeData.destination_path,
+              mode: nodeData.write_mode,
+              success: true,
+              textContent: textContent,
+              contentLength: textContent.length,
+            }
+            break
           case "source":
             output = {
               data: [{ id: 1, name: "Sample DB Data" }],
@@ -1833,8 +1915,8 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       message: "Save and Run: Process initiated.",
     });
 
-    const currentWorkflowIdValue = getCurrentWorkflowId(); // This is effectively currentWorkflowIdValue
-    const workflowNameForRun = currentWorkflowName; // Get the name from state
+    const currentWorkflowIdValue = getCurrentWorkflowId()
+    const workflowNameForRun = currentWorkflowName
 
     if (!currentWorkflowIdValue) {
       toast({
@@ -1883,7 +1965,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    setIsRunning(true);
+    setIsRunning(true)
 
     try {
       addLog({
@@ -1891,7 +1973,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         nodeName: "System",
         status: "info",
         message: "Save and Run: Phase 1: Saving workflow to MongoDB...",
-      });
+      })
 
       try {
         await saveWorkflowToBackend(); // Call your existing backend save function
@@ -1923,7 +2005,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           description:
             "Failed to save workflow to MongoDB, but attempting to continue with the run.",
           variant: "default",
-        });
+        })
       }
 
       addLog({
@@ -2037,13 +2119,12 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         }
         // --- END OF ADDING EXECUTION TO HISTORY ---
 
-        // This success message is about the triggering, not the actual Airflow completion
         toast({
           title: "Run Triggered",
           description:
             "Workflow saved and run triggered. Check History or Airflow for execution status.",
           variant: "default",
-        });
+        })
       } else {
         console.error(
           "WORKFLOW_CONTEXT: ❌ Phase 2 Failed: saveAndRunWorkflowUtil (config/DAG update/trigger) failed."
@@ -2060,7 +2141,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           description:
             "Failed to create configurations, update DAG, or trigger run. Please check logs.",
           variant: "destructive",
-        });
+        })
       }
     } catch (error: any) {
       console.error(
@@ -2081,7 +2162,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           error?.message || "Unknown error"
         }`,
         variant: "destructive",
-      });
+      })
     } finally {
       setIsRunning(false);
       console.log(
