@@ -410,12 +410,13 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={cn(
-                "relative pb-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors",
-                activeTab === tab && "text-foreground",
+                "relative px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors rounded-md",
+                activeTab === tab
+                  ? "bg-muted text-foreground"
+                  : "hover:bg-muted/50 hover:text-foreground",
               )}
             >
               {tab}
-              {activeTab === tab && <span className="absolute left-0 bottom-0 h-1 w-full bg-purple-600 rounded-sm" />}
             </button>
           ))}
         </div>

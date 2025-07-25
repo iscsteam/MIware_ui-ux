@@ -39,6 +39,7 @@ export type NodeType =
   | "inline-output"
   | "code"
   | "read-node" // Added ReadNode type
+  | "scheduler" // Added Scheduler type
 
 // Rest of the interface remains the same...
 // (Include all the existing interfaces from your original file)

@@ -4,6 +4,7 @@ import type React from "react"
 
 import {
   Play,
+  Timer,
   FileText,
   Filter,
   Copy,
@@ -27,7 +28,7 @@ import {
   Database,
   FilePenLine,
   FileInput,
-    FileOutput,
+  FileOutput,
   ScanText,
 } from "lucide-react"
 
@@ -51,9 +52,18 @@ interface NodeTypeDefinition {
     | "databaseoperations"
     | "salesforceoperations"
     | "inlineoperations"
+    | "scheduler" 
 }
 
 const nodeTypes: NodeTypeDefinition[] = [
+
+  {
+    type: "scheduler",
+    label: "Scheduler",
+    icon: <Timer className="h-5 w-5 text-purple-600" />,
+    description: "Schedule workflow execution with timer configurations",
+    category: "scheduler",
+  },
   {
     type: "file",
     label: "File",
@@ -295,6 +305,7 @@ type CategoryType =
   | "databaseoperations"
   | "salesforceoperations"
   | "inlineoperations"
+  | "scheduler"
 
 export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps) {
   const [isVisible, setIsVisible] = useState(false)
@@ -350,6 +361,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
   const databaseOperations = filteredNodeTypes.filter((node) => node.category === "databaseoperations")
   const salesforceOperations = filteredNodeTypes.filter((node) => node.category === "salesforceoperations")
   const inlineOperations = filteredNodeTypes.filter((node) => node.category === "inlineoperations")
+  const schedulerOperations = filteredNodeTypes.filter((node) => node.category === "scheduler")
 
   // Search input that appears on every view
   const searchInput = (
@@ -413,6 +425,7 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       const databaseResults = allFilteredNodes.filter((node) => node.category === "databaseoperations")
       const salesforceResults = allFilteredNodes.filter((node) => node.category === "salesforceoperations")
       const inlineResults = allFilteredNodes.filter((node) => node.category === "inlineoperations")
+      const schedulerResults = allFilteredNodes.filter((node) => node.category === "scheduler")
 
       return (
         <>
@@ -517,6 +530,17 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
                 {renderNodeList(inlineResults)}
               </div>
             )}
+
+            {schedulerResults.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-slate-600 flex items-center gap-2">
+                  <Timer className="h-4 w-4 text-purple-600" />
+                  Scheduler Operations
+                </h3>
+                {renderNodeList(schedulerResults)}
+              </div>
+            )}
+
           </div>
         </>
       )
@@ -651,6 +675,21 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
               <ChevronRight className="h-4 w-4 text-slate-500" />
             </div>
           </div>
+
+          {/* Scheduler Operations Card */}
+          <div
+            className="cursor-pointer hover:bg-slate-50 py-2 px-3 rounded-md"
+            onClick={() => setCurrentView("scheduler")}
+          >
+            <div className="w-full flex justify-between items-center text-sm font-medium text-slate-700">
+              <div className="flex items-center space-x-2">
+                <Clock className="h-5 w-5 text-purple-500" />
+                <span className="font-semibold">Scheduler Operations</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
+
         </div>
       </>
     )
@@ -667,7 +706,9 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
       | "data"
       | "databaseoperations"
       | "salesforceoperations"
-      | "inlineoperations",
+      | "inlineoperations"
+      | "scheduler",
+
     title: string,
     icon: React.ReactNode,
   ) => {
@@ -736,6 +777,8 @@ export function SideModal({ isOpen, onClose, onSelectNodeType }: SideModalProps)
           "Inline Operations",
           <FileInput className="h-5 w-5 text-blue-600" />,
         )
+      case "scheduler":
+        return renderCategoryView("scheduler", "Scheduler Operations", <Timer className="h-5 w-5 text-purple-500" />)
       default:
         return renderMainView()
     }

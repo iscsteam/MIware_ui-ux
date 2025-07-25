@@ -12,6 +12,7 @@ import {
   Database,
   FilePenLine,
   ScanText,
+  Timer,
 } from "lucide-react"
 
 import type { NodeType } from "@/services/interface"
@@ -47,6 +48,8 @@ export function getNodeIcon(type: NodeType) {
 
   // Otherwise, use Lucide icons with black color to match the consistent styling
   switch (type) {
+    case "scheduler":
+      return <Timer className="h-10 w-10 text-slate-600" />
     case "read-node":
       return <ScanText className="h-10 w-10 text-slate-800" /> // Add ReadNode icon
     case "http-receiver":
