@@ -245,10 +245,12 @@ export default function AuthCard() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50 p-4">
-      <div className="flex w-full max-w-5xl backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden border border-white/20">
+    // <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50 p-4">
+    //   <div className="flex w-full max-w-5xl backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden border border-white/20">
+    <div className="min-h-screen w-full flex bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50">
+
         {/* Left panel: either image/text (login) or tabs + register form */}
-        <div className="w-1/2 p-10 bg-gradient-to-br from-gray-200 to-blue-50/30 flex flex-col items-center justify-center relative overflow-hidden">
+        <div className="w-1/2 p-0 bg-gradient-to-br from-gray-200 to-blue-50/30 flex flex-col items-center justify-center relative overflow-hidden">
           <AnimatePresence mode="wait">
             {isLogin ? (
               <motion.div
@@ -258,14 +260,14 @@ export default function AuthCard() {
                 exit={{ opacity: 0, x: -20 }}
                 className="text-center relative z-10 w-full h-full"
               >
-                <div className="mb-8 w-full h-full bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 relative">
+                <div className="mb-8 w-full h-full bg-white/60 backdrop-blur-sm shadow-lg border border-white/30 relative">
                   <Image
                     src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80"
                     alt="Login"
                     fill
-                    className="object-cover rounded-2xl"
+                    className="object-cover"
                   />
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-center bg-gradient-to-t from-black/60 to-transparent rounded-b-2xl">
+                  <div className="absolute bottom-0 left-0 right-0 p-6 text-center bg-gradient-to-t from-black/60 to-transparent">
                     <h2 className="text-4xl font-bold mb-3 bg-gradient-to-r from-gray-50 to-gray-300 bg-clip-text text-transparent">
                       miWare
                     </h2>
@@ -282,7 +284,7 @@ export default function AuthCard() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 onSubmit={handleCreateCredentials}
-                className="w-full space-y-5 relative z-10"
+                className="w-full space-y-5 relative z-10 p-16"
               >
                 <div className="flex w-[200px] justify-center space-x-1 mb-4 bg-gray-200/50 backdrop-blur-sm p-1 shadow-inner border border-white/30 rounded-xl">
                   <button
@@ -429,7 +431,7 @@ export default function AuthCard() {
         </div>
 
         {/* Right panel: either login form under tabs (login) or image/text (register) */}
-        <div className="w-1/2 p-10 relative overflow-hidden">
+        <div className="w-1/2 p-0 relative overflow-hidden">
           <AnimatePresence mode="wait">
             {isLogin ? (
               <motion.div
@@ -437,7 +439,7 @@ export default function AuthCard() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="space-y-6 relative z-10"
+                className="space-y-6 relative z-10 p-16"
               >
                 {/* Enhanced Tabs */}
                 <div className="flex w-[200px] justify-center space-x-1 mb-8 bg-gray-200/50 backdrop-blur-sm p-1 shadow-inner border border-gray-200/30 rounded-xl">
@@ -571,14 +573,14 @@ export default function AuthCard() {
                 exit={{ opacity: 0, x: 20 }}
                 className="text-center relative z-10 w-full h-full"
               >
-                <div className="mb-8 w-full h-full bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 relative">
+                <div className="mb-8 w-full h-full bg-white/60 backdrop-blur-sm shadow-lg border border-white/30 relative">
                   <Image
                     src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80"
                     alt="Sign Up"
                     fill
-                    className="object-cover rounded-2xl"
+                    className="object-cover"
                   />
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-center bg-gradient-to-t from-black/60 to-transparent rounded-b-2xl">
+                  <div className="absolute bottom-0 left-0 right-0 p-6 text-center bg-gradient-to-t from-black/60 to-transparent">
                     <h2 className="text-4xl font-bold mb-3 bg-gradient-to-r from-gray-50 to-gray-300 bg-clip-text text-transparent">
                       miWare
                     </h2>
@@ -592,6 +594,6 @@ export default function AuthCard() {
           </AnimatePresence>
         </div>
       </div>
-    </div>
+    // </div>
   );
 }
