@@ -1,3 +1,4 @@
+//nodeSchemas.ts
 import type { NodeType, SchemaItem } from "@/services/interface"
 
 export interface NodeSchema {
@@ -248,6 +249,116 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
         name: "targetInfo",
         datatype: "object",
         description: "Information about the copied item at the target location.",
+      },
+    ],
+  },
+
+
+ "write-node": {
+    label: "Write Node",
+    description: "Writes content, copies, appends, or compresses files based on configuration.",
+    inputSchema: [
+      {
+        name: "operation",
+        datatype: "string",
+        description: "The type of write operation (e.g., 'write', 'copy').",
+        required: true,
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "source_path",
+        datatype: "string",
+        description: "Path to the source file for copy operations. Leave empty for new file creation or append-only.",
+        required: false,
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "destination_path",
+        datatype: "string",
+        description: "The path where the content will be written or copied.",
+        required: true,
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "options",
+        datatype: "complex",
+        description: "Additional options for the write operation.",
+        required: false,
+        sourceNodeId: "",
+        originalName: "",
+        properties: [
+          {
+            name: "append",
+            datatype: "boolean",
+            description: "If true, content is appended; otherwise, it overwrites.",
+            required: false,
+          },
+          {
+            name: "textContent",
+            datatype: "string",
+            description: "The text content to write or append. Required if source_path is empty.",
+            required: false,
+          },
+          {
+            name: "addLineSeparator",
+            datatype: "boolean",
+            description: "Adds a new line before appending content (only if append is true).",
+            required: false,
+          },
+          {
+            name: "create_dirs",
+            datatype: "boolean",
+            description: "If true, creates parent directories if they do not exist.",
+            required: false,
+          },
+          {
+            name: "compress",
+            datatype: "string",
+            description: "Type of compression to apply during copy (e.g., 'GZip', 'Deflate').",
+            required: false,
+          },
+        ],
+      },
+    ],
+    outputSchema: [
+      {
+        name: "success",
+        datatype: "boolean",
+        description: "Indicates whether the write operation was successful.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "message",
+        datatype: "string",
+        description: "A descriptive message about the operation's outcome.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "destination_path",
+        datatype: "string",
+        description: "The full path of the file after the operation.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "file_size",
+        datatype: "integer",
+        description: "The size of the destination file in bytes after the operation.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "compressed_size",
+        datatype: "integer",
+        description: "The size of the compressed file in bytes (if compression was applied).",
+        required: false,
+        sourceNodeId: "",
+        originalName: "",
       },
     ],
   },
