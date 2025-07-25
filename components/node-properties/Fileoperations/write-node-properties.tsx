@@ -1,4 +1,3 @@
-//write-node-properties.tsx
 "use client"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -125,30 +124,32 @@ export const writeNodeSchema: NodeSchema = {
 
 export default function WriteNodeProperties({ formData, onChange }: WriteNodePropertiesProps) {
   const handleOptionChange = (optionName: string, value: any) => {
-    onChange("options", { ...formData.options, [optionName]: value })
+    const updatedOptions = { ...formData.options, [optionName]: value }
+    onChange("options", updatedOptions)
+
+    // Debug logging for textContent changes
+    if (optionName === "textContent") {
+      console.log("📝 WriteNodeProperties: textContent updated:", {
+        newValue: value,
+        valueLength: value?.length || 0,
+        formDataOptions: updatedOptions,
+      })
+    }
   }
 
   const operation = formData.operation || "write" // Default to 'write' if not set
   const sourcePath = formData.source_path || ""
   const append = formData.options?.append || false
 
-  // Effect to pre-fill textContent based on destination_path extension
+  // Debug logging for form data changes
   useEffect(() => {
-    const destinationPath = formData.destination_path || ""
-    const currentTextContent = formData.options?.textContent || ""
-
-    if (destinationPath.endsWith(".json") && !currentTextContent) {
-      onChange("options", {
-        ...formData.options,
-        textContent: '{\n  "app_name": "Data Processor",\n  "version": "1.0.0",\n  "debug": true\n}',
-      })
-    } else if (destinationPath.endsWith(".csv") && !currentTextContent) {
-      onChange("options", {
-        ...formData.options,
-        textContent: "\n2025-07-18,Product-A,150,John Smith,Completed\n2025-07-18,Product-B,275,Jane Doe,Pending",
-      })
-    }
-  }, [formData.destination_path]) // Removed formData.options?.textContent from dependencies
+    console.log("🔍 WriteNodeProperties: Form data updated:", {
+      hasOptions: !!formData.options,
+      hasTextContent: !!formData.options?.textContent,
+      textContentLength: formData.options?.textContent?.length || 0,
+      textContentPreview: formData.options?.textContent?.substring(0, 50) + "..." || "none",
+    })
+  }, [formData.options]) // Use formData.options as the dependency
 
   return (
     <div className="space-y-4">
@@ -211,11 +212,20 @@ export default function WriteNodeProperties({ formData, onChange }: WriteNodePro
         <div>
           <Label htmlFor="textContent" className="text-sm font-medium text-gray-700">
             Text Content
+            {formData.options?.textContent && (
+              <span className="text-xs text-green-600 ml-2">({formData.options.textContent.length} characters)</span>
+            )}
           </Label>
           <Textarea
             id="textContent"
             value={formData.options?.textContent || ""}
-            onChange={(e) => handleOptionChange("textContent", e.target.value)}
+            onChange={(e) => {
+              console.log("📝 Textarea onChange triggered:", {
+                newValue: e.target.value,
+                valueLength: e.target.value.length,
+              })
+              handleOptionChange("textContent", e.target.value)
+            }}
             placeholder="Enter content to write or append..."
             rows={5}
           />
@@ -249,28 +259,31 @@ export default function WriteNodeProperties({ formData, onChange }: WriteNodePro
         <p className="text-xs text-gray-500 mt-1">If enabled, creates parent directories if they do not exist.</p>
       </div>
 
-      {sourcePath !== "" &&
-        !append && ( // Show compress only for direct copy operations
-          <div>
-            <Label htmlFor="compress" className="text-sm font-medium text-gray-700">
-              Compression Type (Optional)
-            </Label>
-            <Select
-              value={formData.options?.compress || "none"}
-              onValueChange={(value) => handleOptionChange("compress", value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="No compression" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                <SelectItem value="GZip">GZip</SelectItem>
-                <SelectItem value="Deflate">Deflate</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500 mt-1">Compresses the file during the copy operation.</p>
-          </div>
-        )}
+      {/* Compression option - now always visible */}
+      <div>
+        <Label htmlFor="compress" className="text-sm font-medium text-gray-700">
+          Compression Type (Optional)
+        </Label>
+        <Select
+          value={formData.options?.compress || "none"}
+          onValueChange={(value) => handleOptionChange("compress", value === "none" ? "" : value)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="No compression" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            <SelectItem value="GZip">GZip</SelectItem>
+            <SelectItem value="Deflate">Deflate</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-gray-500 mt-1">
+          {sourcePath !== "" && !append 
+            ? "Compresses the file during the copy operation."
+            : "Compresses the content when writing to the destination file."
+          }
+        </p>
+      </div>
     </div>
   )
 }
