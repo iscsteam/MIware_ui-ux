@@ -1,6 +1,4 @@
-
-//workflow-context.tsx
-
+// //workflow-context.tsx
 "use client"
 import type React from "react"
 import { createContext, useContext, useState, useCallback, useEffect } from "react"
@@ -127,6 +125,9 @@ export interface WorkflowNodeData {
   update_objects?: boolean
   input_path?: string
   pretty?: boolean
+  // Added for write-node (CLI operation)
+  write_mode?: "copy" | "append" | "new_file" | "compressed_copy"
+  compressionFormat?: string
 }
 
 export interface WorkflowNode {
@@ -217,7 +218,6 @@ interface WorkflowContextType {
   saveWorkflow: () => { nodes: WorkflowNode[]; connections: NodeConnection[] }
   saveWorkflowToBackend: () => Promise<void>
   getWorkflowExportData: () => WorkflowExportData
-  // loadWorkflow: (data: WorkflowExportData) => void
   loadWorkflow: (data: {
     nodes: WorkflowNode[]
     connections: NodeConnection[]
@@ -232,7 +232,7 @@ interface WorkflowContextType {
   saveAndRunWorkflow: () => Promise<void>
   createNewWorkflow: (workflowName: string, dagId: string) => void
   syncWorkflowWithAirflow: (workflowName: string, frontendDagId: string) => Promise<string>
-  setCurrentWorkflowMeta: (id: string, name: string) => void // Added as per fix
+  setCurrentWorkflowMeta: (id: string, name: string) => void
 }
 
 export interface StoredExecutionRun {
@@ -288,7 +288,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const [isRunning, setIsRunning] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Existing states, ensure types match if fix description used "" vs null
   const [currentWorkflowName, setCurrentWorkflowName] = useState<string>("")
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null)
 
@@ -449,14 +448,13 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           displayName,
           path: config.output.path,
           provider: config.output.provider,
-          format: config.output.format,
           mode: config.output.mode,
           options: config.output.options || {},
           content: config.output.content || "",
           ...(isDatabase && {
             connectionString: config.output.connectionString,
             table: config.output.table,
-            writeMode: config.output.writeMode || "append",
+            writeMode: config.output.writeMode || "overwrite",
           }),
           active: true,
         },
@@ -492,28 +490,74 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
     let nodeType: NodeType
     let displayName: string
+    let nodeData: WorkflowNodeData = { active: true }
 
     switch (config.operation) {
       case "copy":
         nodeType = "copy-file"
         displayName = "Copy File"
+        nodeData = {
+          ...nodeData,
+          source_path: config.source_path,
+          destination_path: config.destination_path,
+          overwrite: config.options?.overwrite || false,
+          includeSubDirectories: config.options?.includeSubDirectories || false,
+          createNonExistingDirs: config.options?.createNonExistingDirs || false,
+        }
         break
       case "move":
         nodeType = "move-file"
         displayName = "Move File"
+        nodeData = {
+          ...nodeData,
+          source_path: config.source_path,
+          destination_path: config.destination_path,
+          overwrite: config.options?.overwrite || false,
+        }
         break
       case "rename":
         nodeType = "rename-file"
         displayName = "Rename File"
+        nodeData = {
+          ...nodeData,
+          source_path: config.source_path,
+          destination_path: config.destination_path,
+          overwrite: config.options?.overwrite || false,
+        }
         break
       case "delete":
         nodeType = "delete-file"
         displayName = "Delete File"
+        nodeData = {
+          ...nodeData,
+          source_path: config.source_path,
+          recursive: config.options?.recursive || false,
+        }
+        break
+      case "write": // Added for write-node with textContent handling
+        nodeType = "write-node"
+        displayName = "Write File (CLI)"
+        nodeData = {
+          ...nodeData,
+          source_path: config.source_path,
+          destination_path: config.destination_path,
+          write_mode: config.options?.mode,
+          content: config.options?.content || config.options?.textContent,
+          textContent: config.options?.textContent || config.options?.content, // Ensure textContent is preserved
+          addLineSeparator: config.options?.addLineSeparator,
+          compressionFormat: config.options?.compressionFormat,
+          overwrite: config.options?.overwrite || false,
+          options: {
+            ...config.options,
+            textContent: config.options?.textContent || config.options?.content, // Preserve in options too
+          },
+        }
         break
       default:
         console.warn("Unknown CLI operation:", config.operation)
-        nodeType = "copy-file"
+        nodeType = "copy-file" // Fallback
         displayName = "File Operation"
+        break
     }
 
     const operationNodeId = `${config.operation}_${dagNode.config_id || uuidv4()}`
@@ -526,14 +570,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       data: {
         label: nodeType,
         displayName,
-        source_path: config.source_path,
-        destination_path: config.destination_path,
-        options: config.options || {},
-        overwrite: config.options?.overwrite || false,
-        includeSubDirectories: config.options?.includeSubDirectories || false,
-        createNonExistingDirs: config.options?.createNonExistingDirs || false,
-        recursive: config.options?.recursive || false,
-        active: true,
+        ...nodeData,
       },
       status: "configured",
     }
@@ -554,7 +591,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       const newNodes: WorkflowNode[] = []
       const newConnections: NodeConnection[] = []
       const nodePositions = new Map<string, NodePosition>()
-      const calculatedNodePositions = new Map<string, NodePosition>()
 
       const calculateNodePositions = (dagSequence: any[]) => {
         const levels: string[][] = []
@@ -756,6 +792,9 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             case "write-file":
               nodeType = "write-file"
               break
+            case "write-node":
+              nodeType = "write-node"
+              break
             case "database":
               nodeType = "database"
               break
@@ -841,16 +880,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
           const filteredConfigs = dagId ? configs.filter((config) => config.dag_id === dagId) : configs
 
-          if (filteredConfigs.length > 0) {
-            addLog({
-              nodeId: "system",
-              nodeName: "System",
-              status: "info",
-              message: `Loaded ${filteredConfigs.length} file conversion config(s).`,
-            })
-          }
-          // You can enhance nodes with config data here if needed
-          // For example, update nodes that have matching config_ids
           if (filteredConfigs.length > 0) {
             addLog({
               nodeId: "system",
@@ -998,9 +1027,30 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       },
     ) => {
       setNodes((prevNodes) =>
-        prevNodes.map((node) =>
-          node.id === id ? { ...node, ...updates, data: { ...node.data, ...updates.data } } : node,
-        ),
+        prevNodes.map((node) => {
+          if (node.id === id) {
+            const updatedNode = { ...node, ...updates, data: { ...node.data, ...updates.data } }
+
+            // Special handling for write-node textContent preservation
+            if (node.type === "write-node" && updates.data) {
+              console.log("🔄 Updating write-node with textContent preservation:", {
+                nodeId: id,
+                oldTextContent: node.data.textContent,
+                newTextContent: updates.data.textContent,
+                optionsTextContent: updates.data.options?.textContent,
+              })
+
+              // Ensure textContent is preserved in multiple locations
+              if (updates.data.options?.textContent) {
+                updatedNode.data.textContent = updates.data.options.textContent
+                updatedNode.data.content = updates.data.options.textContent
+              }
+            }
+
+            return updatedNode
+          }
+          return node
+        }),
       )
     },
     [],
@@ -1308,6 +1358,18 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           case "write-file":
             output = { filePath: nodeData.path, written: true }
             break
+          case "write-node": // Enhanced write-node execution with textContent handling
+            const textContent = nodeData.options?.textContent || nodeData.textContent || nodeData.content || ""
+            output = {
+              message: `File operation '${nodeData.write_mode}' completed for ${nodeData.destination_path}`,
+              source_path: nodeData.source_path,
+              destination_path: nodeData.destination_path,
+              mode: nodeData.write_mode,
+              success: true,
+              textContent: textContent,
+              contentLength: textContent.length,
+            }
+            break
           case "source":
             output = {
               data: [{ id: 1, name: "Sample DB Data" }],
@@ -1510,7 +1572,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const savedData = localStorage.getItem("workflowData") // For nodes/connections
+      const savedData = localStorage.getItem("workflowData")
       if (savedData) {
         const parsedData: WorkflowExportData = JSON.parse(savedData)
         if (
@@ -1520,7 +1582,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           Array.isArray(parsedData.connections)
         ) {
           loadWorkflow(parsedData)
-          // If "workflowData" has metadata, it might be an older source of truth or a fallback
           if (parsedData.metadata) {
             if (!currentWorkflowName && parsedData.metadata.name) setCurrentWorkflowName(parsedData.metadata.name)
             if (!currentWorkflowId && parsedData.metadata.dag_id) setCurrentWorkflowId(parsedData.metadata.dag_id)
@@ -1530,37 +1591,34 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Prioritize "currentWorkflow" for id and name, as it's set by setCurrentWorkflowMeta
       const currentWorkflowStr = localStorage.getItem("currentWorkflow")
       if (currentWorkflowStr) {
         const workflowInfo = JSON.parse(currentWorkflowStr)
-        // workflowInfo should contain { id, name }
-        if (workflowInfo.name) setCurrentWorkflowName(workflowInfo.name || "") // Ensure name is set
-        if (workflowInfo.id) setCurrentWorkflowId(workflowInfo.id || null) // Ensure id is set
+        if (workflowInfo.name) setCurrentWorkflowName(workflowInfo.name || "")
+        if (workflowInfo.id) setCurrentWorkflowId(workflowInfo.id || null)
       }
     } catch (error) {
       console.error("Failed to load workflow from localStorage:", error)
       localStorage.removeItem("workflowData")
       localStorage.removeItem("currentWorkflow")
     }
-  }, [loadWorkflow]) // currentWorkflowId and currentWorkflowName removed from deps to avoid loop with their setters
+  }, [loadWorkflow])
 
-  
-    const saveAndRunWorkflow = useCallback(async () => {
-    console.log("WORKFLOW_CONTEXT: === Starting Save and Run Workflow Process ===");
-    addLog({nodeId: "system", nodeName: "System", status: "info", message: "Save and Run: Process initiated."});
+  const saveAndRunWorkflow = useCallback(async () => {
+    console.log("WORKFLOW_CONTEXT: === Starting Save and Run Workflow Process ===")
+    addLog({ nodeId: "system", nodeName: "System", status: "info", message: "Save and Run: Process initiated." })
 
-    const currentWorkflowIdValue = getCurrentWorkflowId(); // This is effectively currentWorkflowIdValue
-    const workflowNameForRun = currentWorkflowName; // Get the name from state
+    const currentWorkflowIdValue = getCurrentWorkflowId()
+    const workflowNameForRun = currentWorkflowName
 
     if (!currentWorkflowIdValue) {
       toast({
         title: "Error",
         description: "No workflow DAG ID found. Please create or select a workflow first.",
         variant: "destructive",
-      });
-      addLog({nodeId: "system", nodeName: "System", status: "error", message: "Save and Run Aborted: No DAG ID."});
-      return;
+      })
+      addLog({ nodeId: "system", nodeName: "System", status: "error", message: "Save and Run Aborted: No DAG ID." })
+      return
     }
 
     if (nodes.length === 0) {
@@ -1568,22 +1626,32 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         title: "Error",
         description: "Cannot run an empty workflow. Please add nodes first.",
         variant: "destructive",
-      });
-      addLog({nodeId: "system", nodeName: "System", status: "error", message: "Save and Run Aborted: Empty workflow."});
-      return;
+      })
+      addLog({
+        nodeId: "system",
+        nodeName: "System",
+        status: "error",
+        message: "Save and Run Aborted: Empty workflow.",
+      })
+      return
     }
 
     if (isRunning) {
       toast({
         title: "Warning",
         description: "Workflow is already running. Please wait for it to complete.",
-        variant: "default", // Changed to default as it's a warning, not a hard error
-      });
-      addLog({nodeId: "system", nodeName: "System", status: "info", message: "Save and Run: Workflow already in progress."});
-      return;
+        variant: "default",
+      })
+      addLog({
+        nodeId: "system",
+        nodeName: "System",
+        status: "info",
+        message: "Save and Run: Workflow already in progress.",
+      })
+      return
     }
 
-    setIsRunning(true);
+    setIsRunning(true)
 
     try {
       addLog({
@@ -1591,30 +1659,30 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         nodeName: "System",
         status: "info",
         message: "Save and Run: Phase 1: Saving workflow to MongoDB...",
-      });
+      })
 
       try {
-        await saveWorkflowToBackend(); // Call your existing backend save function
-        console.log("WORKFLOW_CONTEXT: ✅ Phase 1 Complete: Workflow saved to MongoDB");
+        await saveWorkflowToBackend()
+        console.log("WORKFLOW_CONTEXT: ✅ Phase 1 Complete: Workflow saved to MongoDB")
         addLog({
           nodeId: "system",
           nodeName: "System",
           status: "success",
           message: "Save and Run: Phase 1 Complete: Workflow saved to MongoDB successfully.",
-        });
+        })
       } catch (saveError: any) {
-        console.error("WORKFLOW_CONTEXT: ❌ Phase 1 Failed: MongoDB save error:", saveError);
+        console.error("WORKFLOW_CONTEXT: ❌ Phase 1 Failed: MongoDB save error:", saveError)
         addLog({
           nodeId: "system",
           nodeName: "System",
           status: "error",
           message: `Save and Run: Phase 1 Failed: Could not save to MongoDB - ${saveError?.message || "Unknown error"}`,
-        });
+        })
         toast({
           title: "Save Warning",
           description: "Failed to save workflow to MongoDB, but attempting to continue with the run.",
           variant: "default",
-        });
+        })
       }
 
       addLog({
@@ -1622,133 +1690,123 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         nodeName: "System",
         status: "info",
         message: "Save and Run: Phase 2: Creating configurations and updating DAG sequence...",
-      });
+      })
 
-      console.log("WORKFLOW_CONTEXT: 🔧 Phase 2: Starting config creation and DAG update via saveAndRunWorkflowUtil...");
-      // Assuming saveAndRunWorkflowUtil handles Airflow interactions and returns true on success of that part
-      const airflowUtilSuccess = await saveAndRunWorkflowUtil(nodes, connections, currentWorkflowIdValue);
+      console.log("WORKFLOW_CONTEXT: 🔧 Phase 2: Starting config creation and DAG update via saveAndRunWorkflowUtil...")
+      const airflowUtilSuccess = await saveAndRunWorkflowUtil(nodes, connections, currentWorkflowIdValue)
 
       if (airflowUtilSuccess) {
-        console.log("WORKFLOW_CONTEXT: ✅ Phase 2 Complete: Airflow util (config/DAG update/trigger) reported success.");
+        console.log("WORKFLOW_CONTEXT: ✅ Phase 2 Complete: Airflow util (config/DAG update/trigger) reported success.")
         addLog({
           nodeId: "system",
           nodeName: "System",
           status: "success",
           message: "Save and Run: Phase 2 Complete: Configurations created and DAG sequence updated successfully.",
-        });
+        })
 
         addLog({
           nodeId: "system",
           nodeName: "System",
           status: "info",
           message: "Save and Run: Phase 3: Logging execution to history and (assumed) Airflow DAG run triggered.",
-        });
+        })
 
         // --- ADDING EXECUTION TO LOCALSTORAGE HISTORY ---
         try {
-            console.log(`WORKFLOW_CONTEXT: Preparing to save execution history for DAG ID: ${currentWorkflowIdValue}, Name: ${workflowNameForRun}`);
+          console.log(
+            `WORKFLOW_CONTEXT: Preparing to save execution history for DAG ID: ${currentWorkflowIdValue}, Name: ${workflowNameForRun}`,
+          )
 
-            const newExecutionRunForStorage: StoredExecutionRun = {
-                id: `run-${currentWorkflowIdValue}-${Date.now()}`,
-                dag_id: currentWorkflowIdValue,
-                workflowId: currentWorkflowIdValue, 
-                workflowName: workflowNameForRun || "Unnamed Workflow",
-                status: "running", // Set to "running" as Airflow is now (presumably) handling it
-                startTime: new Date().toISOString(),
-                triggeredBy: "manual", // Assuming "Save and Run" is a manual trigger
-                nodeResults: [], // Node results will be populated if/when Airflow reports back
-            };
+          const newExecutionRunForStorage: StoredExecutionRun = {
+            id: `run-${currentWorkflowIdValue}-${Date.now()}`,
+            dag_id: currentWorkflowIdValue,
+            workflowId: currentWorkflowIdValue,
+            workflowName: workflowNameForRun || "Unnamed Workflow",
+            status: "running",
+            startTime: new Date().toISOString(),
+            triggeredBy: "manual",
+            nodeResults: [],
+          }
 
-            const existingHistoryRaw = localStorage.getItem("allWorkflowExecutions");
-            let allHistoryEntries: StoredExecutionRun[] = [];
-            
-            if (existingHistoryRaw) {
-                try {
-                    const parsed = JSON.parse(existingHistoryRaw);
-                    if (Array.isArray(parsed)) {
-                        allHistoryEntries = parsed;
-                    } else {
-                        console.warn("WORKFLOW_CONTEXT: 'allWorkflowExecutions' in localStorage was not an array. Resetting.");
-                    }
-                } catch (e) {
-                    console.error("WORKFLOW_CONTEXT: Error parsing existing 'allWorkflowExecutions'. Discarding old data.", e);
-                }
+          const existingHistoryRaw = localStorage.getItem("allWorkflowExecutions")
+          let allHistoryEntries: StoredExecutionRun[] = []
+
+          if (existingHistoryRaw) {
+            try {
+              const parsed = JSON.parse(existingHistoryRaw)
+              if (Array.isArray(parsed)) {
+                allHistoryEntries = parsed
+              } else {
+                console.warn("WORKFLOW_CONTEXT: 'allWorkflowExecutions' in localStorage was not an array. Resetting.")
+              }
+            } catch (e) {
+              console.error("WORKFLOW_CONTEXT: Error parsing existing 'allWorkflowExecutions'. Discarding old data.", e)
             }
-            
-            allHistoryEntries.unshift(newExecutionRunForStorage); 
+          }
 
-            const MAX_HISTORY_ITEMS = 50; 
-            localStorage.setItem("allWorkflowExecutions", JSON.stringify(allHistoryEntries.slice(0, MAX_HISTORY_ITEMS)));
-            
-            console.log(`WORKFLOW_CONTEXT: Execution run ${newExecutionRunForStorage.id} saved to localStorage history with status 'running'.`);
-            addLog({
-                nodeId: "system",
-                nodeName: "System",
-                status: "info",
-                message: `Execution run ${newExecutionRunForStorage.id} for ${newExecutionRunForStorage.workflowName} (status: running) logged to local history.`,
-            });
+          allHistoryEntries.unshift(newExecutionRunForStorage)
 
+          const MAX_HISTORY_ITEMS = 50
+          localStorage.setItem("allWorkflowExecutions", JSON.stringify(allHistoryEntries.slice(0, MAX_HISTORY_ITEMS)))
+
+          console.log(
+            `WORKFLOW_CONTEXT: Execution run ${newExecutionRunForStorage.id} saved to localStorage history with status 'running'.`,
+          )
+          addLog({
+            nodeId: "system",
+            nodeName: "System",
+            status: "info",
+            message: `Execution run ${newExecutionRunForStorage.id} for ${newExecutionRunForStorage.workflowName} (status: running) logged to local history.`,
+          })
         } catch (e: any) {
-            console.error("WORKFLOW_CONTEXT: Error saving execution run to localStorage history:", e);
-            addLog({
-                nodeId: "system",
-                nodeName: "System",
-                status: "error",
-                message: `Failed to save execution run to local history: ${e?.message || String(e)}`,
-            });
+          console.error("WORKFLOW_CONTEXT: Error saving execution run to localStorage history:", e)
+          addLog({
+            nodeId: "system",
+            nodeName: "System",
+            status: "error",
+            message: `Failed to save execution run to local history: ${e?.message || String(e)}`,
+          })
         }
         // --- END OF ADDING EXECUTION TO HISTORY ---
 
-        // This success message is about the triggering, not the actual Airflow completion
         toast({
           title: "Run Triggered",
           description: "Workflow saved and run triggered. Check History or Airflow for execution status.",
           variant: "default",
-        });
+        })
       } else {
-        console.error("WORKFLOW_CONTEXT: ❌ Phase 2 Failed: saveAndRunWorkflowUtil (config/DAG update/trigger) failed.");
+        console.error("WORKFLOW_CONTEXT: ❌ Phase 2 Failed: saveAndRunWorkflowUtil (config/DAG update/trigger) failed.")
         addLog({
           nodeId: "system",
           nodeName: "System",
           status: "error",
           message: "Save and Run: Phase 2 Failed: Could not create configurations, update DAG, or trigger run.",
-        });
+        })
         toast({
           title: "Trigger Error",
           description: "Failed to create configurations, update DAG, or trigger run. Please check logs.",
           variant: "destructive",
-        });
+        })
       }
     } catch (error: any) {
-      console.error("WORKFLOW_CONTEXT: ❌ Workflow run process encountered an unhandled error:", error);
+      console.error("WORKFLOW_CONTEXT: ❌ Workflow run process encountered an unhandled error:", error)
       addLog({
         nodeId: "system",
         nodeName: "System",
         status: "error",
         message: `Save and Run: Unhandled error: ${error?.message || "Unknown error occurred"}`,
-      });
+      })
       toast({
         title: "Workflow Error",
         description: `Failed to run workflow: ${error?.message || "Unknown error"}`,
         variant: "destructive",
-      });
+      })
     } finally {
-      setIsRunning(false);
-      console.log("WORKFLOW_CONTEXT: === Save and Run Workflow Process Complete ===");
-      addLog({nodeId: "system", nodeName: "System", status: "info", message: "Save and Run: Process finished."});
+      setIsRunning(false)
+      console.log("WORKFLOW_CONTEXT: === Save and Run Workflow Process Complete ===")
+      addLog({ nodeId: "system", nodeName: "System", status: "info", message: "Save and Run: Process finished." })
     }
-  }, [
-      nodes, 
-      connections, 
-      getCurrentWorkflowId, 
-      currentWorkflowName, // Added currentWorkflowName as a dependency
-      toast, 
-      saveWorkflowToBackend, // Added saveWorkflowToBackend
-      isRunning, 
-      addLog,
-      // saveAndRunWorkflowUtil is used inside, but it's an import, not state/prop, so not needed in deps array.
-    ]
-  );
+  }, [nodes, connections, getCurrentWorkflowId, currentWorkflowName, toast, saveWorkflowToBackend, isRunning, addLog])
 
   const createNewWorkflow = useCallback(
     (workflowName: string, airflowDagId: string) => {

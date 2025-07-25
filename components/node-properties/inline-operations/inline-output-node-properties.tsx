@@ -219,6 +219,14 @@ export default function InlineOutputNodeProperties({ formData, onChange }: Props
       case "txt":
         return (
           <div className="space-y-3">
+             <div className="flex items-center space-x-2">
+              <Checkbox
+                id="header"
+                checked={options.header !== "false"}
+                onCheckedChange={(checked) => handleOptionsChange("header", checked ? "true" : "false")}
+              />
+              <Label htmlFor="header">Include header row</Label>
+            </div>
             <div>
               <Label htmlFor="delimiter">Delimiter</Label>
               <Input

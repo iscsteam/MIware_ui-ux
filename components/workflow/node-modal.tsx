@@ -1,3 +1,4 @@
+//node-modal.tsx
 "use client";
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
@@ -104,6 +105,8 @@ import ReadNodeProperties, {
   readNodeSchema,
 } from "@/components/node-properties/ReadNodeProperties";
 
+import WriteNodeProperties, { writeNodeSchema } from "@/components/node-properties/Fileoperations/write-node-properties"
+
 const NodePropertyComponents: Record<string, React.FC<any>> = {
   "create-file": CreateFileNodeProperties,
   "read-file": ReadFileNodeProperties,
@@ -113,6 +116,8 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "list-files": ListFilesNodeProperties,
   "file-poller": PollerFileNodeProperties,
   "write-file": WriteFileNodeProperties,
+ "write-node": WriteNodeProperties,
+
   "xml-parser": ParseXMLNodeProperties,
   "xml-render": RenderXMLNodeProperties,
   "transform-xml": TransformXMLNodeProperties,
@@ -140,6 +145,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
 const componentSchemas: Record<string, any> = {
   "read-file": readFileSchema,
   "write-file": writeFileSchema,
+   "write-node": writeNodeSchema,
   "delete-file": deleteFileSchema,
   "create-file": createFileSchema,
   "copy-file": copyFileSchema,

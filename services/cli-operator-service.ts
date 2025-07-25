@@ -1,3 +1,4 @@
+//cli-operator-service.ts
 import { toast } from "@/components/ui/use-toast"
 import type { WorkflowNode } from "@/components/workflow/workflow-context"
 import { URLS } from "./url"
@@ -15,6 +16,14 @@ export interface CliOperatorConfig {
     recursive?: boolean
     skipTrash?: boolean
     onlyIfExists?: boolean
+    mode?: "copy" | "append" | "new_file" | "compressed_copy"
+    textContent?: string // Ensure textContent is explicitly defined
+    content?: string // Keep both for compatibility
+    addLineSeparator?: boolean
+    compressionFormat?: string
+    append?: boolean
+    create_dirs?: boolean
+    compress?: string
     [key: string]: any
   }
   executed_by: string
@@ -71,6 +80,14 @@ export async function createCliOperatorConfig(
 
     const data = await response.json()
     console.log("CLI operator config created successfully:", data)
+
+    // Log the textContent in the response for debugging
+    if (data.options?.textContent) {
+      console.log("✅ textContent found in response:", data.options.textContent.substring(0, 100) + "...")
+    } else {
+      console.warn("⚠️ textContent not found in response options")
+    }
+
     return data
   } catch (error) {
     console.error("Error creating CLI operator config:", error)
@@ -109,6 +126,14 @@ export async function updateCliOperatorConfig(
 
     const data = await response.json()
     console.log("CLI operator config updated successfully:", data)
+
+    // Log the textContent in the response for debugging
+    if (data.options?.textContent) {
+      console.log("✅ textContent found in update response:", data.options.textContent.substring(0, 100) + "...")
+    } else {
+      console.warn("⚠️ textContent not found in update response options")
+    }
+
     return data
   } catch (error) {
     console.error("Error updating CLI operator config:", error)
@@ -323,4 +348,78 @@ export function mapReadFileToCliOperator(readNode: WorkflowNode): CliOperatorCon
     },
     executed_by: "workflow_user",
   }
+}
+
+/**
+ * Maps write node properties to CLI operator configuration.
+ * Supports basic copy, copy and append, append-only, write new file, and compressed file copy.
+ * FIXED: Ensures textContent is properly included in CLI operator config options
+ */
+export function mapWriteNodeToCliOperator(writeNode: WorkflowNode): CliOperatorConfig {
+  if (!writeNode || !writeNode.data) {
+    throw new Error("Invalid write node data")
+  }
+
+  console.log("🔍 Mapping write node to CLI operator:", {
+    nodeId: writeNode.id,
+    nodeData: writeNode.data,
+    options: writeNode.data.options,
+  })
+
+  const { source_path, destination_path, options } = writeNode.data
+
+  if (!destination_path) {
+    throw new Error("Write node is missing a destination path.")
+  }
+
+  // Extract textContent from all possible locations with priority order
+  let textContent = ""
+
+  // Priority 1: options.textContent (from the form)
+  if (options?.textContent) {
+    textContent = options.textContent
+    console.log("📝 Found textContent in options.textContent:", textContent.substring(0, 100) + "...")
+  }
+  // Priority 2: direct data.textContent
+  else if (writeNode.data.textContent) {
+    textContent = writeNode.data.textContent
+    console.log("📝 Found textContent in data.textContent:", textContent.substring(0, 100) + "...")
+  }
+  // Priority 3: data.content (fallback)
+  else if (writeNode.data.content) {
+    textContent = writeNode.data.content
+    console.log("📝 Found textContent in data.content:", textContent.substring(0, 100) + "...")
+  } else {
+    console.warn("⚠️ No textContent found in any location")
+  }
+
+  // Build CLI operator config with explicit textContent in options
+  const cliConfig: CliOperatorConfig = {
+    operation: "write",
+    source_path: source_path || "",
+    destination_path,
+    options: {
+      // Core write-node options
+      append: options?.append || false,
+      textContent: textContent, // Explicitly include textContent
+      addLineSeparator: options?.addLineSeparator || false,
+      create_dirs: options?.create_dirs || false,
+      compress: options?.compress || "none",
+
+      // Additional compatibility fields
+      content: textContent, // Also include as content for backward compatibility
+      overwrite: writeNode.data.overwrite || false,
+    },
+    executed_by: "workflow_user",
+  }
+
+  console.log("✅ Created CLI config for write-node:", {
+    operation: cliConfig.operation,
+    destination_path: cliConfig.destination_path,
+    hasTextContent: !!cliConfig.options?.textContent,
+    textContentLength: cliConfig.options?.textContent?.length || 0,
+    options: cliConfig.options,
+  })
+
+  return cliConfig
 }
