@@ -1,54 +1,31 @@
+// app/dashboard/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { CollapsibleSidebar } from './components/collapsible-sidebar';
-import { Navbar } from './components/navbar';
-import { ThemeProvider } from '@/components/theme-provider';
+// Update these import paths
+//import SystemStats from './components/stats/SystemStats';
+import ExecutionStats from './components/stats/ExecutionStats';
+// import { ThemeProvider } from './components/ThemeProvider';
+// import { ThemeProvider } from '@/components/theme-provider';
+//import UserStats from './components/stats/UserStats';
+//import NodeUsageStats from './components/stats/NodeUsageStats';
 
-interface User {
-  id: number;
-  email: string;
-  name: string;
-  unique_client_id: string;
-  role: string;
-  is_active: boolean;
-}
-
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const router = useRouter();
-
-  useEffect(() => {
-    const savedCredentials = localStorage.getItem('userCredentials');
-    if (savedCredentials) {
-      setUser(JSON.parse(savedCredentials));
-    } else {
-      router.push('/');
-    }
-  }, [router]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('userCredentials');
-    localStorage.removeItem('currentClient');
-    localStorage.removeItem('currentWorkflow');
-    setUser(null);
-    router.push('/');
-  };
-
-  if (!user) {
-    return null; // Or a loading spinner
-  }
-
+export default function DashboardPage() {
   return (
-    <ThemeProvider defaultTheme="light" storageKey="workflow-theme">
-      <div className="flex min-h-screen">
-        <CollapsibleSidebar />
-        <div className="flex flex-1 flex-col">
-          <Navbar user={user} onLogout={handleLogout} />
-          <main className="flex-1 p-4">{children}</main>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Overview</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Monitor your workflow automation system performance and usage
+        </p>
       </div>
-    </ThemeProvider>
+
+      <div className="space-y-6">
+        <ExecutionStats />
+        {/* <SystemStats />
+        
+        <UserStats />
+        <NodeUsageStats /> */}
+      </div>
+    </div>
   );
 }
