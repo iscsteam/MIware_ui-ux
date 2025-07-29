@@ -1,3 +1,4 @@
+//sidemodal.tsx
 "use client"
 import { useState, useEffect } from "react"
 import type React from "react"
@@ -104,6 +105,14 @@ const nodeTypes: NodeTypeDefinition[] = [
     label: "Copy File",
     icon: <Copy className="h-5 w-5 text-amber-600" />,
     description: "Copies a file or directory",
+    category: "file",
+  },
+
+    {
+    type: "write-node",
+    label: "Write Node",
+    icon: <FileOutput className="h-5 w-5 text-purple-600" />,
+    description: "Writes content, copies, appends, or compresses files.",
     category: "file",
   },
   {
