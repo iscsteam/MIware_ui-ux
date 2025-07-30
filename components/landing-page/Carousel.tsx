@@ -14,24 +14,100 @@ interface Slide {
 }
 
 const Carousel = () => {
+  // const slides: Slide[] = [
+  //   {
+  //     id: 1,
+  //     headline: "Real-Time Observability & Monitoring",
+  //     overlayText:
+  //       "Built high-throughput Producer-Broker-Consumer architecture using RabbitMQ message queues and MongoDB for durable event storage",
+  //     backgroundImage: analyticsImage,
+  //   },
+  //   {
+  //     id: 2,
+  //     headline: "DevOps & Infrastructure Excellence ",
+  //     overlayText: " Managed entire platform using Helm for third-party applications and Kustomize for custom microservices with GitOps workflows",
+  //     backgroundImage: logisticsImage,
+  //   },
+  //   {
+  //     id: 3,
+  //     headline: "Business Impact & Transformation",
+  //     overlayText: " Reduced pipeline development time from weeks to hours (80% improvement) through configuration-driven approach ",
+  //     backgroundImage: supportImage,
+  //   },
+  // ];
+
   const slides: Slide[] = [
     {
       id: 1,
-      headline: "Real-Time Observability & Monitoring",
+      headline: "Real-Time Observability & Intelligence",
       overlayText:
-        "Built high-throughput Producer-Broker-Consumer architecture using RabbitMQ message queues and MongoDB for durable event storage",
+        "Transform distributed complexity into actionable insights with our asynchronous Tracker Engine. Built on RabbitMQ and MongoDB, delivering comprehensive monitoring without performance overhead.",
       backgroundImage: analyticsImage,
     },
     {
       id: 2,
-      headline: "DevOps & Infrastructure Excellence ",
-      overlayText: " Managed entire platform using Helm for third-party applications and Kustomize for custom microservices with GitOps workflows",
+      headline: "Cloud-Native Architecture Excellence",
+      overlayText:
+        "Future-proof scalability with Kubernetes microservices architecture. Independent Control and Execution planes ensure optimal performance, with Apache Airflow and Spark handling enterprise-scale workloads.",
       backgroundImage: logisticsImage,
     },
     {
       id: 3,
-      headline: "Business Impact & Transformation",
-      overlayText: " Reduced pipeline development time from weeks to hours (80% improvement) through configuration-driven approach ",
+      headline: "Strategic Business Transformation",
+      overlayText:
+        "Accelerate time-to-market by compressing deployment timelines from weeks to hours. Enable self-service workflows that empower business analysts to drive data-driven decisions independently.",
+      backgroundImage: supportImage,
+    },
+  ];
+
+  // Alternative version with more technical focus:
+
+  const technicalSlides: Slide[] = [
+    {
+      id: 1,
+      headline: "Dynamic Pipeline Generation",
+      overlayText:
+        "Real-time compiler converts JSON-based workflows into executable Apache Airflow DAGs and Kubernetes YAML manifests. Dynamic context propagation ensures seamless data flow across all tasks.",
+      backgroundImage: analyticsImage,
+    },
+    {
+      id: 2,
+      headline: "Event-Driven Workflow Automation",
+      overlayText:
+        "Go beyond static scheduling with intelligent triggers that respond to real-world events. Dedicated microservices handle stateful schedules and file polling with advanced stability checks.",
+      backgroundImage: logisticsImage,
+    },
+    {
+      id: 3,
+      headline: "Enterprise-Grade Data Integration",
+      overlayText:
+        "Unified platform consolidating data integration logic with comprehensive auditability and security. PostgreSQL with JSONB flexibility meets enterprise governance requirements.",
+      backgroundImage: supportImage,
+    },
+  ];
+
+  // Alternative version with business benefits focus:
+
+  const businessSlides: Slide[] = [
+    {
+      id: 1,
+      headline: "Operational Efficiency Revolution",
+      overlayText:
+        "Automate sophisticated scheduling and multi-stage processing, liberating engineering teams from routine tasks to focus on strategic, high-impact innovation projects.",
+      backgroundImage: analyticsImage,
+    },
+    {
+      id: 2,
+      headline: "Self-Service Data Empowerment",
+      overlayText:
+        "Abstract complex engineering tasks to enable business stakeholders to independently configure workflows. Dramatically shorten time-to-value for critical reporting and analytics.",
+      backgroundImage: logisticsImage,
+    },
+    {
+      id: 3,
+      headline: "Competitive Advantage Through Data",
+      overlayText:
+        "Transform data integration from operational constraint into strategic enabler. Achieve faster decision-making, operational optimization, and scalable business growth.",
       backgroundImage: supportImage,
     },
   ];

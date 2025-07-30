@@ -8,7 +8,7 @@ import { TopMenu } from "@/components/workflow/top-menu";
 import { BottomPanel } from "@/components/workflow/bottom-panel";
 import { WorkflowProvider } from "@/components/workflow/workflow-context";
 import { ThemeProvider } from "@/components/theme-provider";
-import  LoginPage  from "@/app/(auth)/login/page";
+import  LoginPage  from "@/app/(auth)/auth/page";
 import { LoadingScreen } from "@/app/(auth)/loading-screen";
 import { ClientsPage } from "@/components/workflow/clients-page";
 import "@/services/consolelog";
