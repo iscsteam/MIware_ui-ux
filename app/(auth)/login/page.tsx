@@ -66,7 +66,7 @@ export default function AuthCard() {
 
   useEffect(() => {
     setMounted(true);
-    
+
     // Check if user is already logged in and redirect
     // const savedCredentials = localStorage?.getItem("userCredentials");
     // if (savedCredentials) {
@@ -83,7 +83,7 @@ export default function AuthCard() {
     //     localStorage?.removeItem("userCredentials");
     //   }
     // }
-    
+
     // Forms remain empty - no auto-population
   }, [router]);
 
@@ -105,10 +105,10 @@ export default function AuthCard() {
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
+
     setIsLoading(true);
     setError("");
-    
+
     if (!formData.email.trim()) {
       setError("Email is required");
       setIsLoading(false);
@@ -125,20 +125,20 @@ export default function AuthCard() {
       setIsLoading(false);
       return;
     }
-    
+
     try {
       const loginData = {
         email: formData.email.trim(),
         password: formData.password,
       };
       const response = await loginUser(loginData);
-      
+
       if (!response || !response.is_active) {
         setError("Invalid login or account inactive.");
         setIsLoading(false);
         return;
       }
-      
+
       const userData: UserData = {
         id: response.id,
         email: response.email,
@@ -147,7 +147,7 @@ export default function AuthCard() {
         role: response.role,
         is_active: response.is_active,
       };
-      
+
       // localStorage?.setItem(
       //   "userCredentials",
       //   JSON.stringify({
@@ -156,7 +156,7 @@ export default function AuthCard() {
       //     user: userData,
       //   })
       // );
-      
+
       router.push("/studio");
     } catch (error: any) {
       let errorMessage = "Login failed. Please try again.";
@@ -175,7 +175,7 @@ export default function AuthCard() {
 
   const handleCreateCredentials = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
+
     // Validation
     if (!formDataRegister.email.trim() || !formDataRegister.password.trim()) {
       setError("Email and password are required.");
@@ -211,11 +211,11 @@ export default function AuthCard() {
         password: "",
         role: "",
       });
-      
+
       // Show success message or redirect
       // setError("Account created successfully! You can now sign in.");
       // setIsLogin(true); // Switch to login mode
-      
+
       // Clear login form as well when switching modes
       router.push("/studio");
       setFormData({ email: "", password: "" });
@@ -245,355 +245,429 @@ export default function AuthCard() {
   };
 
   return (
-    // <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50 p-4">
-    //   <div className="flex w-full max-w-5xl backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden border border-white/20">
-    <div className="min-h-screen w-full flex bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50">
+    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50">
+      {/* Mobile Header - Only visible on small screens */}
+      <div className="lg:hidden w-full p-4 text-center bg-white/80 backdrop-blur-sm border-b border-gray-200">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          miWare
+        </h1>
+        <p className="text-gray-600 mt-1">
+          {isLogin ? "Sign in to your account" : "Create your new account"}
+        </p>
+      </div>
 
-        {/* Left panel: either image/text (login) or tabs + register form */}
-        <div className="w-1/2 p-0 bg-gradient-to-br from-gray-200 to-blue-50/30 flex flex-col items-center justify-center relative overflow-hidden">
-          <AnimatePresence mode="wait">
-            {isLogin ? (
-              <motion.div
-                key="left-login"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="text-center relative z-10 w-full h-full"
-              >
-                <div className="mb-8 w-full h-full bg-white/60 backdrop-blur-sm shadow-lg border border-white/30 relative">
-                  <Image
-                    src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80"
-                    alt="Login"
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-center bg-gradient-to-t from-black/60 to-transparent">
-                    <h2 className="text-4xl font-bold mb-3 bg-gradient-to-r from-gray-50 to-gray-300 bg-clip-text text-transparent">
-                      miWare
-                    </h2>
-                    <p className="text-gray-50 text-lg font-medium">
-                      Sign in to your account
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.form
-                key="left-register"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                onSubmit={handleCreateCredentials}
-                className="w-full space-y-5 relative z-10 p-16"
-              >
-                <div className="flex w-[200px] justify-center space-x-1 mb-4 bg-gray-200/50 backdrop-blur-sm p-1 shadow-inner border border-white/30 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={toggleMode}
-                    className={`px-4 py-2 font-semibold rounded-lg transition-all duration-300 ${
-                      isLogin
-                        ? "text-white shadow-lg transform scale-105"
-                        : "text-gray-600"
-                    }`}
-                  >
-                    Sign In
-                  </button>
-                  <button
-                    type="button"
-                    className={`px-4 py-2 font-semibold rounded-lg transition-all duration-300 ${
-                      !isLogin
-                        ? "text-gray-900 bg-gray-300 transform scale-105"
-                        : "text-gray-700 hover:bg-white/60"
-                    }`}
-                  >
-                    Sign Up
-                  </button>
-                </div>
-
-                <div className="">
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-950 bg-clip-text text-transparent">
-                    Create your new account
+      {/* Left panel for desktop / Image section for mobile */}
+      <div className="w-full lg:w-1/2 order-2 lg:order-1 p-0 bg-gradient-to-br from-gray-200 to-blue-50/30 flex flex-col items-center justify-center relative overflow-hidden min-h-[200px] lg:min-h-screen">
+        <AnimatePresence mode="wait">
+          {isLogin ? (
+            <motion.div
+              key="left-login"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="text-center relative z-10 w-full h-full"
+            >
+              <div className="w-full h-full bg-white/60 backdrop-blur-sm shadow-lg border border-white/30 relative min-h-[200px] lg:min-h-full">
+                <Image
+                  src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80"
+                  alt="Login"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6 text-center bg-gradient-to-t from-black/60 to-transparent">
+                  <h2 className="text-2xl lg:text-4xl font-bold mb-2 lg:mb-3 bg-gradient-to-r from-gray-50 to-gray-300 bg-clip-text text-transparent hidden lg:block">
+                    miWare
                   </h2>
-                  <p className="">
-                    Join us to access exclusive features and stay connected.
+                  <p className="text-gray-50 text-sm lg:text-lg font-medium">
+                    Sign in to your account
                   </p>
                 </div>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.form
+              key="left-register"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              onSubmit={handleCreateCredentials}
+              className="w-full space-y-4 lg:space-y-5 relative z-10 p-4 lg:p-16"
+            >
+              {/* Mobile/Tablet Tab Switcher */}
+              <div className="flex lg:hidden w-full max-w-xs mx-auto justify-center space-x-1 mb-6 bg-gray-200/50 backdrop-blur-sm p-1 shadow-inner border border-white/30 rounded-xl">
+                <button
+                  type="button"
+                  onClick={toggleMode}
+                  className={`flex-1 px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-300 ${
+                    isLogin
+                      ? "text-white shadow-lg transform scale-105"
+                      : "text-gray-600"
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-300 ${
+                    !isLogin
+                      ? "text-gray-900 bg-gray-300 transform scale-105"
+                      : "text-gray-700 hover:bg-white/60"
+                  }`}
+                >
+                  Sign Up
+                </button>
+              </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="credential-role">Role</Label>
-                  <Select
-                    value={formDataRegister.role}
-                    onValueChange={(value) =>
-                      setFormDataRegister((prev) => ({ ...prev, role: value }))
-                    }
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="viewer">Viewer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* Desktop Tab Switcher */}
+              <div className="hidden lg:flex w-[200px] justify-center space-x-1 mb-4 bg-gray-200/50 backdrop-blur-sm p-1 shadow-inner border border-white/30 rounded-xl">
+                <button
+                  type="button"
+                  onClick={toggleMode}
+                  className={`px-4 py-2 font-semibold rounded-lg transition-all duration-300 ${
+                    isLogin
+                      ? "text-white shadow-lg transform scale-105"
+                      : "text-gray-600"
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-2 font-semibold rounded-lg transition-all duration-300 ${
+                    !isLogin
+                      ? "text-gray-900 bg-gray-300 transform scale-105"
+                      : "text-gray-700 hover:bg-white/60"
+                  }`}
+                >
+                  Sign Up
+                </button>
+              </div>
 
-                <div>
-                  <Label
-                    htmlFor="r-email"
-                    className="text-gray-700 font-semibold mb-2 block"
-                  >
-                    Email
-                  </Label>
+              <div className="text-center lg:text-left">
+                <h2 className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-950 bg-clip-text text-transparent">
+                  Create your new account
+                </h2>
+                <p className="text-sm lg:text-base text-gray-600 mt-1">
+                  Join us to access exclusive features and stay connected.
+                </p>
+              </div>
+
+              <div className="grid gap-2">
+                <Label
+                  htmlFor="credential-role"
+                  className="text-sm lg:text-base"
+                >
+                  Role
+                </Label>
+                <Select
+                  value={formDataRegister.role}
+                  onValueChange={(value) =>
+                    setFormDataRegister((prev) => ({ ...prev, role: value }))
+                  }
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger className="h-10 lg:h-11">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="viewer">Viewer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label
+                  htmlFor="r-email"
+                  className="text-gray-700 font-semibold mb-2 block text-sm lg:text-base"
+                >
+                  Email
+                </Label>
+                <Input
+                  id="r-email"
+                  type="email"
+                  required
+                  value={formDataRegister.email}
+                  onChange={(e) =>
+                    setFormDataRegister({
+                      ...formDataRegister,
+                      email: e.target.value,
+                    })
+                  }
+                  placeholder="Enter Your Email"
+                  className="h-10 lg:h-11 border-2 border-gray-200 focus:outline-none focus:ring-0 bg-white/80 backdrop-blur-sm text-sm lg:text-base"
+                />
+              </div>
+
+              <div>
+                <Label
+                  htmlFor="r-password"
+                  className="text-slate-700 font-semibold mb-2 block text-sm lg:text-base"
+                >
+                  Password
+                </Label>
+                <div className="relative">
                   <Input
-                    id="r-email"
-                    type="email"
+                    id="r-password"
+                    type={showPwd ? "text" : "password"}
                     required
-                    value={formDataRegister.email}
+                    value={formDataRegister.password}
                     onChange={(e) =>
                       setFormDataRegister({
                         ...formDataRegister,
-                        email: e.target.value,
+                        password: e.target.value,
                       })
                     }
-                    placeholder="Enter Your Email"
-                    className="h-10 border-2 border-gray-200 focus:outline-none focus:ring-0 bg-white/80 backdrop-blur-sm"
+                    placeholder="Enter your Password"
+                    className="h-10 lg:h-11 border-2 border-gray-200 focus:outline-none focus:ring-0 bg-white/80 backdrop-blur-sm text-sm lg:text-base pr-12"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd((prev) => !prev)}
+                    className="absolute right-3 lg:right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-gray-950 transition-colors duration-200 p-1"
+                  >
+                    {showPwd ? (
+                      <EyeOff size={18} className="lg:w-5 lg:h-5" />
+                    ) : (
+                      <Eye size={18} className="lg:w-5 lg:h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="text-red-500 text-xs lg:text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+                  {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full h-10 lg:h-11 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-70 disabled:transform-none text-sm lg:text-base"
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Signing up...</span>
+                  </div>
+                ) : (
+                  "Sign Up"
+                )}
+              </Button>
+
+              <p className="text-center text-xs lg:text-sm text-gray-500">
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={toggleMode}
+                  className="text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-colors duration-200"
+                >
+                  Sign In
+                </button>
+              </p>
+            </motion.form>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Right panel for desktop / Form section for mobile */}
+      <div className="w-full lg:w-1/2 order-1 lg:order-2 p-0 relative overflow-hidden">
+        <AnimatePresence mode="wait">
+          {isLogin ? (
+            <motion.div
+              key="right-login"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="space-y-4 lg:space-y-6 relative z-10 p-4 lg:p-16"
+            >
+              {/* Desktop Tab Switcher */}
+              <div className="hidden lg:flex w-[200px] justify-center space-x-1 mb-8 bg-gray-200/50 backdrop-blur-sm p-1 shadow-inner border border-gray-200/30 rounded-xl">
+                <button
+                  type="button"
+                  className={`px-4 py-2 font-semibold rounded-lg transition-all duration-300 ${
+                    isLogin
+                      ? "text-gray-900 bg-gray-300 transform scale-105"
+                      : "text-gray-700 hover:bg-white/60"
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleMode}
+                  className={`px-4 py-2 font-semibold rounded-lg transition-all duration-300 ${
+                    !isLogin
+                      ? "text-white shadow-lg transform scale-105"
+                      : "text-gray-600"
+                  }`}
+                >
+                  Sign Up
+                </button>
+              </div>
+
+              {/* Mobile Tab Switcher */}
+              <div className="flex lg:hidden w-full max-w-xs mx-auto justify-center space-x-1 mb-6 bg-gray-200/50 backdrop-blur-sm p-1 shadow-inner border border-gray-200/30 rounded-xl">
+                <button
+                  type="button"
+                  className={`flex-1 px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-300 ${
+                    isLogin
+                      ? "text-gray-900 bg-gray-300 transform scale-105"
+                      : "text-gray-700 hover:bg-white/60"
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleMode}
+                  className={`flex-1 px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-300 ${
+                    !isLogin
+                      ? "text-white shadow-lg transform scale-105"
+                      : "text-gray-600"
+                  }`}
+                >
+                  Sign Up
+                </button>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-4 lg:space-y-5">
+                <div>
+                  <Label
+                    htmlFor="l-email"
+                    className="text-gray-700 font-semibold mb-2 block text-sm lg:text-base"
+                  >
+                    Email
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="l-email"
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) =>
+                        handleInputChange("email", e.target.value)
+                      }
+                      placeholder="Enter Your Email"
+                      className="h-10 lg:h-11 border-2 border-gray-200 focus:outline-none focus:ring-0 text-sm lg:text-base"
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <Label
-                    htmlFor="r-password"
-                    className="text-slate-700 font-semibold mb-2 block"
+                    htmlFor="l-password"
+                    className="text-gray-700 font-semibold mb-2 block text-sm lg:text-base"
                   >
                     Password
                   </Label>
                   <div className="relative">
                     <Input
-                      id="r-password"
+                      id="l-password"
                       type={showPwd ? "text" : "password"}
-                      required
-                      value={formDataRegister.password}
+                      placeholder="Enter Your Password"
+                      value={formData.password}
                       onChange={(e) =>
-                        setFormDataRegister({
-                          ...formDataRegister,
-                          password: e.target.value,
-                        })
+                        handleInputChange("password", e.target.value)
                       }
-                      placeholder="Enter your Password"
-                      className="h-10 border-2 border-gray-200 focus:outline-none focus:ring-0 bg-white/80 backdrop-blur-sm"
+                      required
+                      className="h-10 lg:h-11 border-2 border-gray-200 focus:outline-none focus:ring-0 bg-white/80 backdrop-blur-sm text-sm lg:text-base pr-12"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPwd((prev) => !prev)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-gray-950 transition-colors duration-200 p-1"
+                      className="absolute right-3 lg:right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-blue-600 transition-colors duration-200 p-1"
                     >
-                      {showPwd ? <EyeOff size={20} /> : <Eye size={20} />}
+                      {showPwd ? (
+                        <EyeOff size={18} className="lg:w-5 lg:h-5" />
+                      ) : (
+                        <Eye size={18} className="lg:w-5 lg:h-5" />
+                      )}
                     </button>
                   </div>
                 </div>
 
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 text-xs lg:text-sm pt-2">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 transition-colors duration-200"
+                    />
+                    <span className="text-gray-600 font-medium">
+                      Remember me
+                    </span>
+                  </label>
+                  <a
+                    href="#"
+                    className="text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-colors duration-200 text-center sm:text-right"
+                  >
+                    Forgot Password?
+                  </a>
+                </div>
+
                 {error && (
-                  <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+                  <div className="text-red-500 text-xs lg:text-sm bg-red-50 p-3 rounded-lg border border-red-200">
                     {error}
                   </div>
                 )}
 
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-70 disabled:transform-none"
+                  disabled={isLoading}
+                  className="w-full h-10 lg:h-11 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-70 disabled:transform-none mt-6 text-sm lg:text-base"
                 >
-                  {isSubmitting ? (
+                  {isLoading ? (
                     <div className="flex items-center space-x-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Signing up...</span>
+                      <span>Signing in...</span>
                     </div>
                   ) : (
-                    "Sign Up"
+                    "Sign In"
                   )}
                 </Button>
 
-                <p className="text-center text-sm text-gray-500 ">
-                  Already have an account?{" "}
+                <p className="text-center text-xs lg:text-sm text-gray-500 pt-2">
+                  Don't have an account?{" "}
                   <button
                     type="button"
                     onClick={toggleMode}
-                    className="text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-colors duration-200"
-                  >
-                    Sign In
-                  </button>
-                </p>
-              </motion.form>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Right panel: either login form under tabs (login) or image/text (register) */}
-        <div className="w-1/2 p-0 relative overflow-hidden">
-          <AnimatePresence mode="wait">
-            {isLogin ? (
-              <motion.div
-                key="right-login"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="space-y-6 relative z-10 p-16"
-              >
-                {/* Enhanced Tabs */}
-                <div className="flex w-[200px] justify-center space-x-1 mb-8 bg-gray-200/50 backdrop-blur-sm p-1 shadow-inner border border-gray-200/30 rounded-xl">
-                  <button
-                    type="button"
-                    className={`px-4 py-2 font-semibold rounded-lg transition-all duration-300 ${
-                      isLogin
-                        ? "text-gray-900 bg-gray-300 transform scale-105"
-                        : "text-gray-700 hover:bg-white/60"
-                    }`}
-                  >
-                    Sign In
-                  </button>
-                  <button
-                    type="button"
-                    onClick={toggleMode}
-                    className={`px-4 py-2 font-semibold rounded-lg transition-all duration-300 ${
-                      !isLogin
-                        ? "text-white shadow-lg transform scale-105"
-                        : "text-gray-600"
-                    }`}
+                    className="text-green-600 hover:text-green-700 font-semibold hover:underline transition-colors duration-200"
                   >
                     Sign Up
                   </button>
-                </div>
-
-                <form onSubmit={handleLogin} className="space-y-5">
-                  <div>
-                    <Label
-                      htmlFor="l-email"
-                      className="text-gray-700 font-semibold mb-2 block"
-                    >
-                      Email
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="l-email"
-                        type="email"
-                        required
-                        value={formData.email}
-                        onChange={(e) => handleInputChange("email", e.target.value)}
-                        placeholder="Enter Your Email"
-                        className="h-10 border-2 border-gray-200 focus:outline-none focus:ring-0"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label
-                      htmlFor="l-password"
-                      className="text-gray-700 font-semibold mb-2 block"
-                    >
-                      Password
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="l-password"
-                        type={showPwd ? "text" : "password"}
-                        placeholder="Enter Your Password"
-                        value={formData.password}
-                        onChange={(e) => handleInputChange("password", e.target.value)}
-                        required
-                        className="h-10 border-2 border-gray-200 focus:outline-none focus:ring-0 bg-white/80 backdrop-blur-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPwd((prev) => !prev)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-blue-600 transition-colors duration-200 p-1"
-                      >
-                        {showPwd ? <EyeOff size={20} /> : <Eye size={20} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center text-sm pt-2">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 transition-colors duration-200"
-                      />
-                      <span className="text-gray-600 font-medium">
-                        Remember me
-                      </span>
-                    </label>
-                    <a
-                      href="#"
-                      className="text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-colors duration-200"
-                    >
-                      Forgot Password?
-                    </a>
-                  </div>
-
-                  {error && (
-                    <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
-                      {error}
-                    </div>
-                  )}
-
-                  <Button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-70 disabled:transform-none mt-6"
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Signing in...</span>
-                      </div>
-                    ) : (
-                      "Sign In"
-                    )}
-                  </Button>
-
-                  <p className="text-center text-sm text-gray-500 pt-2">
-                    Don't have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={toggleMode}
-                      className="text-green-600 hover:text-green-700 font-semibold hover:underline transition-colors duration-200"
-                    >
-                      Sign Up
-                    </button>
+                </p>
+              </form>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="right-signup"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="text-center relative z-10 w-full h-full"
+            >
+              <div className="w-full h-full bg-white/60 backdrop-blur-sm shadow-lg border border-white/30 relative min-h-[200px] lg:min-h-full">
+                <Image
+                  src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80"
+                  alt="Sign Up"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6 text-center bg-gradient-to-t from-black/60 to-transparent">
+                  <h2 className="text-2xl lg:text-4xl font-bold mb-2 lg:mb-3 bg-gradient-to-r from-gray-50 to-gray-300 bg-clip-text text-transparent hidden lg:block">
+                    miWare
+                  </h2>
+                  <p className="text-gray-50 text-sm lg:text-lg font-medium">
+                    Create your account and get started
                   </p>
-                </form>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="right-signup"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="text-center relative z-10 w-full h-full"
-              >
-                <div className="mb-8 w-full h-full bg-white/60 backdrop-blur-sm shadow-lg border border-white/30 relative">
-                  <Image
-                    src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80"
-                    alt="Sign Up"
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-center bg-gradient-to-t from-black/60 to-transparent">
-                    <h2 className="text-4xl font-bold mb-3 bg-gradient-to-r from-gray-50 to-gray-300 bg-clip-text text-transparent">
-                      miWare
-                    </h2>
-                    <p className="text-gray-50 text-lg font-medium">
-                      Create your account and get started
-                    </p>
-                  </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    // </div>
+    </div>
   );
 }
