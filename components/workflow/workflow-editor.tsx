@@ -500,50 +500,16 @@ useEffect(() => {
     // Use a general background color for the editor area, canvas gets its own specific BG
     <div className="relative flex-1 overflow-hidden bg-background dark:bg-background">
       <TooltipProvider>
-        {/* Toolbar */}
-        <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-card dark:bg-card p-1.5 rounded-md shadow-lg border">
+        {/* Top Controls */}
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-card dark:bg-card p-1 rounded-md shadow-lg border">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleSideModal}>
-                <Plus className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={toggleSideModal}>
+                <Plus className="h-4 w-4 mr-1.5" />
+                Add Node
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Add Node</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomOut}>
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Zoom Out</TooltipContent>
-          </Tooltip>
-          <Badge variant="outline" className="px-2 py-0.5 text-xs min-w-[50px] text-center h-7 flex items-center select-none">
-            {Math.round(canvasScale * 100)}%
-          </Badge>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomIn}>
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Zoom In</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleResetView}>
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Reset View</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleFitToScreen}>
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Fit to Screen</TooltipContent>
+            <TooltipContent>Add a new node to the canvas</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -560,6 +526,37 @@ useEffect(() => {
               </Button>
             </TooltipTrigger>
             <TooltipContent>Toggle Minimap</TooltipContent>
+          </Tooltip>
+        </div>
+
+        {/* Bottom-Left Vertical Controls */}
+        <div className="absolute bottom-4 left-2 z-10 flex flex-col items-center gap-1 bg-card dark:bg-card p-1 rounded-md shadow-lg border">
+          <Badge variant="outline" className="px-1 py-0.5 text-xs min-w-[35px] text-center h-7 flex items-center select-none">
+            {Math.round(canvasScale * 100)}%
+          </Badge>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomOut}>
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="px-1 py-1">Zoom Out</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomIn}>
+                <ZoomIn className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="px-1 py-1">Zoom In</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleResetView}>
+                <RotateCcw className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="px-1 py-1">Reset View</TooltipContent>
           </Tooltip>
         </div>
       </TooltipProvider>
