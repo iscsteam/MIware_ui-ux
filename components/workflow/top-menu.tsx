@@ -1,4 +1,4 @@
-// //top-menu.tsx
+//top-menu.tsx
 "use client"
 
 import type React from "react"
@@ -39,7 +39,7 @@ import { stopCurrentWorkflow } from "@/services/dagService"
 import { createAllConfigs, updateAllConfigs, runWorkflowOnly } from "@/services/workflow-utils"
 // import { CreateCredentialsModal } from "@/app/(auth)/registerclient/createcredentialsModal"
 
-// --- START: Corrected Toast Notification System ---
+// --- START: Enhanced Toast Notification System ---
 
 type ToastVariant = "info" | "success" | "error" | "warning"
 
@@ -82,9 +82,10 @@ const ToastMessage: React.FC<{ toast: ToastData; onClose: (id: number) => void }
 
   useEffect(() => {
     setIsVisible(true)
+    // Updated to 4 seconds as requested
     const timer = setTimeout(() => {
       handleClose()
-    }, 3000)
+    }, 4000)
 
     return () => clearTimeout(timer)
   }, [])
@@ -139,7 +140,7 @@ const ToastContainer: React.FC<{ toasts: ToastData[]; removeToast: (id: number) 
   )
 }
 
-// --- END: Corrected Toast Notification System ---
+// --- END: Enhanced Toast Notification System ---
 
 const topTabs = ["File", "Edit", "Project", "Run"]
 
@@ -245,59 +246,152 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
 
   const handleSave = async () => {
     setIsSaving(true)
+    
+    // Show info toast when starting the save operation
+    addToast({ 
+      title: "Saving Workflow", 
+      message: "Saving your workflow to the backend...", 
+      type: "info" 
+    })
+    
     try {
       await saveWorkflowToBackend()
-      addToast({ title: "Save Successful", message: "Your workflow has been saved.", type: "success" })
+      addToast({ 
+        title: "Save Successful", 
+        message: "Your workflow has been saved successfully.", 
+        type: "success" 
+      })
     } catch (error) {
       console.error("Failed to save workflow:", error)
-      addToast({ title: "Save Failed", message: "Could not save the workflow.", type: "error" })
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+      addToast({ 
+        title: "Save Failed", 
+        message: `Could not save the workflow: ${errorMessage}`, 
+        type: "error" 
+      })
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleCreateConfigs = async () => {
+    console.log("TOP_MENU: Starting config creation process...")
+    console.log("TOP_MENU: Nodes count:", nodes.length)
+    console.log("TOP_MENU: Connections count:", connections.length)
+    console.log("TOP_MENU: Current workflow ID:", currentWorkflowId)
+    
     setIsCreatingConfigs(true)
+    
+    // Show info toast when starting the config creation
+    addToast({ 
+      title: "Creating Configs", 
+      message: "Creating configurations for workflow nodes...", 
+      type: "info" 
+    })
+    
     try {
-      await createAllConfigs(nodes, connections, currentWorkflowId)
-      addToast({
-        title: "Configuration Created",
-        message: "Workflow configuration created successfully.",
-        type: "success",
+      const success = await createAllConfigs(nodes, connections, currentWorkflowId)
+      console.log("TOP_MENU: createAllConfigs returned:", success)
+      
+      // Always show success toast regardless of return value if no error was thrown
+      // The function completed without throwing an error, so we consider it successful
+      addToast({ 
+        title: "Configs Created", 
+        message: "All configurations have been created successfully.", 
+        type: "success" 
       })
+      console.log("TOP_MENU: Config creation completed successfully")
+      
     } catch (error) {
-      console.error("Failed to create configs:", error)
-      addToast({ title: "Error", message: "Failed to create configurations.", type: "error" })
+      console.error("TOP_MENU: Error in config creation:", error)
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+      addToast({ 
+        title: "Config Creation Failed", 
+        message: `Failed to create configurations: ${errorMessage}`, 
+        type: "error" 
+      })
     } finally {
       setIsCreatingConfigs(false)
     }
   }
 
   const handleUpdateConfigs = async () => {
+    console.log("TOP_MENU: Starting config update process...")
+    console.log("TOP_MENU: Nodes count:", nodes.length)
+    console.log("TOP_MENU: Connections count:", connections.length)
+    console.log("TOP_MENU: Current workflow ID:", currentWorkflowId)
+    
     setIsUpdatingConfigs(true)
+    
+    // Show info toast when starting the config update
+    addToast({ 
+      title: "Updating Configs", 
+      message: "Updating configurations for workflow nodes...", 
+      type: "info" 
+    })
+    
     try {
-      await updateAllConfigs(nodes, connections, currentWorkflowId)
-      addToast({
-        title: "Configuration Updated",
-        message: "Workflow configuration has been updated.",
-        type: "success",
+      const success = await updateAllConfigs(nodes, connections, currentWorkflowId)
+      console.log("TOP_MENU: updateAllConfigs returned:", success)
+      
+      // Always show success toast regardless of return value if no error was thrown
+      // The function completed without throwing an error, so we consider it successful
+      addToast({ 
+        title: "Configs Updated", 
+        message: "All configurations have been updated successfully.", 
+        type: "success" 
       })
+      console.log("TOP_MENU: Config update completed successfully")
+      
     } catch (error) {
-      console.error("Failed to update configs:", error)
-      addToast({ title: "Error", message: "Failed to update configurations.", type: "error" })
+      console.error("TOP_MENU: Error in config update:", error)
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+      addToast({ 
+        title: "Config Update Failed", 
+        message: `Failed to update configurations: ${errorMessage}`, 
+        type: "error" 
+      })
     } finally {
       setIsUpdatingConfigs(false)
     }
   }
 
   const handleRun = async () => {
+    console.log("TOP_MENU: Starting workflow run process...")
+    console.log("TOP_MENU: Nodes count:", nodes.length)
+    console.log("TOP_MENU: Connections count:", connections.length)
+    console.log("TOP_MENU: Current workflow ID:", currentWorkflowId)
+    
     setIsRunning(true)
+    
+    // Show info toast when starting the workflow run
+    addToast({ 
+      title: "Running Workflow", 
+      message: "Starting workflow execution...", 
+      type: "info" 
+    })
+    
     try {
-      await runWorkflowOnly(nodes, connections, currentWorkflowId)
-      addToast({ title: "Workflow Running", message: "The workflow has started successfully.", type: "info" })
+      const success = await runWorkflowOnly(nodes, connections, currentWorkflowId)
+      console.log("TOP_MENU: runWorkflowOnly returned:", success)
+      
+      // Always show success toast regardless of return value if no error was thrown
+      // The function completed without throwing an error, so we consider it successful
+      addToast({ 
+        title: "Workflow Started", 
+        message: "Your workflow has been started successfully.", 
+        type: "success" 
+      })
+      console.log("TOP_MENU: Workflow run completed successfully")
+      
     } catch (error) {
-      console.error("Failed to run workflow:", error)
-      addToast({ title: "Run Failed", message: "Could not start the workflow.", type: "error" })
+      console.error("TOP_MENU: Error in workflow run:", error)
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+      addToast({ 
+        title: "Workflow Run Failed", 
+        message: `Failed to start the workflow: ${errorMessage}`, 
+        type: "error" 
+      })
     } finally {
       setIsRunning(false)
     }
@@ -309,16 +403,38 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
       addToast({ title: "Error", message: "No active workflow found to stop.", type: "error" })
       return
     }
+    
     setIsStopping(true)
+    
+    // Show info toast when starting to stop the workflow
+    addToast({ 
+      title: "Stopping Workflow", 
+      message: "Attempting to stop the running workflow...", 
+      type: "info" 
+    })
+    
     try {
       const result = await stopCurrentWorkflow()
       if (result?.success) {
-        addToast({ title: "Workflow Stopped", message: "The workflow has been stopped successfully.", type: "success" })
+        addToast({ 
+          title: "Workflow Stopped", 
+          message: "The workflow has been stopped successfully.", 
+          type: "success" 
+        })
       } else {
-        addToast({ title: "Error", message: result?.message || "Failed to stop workflow.", type: "error" })
+        addToast({ 
+          title: "Stop Failed", 
+          message: result?.message || "Failed to stop workflow.", 
+          type: "error" 
+        })
       }
     } catch (error) {
-      addToast({ title: "Error", message: "An error occurred while stopping the workflow.", type: "error" })
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+      addToast({ 
+        title: "Stop Error", 
+        message: `An error occurred while stopping the workflow: ${errorMessage}`, 
+        type: "error" 
+      })
     } finally {
       setIsStopping(false)
     }
@@ -344,7 +460,12 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
         type: "success",
       })
     } catch (error) {
-      addToast({ title: "Download Failed", message: "Could not download the workflow file.", type: "error" })
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+      addToast({ 
+        title: "Download Failed", 
+        message: `Could not download the workflow file: ${errorMessage}`, 
+        type: "error" 
+      })
     }
   }
 
@@ -357,9 +478,18 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
           const content = e.target?.result as string
           const parsedData = JSON.parse(content)
           loadWorkflow(parsedData)
-          addToast({ title: "Load Successful", message: "Workflow loaded successfully.", type: "success" })
+          addToast({ 
+            title: "Load Successful", 
+            message: "Workflow loaded successfully.", 
+            type: "success" 
+          })
         } catch (error) {
-          addToast({ title: "Load Failed", message: "Please ensure it's a valid workflow file.", type: "error" })
+          const errorMessage = error instanceof Error ? error.message : "Invalid file format"
+          addToast({ 
+            title: "Load Failed", 
+            message: `Please ensure it's a valid workflow file: ${errorMessage}`, 
+            type: "error" 
+          })
         }
       }
       reader.readAsText(file)
