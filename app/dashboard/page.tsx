@@ -9,7 +9,7 @@ import ExecutionStats from './components/stats/ExecutionStats';
 //import UserStats from './components/stats/UserStats';
 //import NodeUsageStats from './components/stats/NodeUsageStats';
 
-export default function DashboardPage() {
+export default function Home() {
   return (
     <div className="space-y-6">
       <div>

@@ -3,6 +3,7 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
+import Link from "next/link"
 import {
   Share2,
   UserPlus,
@@ -141,7 +142,7 @@ const ToastContainer: React.FC<{ toasts: ToastData[]; removeToast: (id: number) 
 
 // --- END: Corrected Toast Notification System ---
 
-const topTabs = ["File", "Edit", "Project", "Run"]
+const topTabs = ["Home"]
 
 interface User {
   name: string
@@ -405,18 +406,19 @@ export function TopMenu({ activeView, setActiveView, user, onLogout, onNavigateT
       <div className="flex h-14 items-center justify-between border-b px-4 bg-background">
         {/* Left Side */}
         <div className="flex items-center space-x-6 h-full">
-          {topTabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={cn(
-                "relative pb-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors",
-                activeTab === tab && "text-foreground",
-              )}
-            >
-              {tab}
-              {activeTab === tab && <span className="absolute left-0 bottom-0 h-1 w-full bg-purple-600 rounded-sm" />}
-            </button>
+            {topTabs.map((tab) => (
+            <Link key={tab} href="/dashboard" passHref>
+              <button
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  "relative pb-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors",
+                  activeTab === tab && "text-foreground",
+                )}
+              >
+                {tab}
+                {activeTab === tab && <span className="absolute left-0 bottom-0 h-1 w-full bg-purple-600 rounded-sm" />}
+              </button>
+            </Link>
           ))}
         </div>
 

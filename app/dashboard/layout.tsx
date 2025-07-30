@@ -48,16 +48,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <ThemeProvider>
-      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
         <Sidebar 
           collapsed={isCollapsed} 
           onToggle={handleToggleSidebar} 
           user={user}
         />
-        <div className="flex flex-1 flex-col h-full min-h-0 overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden">
           <Navbar user={user} onLogout={handleLogout} />
           {/* The 'children' here is where your page.tsx will be rendered */}
-          <main className="h-full overflow-y-auto p-4 md:p-6">{children}</main>
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
         </div>
       </div>
     </ThemeProvider>

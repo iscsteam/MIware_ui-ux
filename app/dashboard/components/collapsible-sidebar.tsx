@@ -28,6 +28,7 @@ interface SidebarProps {
 }
 
 const navigation = [
+  { name: 'Home', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Studio', href: '/studio', icon: GalleryVerticalEnd },
   { name: 'Reports', href: '/dashboard/reports', icon: History },
   { name: 'Users', href: '/dashboard/users', icon: Users },
