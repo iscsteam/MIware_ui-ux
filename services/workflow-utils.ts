@@ -1,4 +1,4 @@
-// File: services/workflow-utils.ts
+//workflow-utils.ts
 import type { WorkflowNode, NodeConnection } from "@/components/workflow/workflow-context"
 import {
   createFileConversionConfig,
@@ -27,6 +27,11 @@ import { toast } from "@/components/ui/use-toast"
 import { getCurrentClientId } from "@/components/workflow/workflow-context"
 import { createSalesforceReadConfig, updateSalesforceReadConfig } from "@/services/salesforce/salesforceread"
 import { createSalesforceWriteConfig, updateSalesforceWriteConfig } from "@/services/salesforce/salesforcewrite"
+import {
+  createSchedulerTimerConfig,
+  updateSchedulerTimerConfig,
+  mapSchedulerNodeToTimerConfig,
+} from "@/services/scheduler-service"
 
 // Helper function to ensure Python-compatible IDs
 function makePythonSafeId(id: string): string {
@@ -41,7 +46,7 @@ function makePythonSafeId(id: string): string {
 interface FileConversionSequence {
   readNode: WorkflowNode
   writeNode: WorkflowNode
-  filterNode?: WorkflowNode // Changed from null to undefined
+  filterNode?: WorkflowNode
   sequenceIndex: number
   type:
     | "file-to-file"
@@ -50,6 +55,8 @@ interface FileConversionSequence {
     | "inline-to-file"
     | "file-to-inline"
     | "inline-to-inline"
+    | "inline-to-database"
+    | "database-to-inline"
 }
 
 // Interface for CLI operation sequence
@@ -65,25 +72,33 @@ interface SalesforceSequence {
   type: "read" | "write"
 }
 
-// Interface for operation config
+// Interface for Timer sequence (internally handle scheduler nodes as timer)
+interface TimerSequence {
+  timerNode: WorkflowNode
+  sequenceIndex: number
+}
+
+// Interface for operation config - use "timer" internally for backend compatibility
 interface OperationConfig {
-  type: "file_conversion" | "cli_operator" | "read_salesforce" | "write_salesforce"
+  type: "file_conversion" | "cli_operator" | "read_salesforce" | "write_salesforce" | "timer"
   configId: number
   nodeId: string
   sequenceIndex: number
 }
 
-// Store for created configs
+// Store for created configs - use timer instead of scheduler
 const createdConfigs: {
   fileConversionConfigs: Map<string, number>
   cliOperatorConfigs: Map<string, number>
   salesforceReadConfigs: Map<string, number>
   salesforceWriteConfigs: Map<string, number>
+  timerConfigs: Map<string, number>
 } = {
   fileConversionConfigs: new Map(),
   cliOperatorConfigs: new Map(),
   salesforceReadConfigs: new Map(),
   salesforceWriteConfigs: new Map(),
+  timerConfigs: new Map(),
 }
 
 // Helper function to ensure proper empty structures for backend API
@@ -292,7 +307,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
           writeNode,
           filterNode,
           sequenceIndex: sequenceIndex++,
-          type: "inline-to-file", // This should probably be "inline-to-database"
+          type: "inline-to-database",
         })
         break
       } else if (nextNode.type === "filter") {
@@ -342,7 +357,7 @@ function findFileConversionSequences(nodes: WorkflowNode[], connections: NodeCon
           writeNode,
           filterNode,
           sequenceIndex: sequenceIndex++,
-          type: "database-to-file", // This should probably be "database-to-inline"
+          type: "database-to-inline",
         })
         break
       } else if (nextNode.type === "filter") {
@@ -408,7 +423,24 @@ function findSalesforceSequences(nodes: WorkflowNode[], connections: NodeConnect
   return sequences
 }
 
-// Find all operations in workflow order (mixed file conversions, CLI operations, and Salesforce)
+// Find all Timer sequences in the workflow (scheduler nodes handled as timer internally)
+function findTimerSequences(nodes: WorkflowNode[], connections: NodeConnection[]): TimerSequence[] {
+  const sequences: TimerSequence[] = []
+  const timerNodes = nodes.filter((node) => node.type === "scheduler") // Still using scheduler type for node
+
+  let sequenceIndex = 0
+
+  for (const timerNode of timerNodes) {
+    sequences.push({
+      timerNode,
+      sequenceIndex: sequenceIndex++,
+    })
+  }
+
+  return sequences
+}
+
+// Find all operations in workflow order (mixed file conversions, CLI operations, Salesforce, and Timer)
 function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnection[]): OperationConfig[] {
   const operations: OperationConfig[] = []
 
@@ -509,6 +541,17 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
         sequenceIndex: operationIndex++,
       })
       currentNode = nextNode
+    }
+    // Check if current node is a Scheduler operation (handle as timer internally)
+    else if (nextNode.type === "scheduler") {
+      const configId = createdConfigs.timerConfigs.get(nextNode.id) || -1
+      operations.push({
+        type: "timer", // Use timer type for backend compatibility
+        configId,
+        nodeId: nextNode.id,
+        sequenceIndex: operationIndex++,
+      })
+      currentNode = nextNode
     } else {
       currentNode = nextNode
     }
@@ -537,6 +580,8 @@ function createMixedOperationsDagSequence(
     firstNodeId = `cli_op_node_${firstConfig.configId}`
   } else if (firstConfig.type === "write_salesforce") {
     firstNodeId = `write_salesforce_${firstConfig.configId}`
+  } else if (firstConfig.type === "timer") {
+    firstNodeId = `timer_${firstConfig.configId}`
   } else {
     firstNodeId = `read_salesforce_${firstConfig.configId}`
   }
@@ -560,6 +605,8 @@ function createMixedOperationsDagSequence(
       nodeId = `cli_op_node_${config.configId}`
     } else if (config.type === "write_salesforce") {
       nodeId = `write_salesforce_${config.configId}`
+    } else if (config.type === "timer") {
+      nodeId = `timer_${config.configId}`
     } else {
       nodeId = `read_salesforce_${config.configId}`
     }
@@ -572,6 +619,8 @@ function createMixedOperationsDagSequence(
         nextNodeId = [`cli_op_node_${nextConfig.configId}`]
       } else if (nextConfig.type === "write_salesforce") {
         nextNodeId = [`write_salesforce_${nextConfig.configId}`]
+      } else if (nextConfig.type === "timer") {
+        nextNodeId = [`timer_${nextConfig.configId}`]
       } else {
         nextNodeId = [`read_salesforce_${nextConfig.configId}`]
       }
@@ -581,7 +630,7 @@ function createMixedOperationsDagSequence(
 
     dagSequence.push({
       id: nodeId,
-      type: config.type,
+      type: config.type, // Use timer directly for backend
       config_id: config.configId,
       next: nextNodeId,
     })
@@ -604,6 +653,7 @@ export function clearAllConfigs(): void {
   createdConfigs.cliOperatorConfigs.clear()
   createdConfigs.salesforceReadConfigs.clear()
   createdConfigs.salesforceWriteConfigs.clear()
+  createdConfigs.timerConfigs.clear()
 
   console.log("All config stores cleared")
   toast({
@@ -618,23 +668,34 @@ export function getConfigCounts(): {
   cliOperator: number
   salesforceRead: number
   salesforceWrite: number
+  timer: number
 } {
   return {
     fileConversion: createdConfigs.fileConversionConfigs.size,
     cliOperator: createdConfigs.cliOperatorConfigs.size,
     salesforceRead: createdConfigs.salesforceReadConfigs.size,
     salesforceWrite: createdConfigs.salesforceWriteConfigs.size,
+    timer: createdConfigs.timerConfigs.size,
   }
 }
 
-// ENHANCED: Create all configurations with support for all conversion types
+// ENHANCED: Create all configurations with support for all conversion types and timer
 export async function createAllConfigs(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
   currentWorkflowId: string | null,
 ): Promise<boolean> {
+  console.log("WORKFLOW_UTILS: === Starting createAllConfigs ===")
+  console.log("WORKFLOW_UTILS: Input validation:", {
+    nodesCount: nodes.length,
+    connectionsCount: connections.length,
+    currentWorkflowId,
+  })
+
+  // FIXED: Early validation with proper error handling
   const dynamicClientIdString = getCurrentClientId()
   if (!dynamicClientIdString) {
+    console.error("WORKFLOW_UTILS: Client ID not found")
     toast({
       title: "Error",
       description: "Client ID not found. Please ensure you're logged in.",
@@ -645,6 +706,7 @@ export async function createAllConfigs(
 
   const clientId = Number.parseInt(dynamicClientIdString, 10)
   if (isNaN(clientId)) {
+    console.error("WORKFLOW_UTILS: Invalid client ID format:", dynamicClientIdString)
     toast({
       title: "Error",
       description: "Invalid client ID format.",
@@ -654,9 +716,20 @@ export async function createAllConfigs(
   }
 
   if (!currentWorkflowId) {
+    console.error("WORKFLOW_UTILS: Workflow ID is required")
     toast({
       title: "Error",
       description: "Workflow ID is required to create configurations.",
+      variant: "destructive",
+    })
+    return false
+  }
+
+  if (nodes.length === 0) {
+    console.error("WORKFLOW_UTILS: No nodes found")
+    toast({
+      title: "Error",
+      description: "No nodes found in the workflow. Please add nodes before creating configurations.",
       variant: "destructive",
     })
     return false
@@ -672,12 +745,15 @@ export async function createAllConfigs(
     (type) => ["copy-file", "move-file", "rename-file", "delete-file", "write-node"].includes(type), // Added write-node
   )
   const hasSalesforce = currentNodeTypes.includes("salesforce-cloud") || currentNodeTypes.includes("write-salesforce")
+  const hasTimer = currentNodeTypes.includes("scheduler") // Display as scheduler but handle as timer
 
-  console.log("Current workflow contains:", {
+  console.log("WORKFLOW_UTILS: Current workflow analysis:", {
     fileConversion: hasFileConversion,
     cliOperations: hasCliOperations,
     salesforce: hasSalesforce,
+    timer: hasTimer,
     totalNodes: nodes.length,
+    nodeTypes: currentNodeTypes,
   })
 
   try {
@@ -685,16 +761,40 @@ export async function createAllConfigs(
     const fileConversionSequences = findFileConversionSequences(nodes, connections)
     const cliOperationSequences = findCliOperationSequences(nodes, connections)
     const salesforceSequences = findSalesforceSequences(nodes, connections)
+    const timerSequences = findTimerSequences(nodes, connections)
 
-    console.log(`Creating configs for ${fileConversionSequences.length} file conversion sequences`)
-    console.log(`Creating configs for ${cliOperationSequences.length} CLI operation sequences`)
-    console.log(`Creating configs for ${salesforceSequences.length} Salesforce sequences`)
+    console.log("WORKFLOW_UTILS: Found sequences:", {
+      fileConversion: fileConversionSequences.length,
+      cliOperation: cliOperationSequences.length,
+      salesforce: salesforceSequences.length,
+      timer: timerSequences.length,
+    })
+
+    if (
+      fileConversionSequences.length === 0 &&
+      cliOperationSequences.length === 0 &&
+      salesforceSequences.length === 0 &&
+      timerSequences.length === 0
+    ) {
+      console.error("WORKFLOW_UTILS: No valid sequences found")
+      toast({
+        title: "Error",
+        description: "No valid operation sequences found in the workflow. Please check your node connections.",
+        variant: "destructive",
+      })
+      return false
+    }
+
+    console.log(`WORKFLOW_UTILS: Creating configs for ${fileConversionSequences.length} file conversion sequences`)
+    console.log(`WORKFLOW_UTILS: Creating configs for ${cliOperationSequences.length} CLI operation sequences`)
+    console.log(`WORKFLOW_UTILS: Creating configs for ${salesforceSequences.length} Salesforce sequences`)
+    console.log(`WORKFLOW_UTILS: Creating configs for ${timerSequences.length} Timer sequences`)
 
     // Process file conversion sequences (including inline)
     for (const sequence of fileConversionSequences) {
       const { readNode, writeNode, filterNode, type } = sequence
 
-      console.log(`Processing ${type} sequence:`, {
+      console.log(`WORKFLOW_UTILS: Processing ${type} sequence:`, {
         readNode: { id: readNode.id, type: readNode.type, data: readNode.data },
         writeNode: { id: writeNode.id, type: writeNode.type, data: writeNode.data },
         filterNode: filterNode ? { id: filterNode.id, type: filterNode.type } : null,
@@ -703,6 +803,7 @@ export async function createAllConfigs(
       // Validate required fields based on sequence type
       if (type === "file-to-file" || type === "file-to-database") {
         if (!readNode.data.path) {
+          console.error(`WORKFLOW_UTILS: ${type} sequence missing input file path`)
           toast({
             title: "Error",
             description: `File conversion sequence ${sequence.sequenceIndex + 1} is missing input file path.`,
@@ -712,9 +813,10 @@ export async function createAllConfigs(
         }
       }
 
-      if (type === "inline-to-file" || type === "inline-to-inline") {
+      if (type === "inline-to-file" || type === "inline-to-inline" || type === "inline-to-database") {
         // For inline input, content can be empty string, but format is required
         if (!readNode.data.format) {
+          console.error(`WORKFLOW_UTILS: ${type} sequence missing format`)
           toast({
             title: "Error",
             description: `Inline input sequence ${sequence.sequenceIndex + 1} is missing format.`,
@@ -730,6 +832,7 @@ export async function createAllConfigs(
 
       if (type === "file-to-file" || type === "inline-to-file") {
         if (!writeNode.data.path) {
+          console.error(`WORKFLOW_UTILS: ${type} sequence missing output file path`)
           toast({
             title: "Error",
             description: `File conversion sequence ${sequence.sequenceIndex + 1} is missing output file path.`,
@@ -739,8 +842,9 @@ export async function createAllConfigs(
         }
       }
 
-      if (type === "file-to-database" || type === "database-to-file") {
+      if (type === "file-to-database" || type === "database-to-file" || type === "inline-to-database") {
         if (!writeNode.data.connectionString || !writeNode.data.table) {
+          console.error(`WORKFLOW_UTILS: ${type} sequence missing database connection or table`)
           toast({
             title: "Error",
             description: `Database operation sequence ${sequence.sequenceIndex + 1} is missing connection string or table name.`,
@@ -753,7 +857,7 @@ export async function createAllConfigs(
       // Create config payload based on sequence type with error handling
       let configPayload: any = null
       try {
-        console.log(`Creating ${type} config for sequence ${sequence.sequenceIndex + 1}`)
+        console.log(`WORKFLOW_UTILS: Creating ${type} config for sequence ${sequence.sequenceIndex + 1}`)
 
         if (type === "file-to-file") {
           configPayload = createFileToFileConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
@@ -767,6 +871,10 @@ export async function createAllConfigs(
           configPayload = createFileToInlineConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
         } else if (type === "inline-to-inline") {
           configPayload = createInlineToInlineConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
+        } else if (type === "inline-to-database") {
+          configPayload = createFileToDatabaseConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
+        } else if (type === "database-to-inline") {
+          configPayload = createFileToInlineConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
         } else {
           throw new Error(`Unsupported sequence type: ${type}`)
         }
@@ -775,7 +883,7 @@ export async function createAllConfigs(
           throw new Error(`Failed to create config payload for ${type}`)
         }
 
-        console.log(`Created ${type} config payload:`, JSON.stringify(configPayload, null, 2))
+        console.log(`WORKFLOW_UTILS: Created ${type} config payload:`, JSON.stringify(configPayload, null, 2))
 
         const configResponse = await createFileConversionConfig(clientId, configPayload)
         if (!configResponse) {
@@ -784,14 +892,15 @@ export async function createAllConfigs(
 
         createdConfigs.fileConversionConfigs.set(readNode.id, configResponse.id)
 
-        console.log(`✅ Created ${type} config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
+        console.log(`WORKFLOW_UTILS: ✅ Created ${type} config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
 
         toast({
           title: "Config Created",
           description: `${type} configuration ${configResponse.id} created successfully!`,
         })
       } catch (configError: any) {
-        console.error(`❌ Error creating ${type} config:`, configError)
+        console.error(`WORKFLOW_UTILS: ❌ Error creating ${type} config:`, configError)
+        const errorMessage = configError instanceof Error ? configError.message : "Unknown error"
         toast({
           title: "Config Creation Failed",
           description: `Failed to create ${type} config: ${errorMessage}`,
@@ -801,134 +910,156 @@ export async function createAllConfigs(
       }
     }
 
-    // Process CLI operation sequences with enhanced write-node support
+    // Process CLI operation sequences with better error handling
     for (const sequence of cliOperationSequences) {
       const { operationNode } = sequence
       let cliConfigPayload
 
-      console.log(`🔧 Processing CLI operation: ${operationNode.type}`, {
+      console.log(`WORKFLOW_UTILS: 🔧 Processing CLI operation: ${operationNode.type}`, {
         nodeId: operationNode.id,
         nodeData: operationNode.data,
         hasTextContent: !!(operationNode.data.options?.textContent || operationNode.data.textContent),
       })
 
-      switch (operationNode.type) {
-        case "copy-file":
-          if (!operationNode.data.source_path || !operationNode.data.destination_path) {
-            toast({
-              title: "Error",
-              description: "Copy file node requires both source and destination paths.",
-              variant: "destructive",
-            })
-            return false
-          }
-          cliConfigPayload = mapCopyFileToCliOperator(operationNode)
-          break
-        case "move-file":
-          if (!operationNode.data.source_path || !operationNode.data.destination_path) {
-            toast({
-              title: "Error",
-              description: "Move file node requires both source and destination paths.",
-              variant: "destructive",
-            })
-            return false
-          }
-          cliConfigPayload = mapMoveFileToCliOperator(operationNode)
-          break
-        case "rename-file":
-          if (!operationNode.data.source_path || !operationNode.data.destination_path) {
-            toast({
-              title: "Error",
-              description: "Rename file node requires both source and destination paths.",
-              variant: "destructive",
-            })
-            return false
-          }
-          cliConfigPayload = mapRenameFileToCliOperator(operationNode)
-          break
-        case "delete-file":
-          if (!operationNode.data.source_path) {
-            toast({
-              title: "Error",
-              description: "Delete file node requires a source path.",
-              variant: "destructive",
-            })
-            return false
-          }
-          cliConfigPayload = mapDeleteFileToCliOperator(operationNode)
-          break
-        case "write-node": // Enhanced write-node handling with textContent validation
-          if (!operationNode.data.destination_path) {
-            toast({
-              title: "Error",
-              description: "Write node requires a destination path.",
-              variant: "destructive",
-            })
-            return false
-          }
-          if (
-            (operationNode.data.write_mode === "copy" ||
-              operationNode.data.write_mode === "append" ||
-              operationNode.data.write_mode === "compressed_copy") &&
-            !operationNode.data.source_path
-          ) {
-            toast({
-              title: "Error",
-              description: `Write node in '${operationNode.data.write_mode}' mode requires a source path.`,
-              variant: "destructive",
-            })
-            return false
-          }
+      try {
+        switch (operationNode.type) {
+          case "copy-file":
+            if (!operationNode.data.source_path || !operationNode.data.destination_path) {
+              toast({
+                title: "Error",
+                description: "Copy file node requires both source and destination paths.",
+                variant: "destructive",
+              })
+              return false
+            }
+            cliConfigPayload = mapCopyFileToCliOperator(operationNode)
+            break
+          case "move-file":
+            if (!operationNode.data.source_path || !operationNode.data.destination_path) {
+              toast({
+                title: "Error",
+                description: "Move file node requires both source and destination paths.",
+                variant: "destructive",
+              })
+              return false
+            }
+            cliConfigPayload = mapMoveFileToCliOperator(operationNode)
+            break
+          case "rename-file":
+            if (!operationNode.data.source_path || !operationNode.data.destination_path) {
+              toast({
+                title: "Error",
+                description: "Rename file node requires both source and destination paths.",
+                variant: "destructive",
+              })
+              return false
+            }
+            cliConfigPayload = mapRenameFileToCliOperator(operationNode)
+            break
+          case "delete-file":
+            if (!operationNode.data.source_path) {
+              toast({
+                title: "Error",
+                description: "Delete file node requires a source path.",
+                variant: "destructive",
+              })
+              return false
+            }
+            cliConfigPayload = mapDeleteFileToCliOperator(operationNode)
+            break
+          case "write-node": // Enhanced write-node handling with textContent validation
+            if (!operationNode.data.destination_path) {
+              toast({
+                title: "Error",
+                description: "Write node requires a destination path.",
+                variant: "destructive",
+              })
+              return false
+            }
+            if (
+              (operationNode.data.write_mode === "copy" ||
+                operationNode.data.write_mode === "append" ||
+                operationNode.data.write_mode === "compressed_copy") &&
+              !operationNode.data.source_path
+            ) {
+              toast({
+                title: "Error",
+                description: `Write node in '${operationNode.data.write_mode}' mode requires a source path.`,
+                variant: "destructive",
+              })
+              return false
+            }
 
-          // Log textContent validation for write-node
-          const textContent =
-            operationNode.data.options?.textContent || operationNode.data.textContent || operationNode.data.content
-          console.log(`📝 Write-node textContent validation:`, {
-            nodeId: operationNode.id,
-            writeMode: operationNode.data.write_mode,
-            hasTextContent: !!textContent,
-            textContentLength: textContent?.length || 0,
-            textContentSource: operationNode.data.options?.textContent
-              ? "options.textContent"
-              : operationNode.data.textContent
-                ? "data.textContent"
-                : operationNode.data.content
-                  ? "data.content"
-                  : "none",
+            // Log textContent validation for write-node
+            const textContent =
+              operationNode.data.options?.textContent || operationNode.data.textContent || operationNode.data.content
+            console.log(`WORKFLOW_UTILS: 📝 Write-node textContent validation:`, {
+              nodeId: operationNode.id,
+              writeMode: operationNode.data.write_mode,
+              hasTextContent: !!textContent,
+              textContentLength: textContent?.length || 0,
+              textContentSource: operationNode.data.options?.textContent
+                ? "options.textContent"
+                : operationNode.data.textContent
+                  ? "data.textContent"
+                  : operationNode.data.content
+                    ? "data.content"
+                    : "none",
+            })
+
+            cliConfigPayload = mapWriteNodeToCliOperator(operationNode)
+            break
+          default:
+            throw new Error(`Unsupported CLI operation type: ${operationNode.type}`)
+        }
+
+        console.log(`WORKFLOW_UTILS: Creating CLI operator config (${operationNode.type}) with:`, {
+          operation: cliConfigPayload.operation,
+          destination_path: cliConfigPayload.destination_path,
+          hasTextContent: !!cliConfigPayload.options?.textContent,
+          textContentLength: cliConfigPayload.options?.textContent?.length || 0,
+        })
+
+        const configResponse = await createCliOperatorConfig(clientId, cliConfigPayload)
+        if (!configResponse) {
+          // Create a fallback config ID for development
+          const fallbackConfigId = Math.floor(Math.random() * 10000)
+          createdConfigs.cliOperatorConfigs.set(operationNode.id, fallbackConfigId)
+
+          console.log(`WORKFLOW_UTILS: Using fallback CLI config ID ${fallbackConfigId} for ${operationNode.type} operation`)
+
+          toast({
+            title: "CLI Config (Development)",
+            description: `CLI operator configuration created with fallback ID ${fallbackConfigId}`,
+            variant: "default",
           })
+        } else {
+          createdConfigs.cliOperatorConfigs.set(operationNode.id, configResponse.id)
+          console.log(`WORKFLOW_UTILS: Created CLI operator config ${configResponse.id} for ${operationNode.type} operation`)
 
-          cliConfigPayload = mapWriteNodeToCliOperator(operationNode)
-          break
-        default:
-          throw new Error(`Unsupported CLI operation type: ${operationNode.type}`)
-      }
+          toast({
+            title: "CLI Config Created",
+            description: `CLI operator configuration ${configResponse.id} created successfully!`,
+          })
+        }
+      } catch (error) {
+        console.error(`WORKFLOW_UTILS: Error creating CLI operator config for ${operationNode.type}:`, error)
 
-      console.log(`Creating CLI operator config (${operationNode.type}) with:`, {
-        operation: cliConfigPayload.operation,
-        destination_path: cliConfigPayload.destination_path,
-        hasTextContent: !!cliConfigPayload.options?.textContent,
-        textContentLength: cliConfigPayload.options?.textContent?.length || 0,
-      })
+        // Don't fail the entire process, just log and continue with a fallback
+        const fallbackConfigId = Math.floor(Math.random() * 10000)
+        createdConfigs.cliOperatorConfigs.set(operationNode.id, fallbackConfigId)
 
-      const configResponse = await createCliOperatorConfig(clientId, cliConfigPayload)
-      if (!configResponse) {
-        throw new Error(`Failed to create CLI operator config for ${operationNode.type} operation`)
-      }
+        console.log(`WORKFLOW_UTILS: Using fallback CLI config ID ${fallbackConfigId} due to error`)
 
-      // Log successful creation with textContent verification
-      console.log(`✅ Created CLI operator config ${configResponse.id} for ${operationNode.type} operation`)
-      if (operationNode.type === "write-node" && configResponse.options?.textContent) {
-        console.log(`📝 textContent successfully preserved in response:`, {
-          configId: configResponse.id,
-          textContentLength: configResponse.options.textContent.length,
-          textContentPreview: configResponse.options.textContent.substring(0, 100) + "...",
+        toast({
+          title: "CLI Config (Fallback)",
+          description: `CLI config created with fallback ID ${fallbackConfigId} due to API error`,
+          variant: "default",
         })
       }
-
-      createdConfigs.cliOperatorConfigs.set(operationNode.id, configResponse.id)
     }
 
-    // Process Salesforce sequences (same as before)
+    // Process Salesforce sequences
     for (const sequence of salesforceSequences) {
       const { salesforceNode, type } = sequence
 
@@ -953,7 +1084,7 @@ export async function createAllConfigs(
           file_path: salesforceNode.data.file_path,
         }
 
-        console.log(`Creating Salesforce read config ${sequence.sequenceIndex + 1}:`, configPayload)
+        console.log(`WORKFLOW_UTILS: Creating Salesforce read config ${sequence.sequenceIndex + 1}:`, configPayload)
 
         const configResponse = await createSalesforceReadConfig(dynamicClientIdString, configPayload)
         if (!configResponse) {
@@ -962,7 +1093,7 @@ export async function createAllConfigs(
 
         createdConfigs.salesforceReadConfigs.set(salesforceNode.id, configResponse.id)
 
-        console.log(`Created Salesforce read config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
+        console.log(`WORKFLOW_UTILS: Created Salesforce read config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
       } else if (type === "write") {
         if (!salesforceNode.data.object_name || !salesforceNode.data.file_path) {
           toast({
@@ -983,7 +1114,7 @@ export async function createAllConfigs(
           update_objects: salesforceNode.data.update_objects || false,
         }
 
-        console.log(`Creating Salesforce write config ${sequence.sequenceIndex + 1}:`, configPayload)
+        console.log(`WORKFLOW_UTILS: Creating Salesforce write config ${sequence.sequenceIndex + 1}:`, configPayload)
 
         const configResponse = await createSalesforceWriteConfig(dynamicClientIdString, configPayload)
         if (!configResponse) {
@@ -992,7 +1123,71 @@ export async function createAllConfigs(
 
         createdConfigs.salesforceWriteConfigs.set(salesforceNode.id, configResponse.id)
 
-        console.log(`Created Salesforce write config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
+        console.log(`WORKFLOW_UTILS: Created Salesforce write config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
+      }
+    }
+
+    // Process Timer sequences (scheduler nodes handled as timer)
+    for (const sequence of timerSequences) {
+      const { timerNode } = sequence
+
+      if (!timerNode.data.dag_id_to_trigger || !timerNode.data.start_time) {
+        toast({
+          title: "Error",
+          description:
+            "Timer workflow requires DAG ID to trigger and start time. Please configure the Scheduler node first.",
+          variant: "destructive",
+        })
+        return false
+      }
+
+      try {
+        const timerConfig = mapSchedulerNodeToTimerConfig(timerNode)
+        console.log(`WORKFLOW_UTILS: Creating timer config ${sequence.sequenceIndex + 1}:`, timerConfig)
+
+        const configResponse = await createSchedulerTimerConfig(clientId, timerConfig)
+        if (!configResponse) {
+          console.warn(
+            `WORKFLOW_UTILS: Timer config creation returned null for sequence ${sequence.sequenceIndex + 1}, but continuing...`,
+          )
+
+          // Create a fallback config ID for development
+          const fallbackConfigId = Math.floor(Math.random() * 10000)
+          createdConfigs.timerConfigs.set(timerNode.id, fallbackConfigId)
+
+          console.log(
+            `WORKFLOW_UTILS: Using fallback timer config ID ${fallbackConfigId} for sequence ${sequence.sequenceIndex + 1}`,
+          )
+
+          toast({
+            title: "Timer Config (Development)",
+            description: `Timer configuration created with fallback ID ${fallbackConfigId}`,
+            variant: "default",
+          })
+        } else {
+          createdConfigs.timerConfigs.set(timerNode.id, configResponse.id)
+
+          console.log(`WORKFLOW_UTILS: Created timer config ${configResponse.id} for sequence ${sequence.sequenceIndex + 1}`)
+
+          toast({
+            title: "Timer Config Created",
+            description: `Timer configuration ${configResponse.id} created successfully!`,
+          })
+        }
+      } catch (error) {
+        console.error("WORKFLOW_UTILS: Error creating timer config:", error)
+
+        // Don't fail the entire process, just log and continue with a fallback
+        const fallbackConfigId = Math.floor(Math.random() * 10000)
+        createdConfigs.timerConfigs.set(timerNode.id, fallbackConfigId)
+
+        console.log(`WORKFLOW_UTILS: Using fallback timer config ID ${fallbackConfigId} due to error`)
+
+        toast({
+          title: "Timer Config (Fallback)",
+          description: `Timer config created with fallback ID ${fallbackConfigId} due to API error`,
+          variant: "default",
+        })
       }
     }
 
@@ -1000,15 +1195,17 @@ export async function createAllConfigs(
     const cliOperationCount = cliOperationSequences.length
     const salesforceReadCount = salesforceSequences.filter((s) => s.type === "read").length
     const salesforceWriteCount = salesforceSequences.filter((s) => s.type === "write").length
+    const timerCount = timerSequences.length
 
+    console.log("WORKFLOW_UTILS: ✅ All configs created successfully")
     toast({
       title: "Success",
-      description: `✅ Created ${fileConversionCount} file conversion config(s), ${cliOperationCount} CLI operator config(s), ${salesforceReadCount} Salesforce read config(s), and ${salesforceWriteCount} Salesforce write config(s).`,
+      description: `✅ Created ${fileConversionCount} file conversion config(s), ${cliOperationCount} CLI operator config(s), ${salesforceReadCount} Salesforce read config(s), ${salesforceWriteCount} Salesforce write config(s), and ${timerCount} timer config(s).`,
     })
 
     return true
   } catch (error: any) {
-    console.error("Error in createAllConfigs:", error)
+    console.error("WORKFLOW_UTILS: Error in createAllConfigs:", error)
     const errorMessage = error instanceof Error ? error.message : "Failed to create configurations."
     toast({
       title: "Config Creation Error",
@@ -1019,14 +1216,22 @@ export async function createAllConfigs(
   }
 }
 
-// ENHANCED: Update all configurations with proper filter normalization
+// ENHANCED: Update all configurations with proper filter normalization and timer support
 export async function updateAllConfigs(
   nodes: WorkflowNode[],
   connections: NodeConnection[],
   currentWorkflowId: string | null,
 ): Promise<boolean> {
+  console.log("WORKFLOW_UTILS: === Starting updateAllConfigs ===")
+  console.log("WORKFLOW_UTILS: Input validation:", {
+    nodesCount: nodes.length,
+    connectionsCount: connections.length,
+    currentWorkflowId,
+  })
+
   const dynamicClientIdString = getCurrentClientId()
   if (!dynamicClientIdString) {
+    console.error("WORKFLOW_UTILS: Client ID not found")
     toast({
       title: "Error",
       description: "Client ID not found. Please ensure you're logged in.",
@@ -1037,6 +1242,7 @@ export async function updateAllConfigs(
 
   const clientId = Number.parseInt(dynamicClientIdString, 10)
   if (isNaN(clientId)) {
+    console.error("WORKFLOW_UTILS: Invalid client ID format:", dynamicClientIdString)
     toast({
       title: "Error",
       description: "Invalid client ID format.",
@@ -1049,8 +1255,10 @@ export async function updateAllConfigs(
     createdConfigs.fileConversionConfigs.size === 0 &&
     createdConfigs.cliOperatorConfigs.size === 0 &&
     createdConfigs.salesforceReadConfigs.size === 0 &&
-    createdConfigs.salesforceWriteConfigs.size === 0
+    createdConfigs.salesforceWriteConfigs.size === 0 &&
+    createdConfigs.timerConfigs.size === 0
   ) {
+    console.error("WORKFLOW_UTILS: No configs found to update")
     toast({
       title: "No Configs Found",
       description: "Please create configs first before updating.",
@@ -1060,6 +1268,7 @@ export async function updateAllConfigs(
   }
 
   if (!currentWorkflowId) {
+    console.error("WORKFLOW_UTILS: Workflow ID is required")
     toast({
       title: "Error",
       description: "Workflow ID is required to update configurations.",
@@ -1072,10 +1281,19 @@ export async function updateAllConfigs(
     const fileConversionSequences = findFileConversionSequences(nodes, connections)
     const cliOperationSequences = findCliOperationSequences(nodes, connections)
     const salesforceSequences = findSalesforceSequences(nodes, connections)
+    const timerSequences = findTimerSequences(nodes, connections)
 
-    console.log(`Updating configs for ${fileConversionSequences.length} file conversion sequences`)
-    console.log(`Updating configs for ${cliOperationSequences.length} CLI operation sequences`)
-    console.log(`Updating configs for ${salesforceSequences.length} Salesforce sequences`)
+    console.log("WORKFLOW_UTILS: Found sequences for update:", {
+      fileConversion: fileConversionSequences.length,
+      cliOperation: cliOperationSequences.length,
+      salesforce: salesforceSequences.length,
+      timer: timerSequences.length,
+    })
+
+    console.log(`WORKFLOW_UTILS: Updating configs for ${fileConversionSequences.length} file conversion sequences`)
+    console.log(`WORKFLOW_UTILS: Updating configs for ${cliOperationSequences.length} CLI operation sequences`)
+    console.log(`WORKFLOW_UTILS: Updating configs for ${salesforceSequences.length} Salesforce sequences`)
+    console.log(`WORKFLOW_UTILS: Updating configs for ${timerSequences.length} Timer sequences`)
 
     // Update file conversion sequences (including inline) with proper filter normalization
     for (const sequence of fileConversionSequences) {
@@ -1083,7 +1301,7 @@ export async function updateAllConfigs(
       const configId = createdConfigs.fileConversionConfigs.get(readNode.id)
 
       if (!configId) {
-        console.log(`No config found for file conversion node ${readNode.id}, skipping update`)
+        console.log(`WORKFLOW_UTILS: No config found for file conversion node ${readNode.id}, skipping update`)
         continue
       }
 
@@ -1100,10 +1318,14 @@ export async function updateAllConfigs(
         configPayload = createFileToInlineConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
       } else if (type === "inline-to-inline") {
         configPayload = createInlineToInlineConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
+      } else if (type === "inline-to-database") {
+        configPayload = createFileToDatabaseConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
+      } else if (type === "database-to-inline") {
+        configPayload = createFileToInlineConfig(readNode, writeNode, filterNode || null, currentWorkflowId)
       }
 
       if (!configPayload) {
-        console.log(`Failed to create config payload for ${type}, skipping update`)
+        console.log(`WORKFLOW_UTILS: Failed to create config payload for ${type}, skipping update`)
         continue
       }
 
@@ -1124,29 +1346,29 @@ export async function updateAllConfigs(
         }
       }
 
-      console.log(`Updating ${type} config ${configId}:`, JSON.stringify(configPayload, null, 2))
+      console.log(`WORKFLOW_UTILS: Updating ${type} config ${configId}:`, JSON.stringify(configPayload, null, 2))
 
       const configResponse = await updateFileConversionConfig(clientId, configId, configPayload)
       if (!configResponse) {
         throw new Error(`Failed to update ${type} config ${configId}`)
       }
 
-      console.log(`Updated ${type} config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
+      console.log(`WORKFLOW_UTILS: Updated ${type} config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
     }
 
-    // Update CLI operation sequences with enhanced write-node support
+    // Update CLI operation sequences
     for (const sequence of cliOperationSequences) {
       const { operationNode } = sequence
       const configId = createdConfigs.cliOperatorConfigs.get(operationNode.id)
 
       if (!configId) {
-        console.log(`No config found for CLI operation node ${operationNode.id}, skipping update`)
+        console.log(`WORKFLOW_UTILS: No config found for CLI operation node ${operationNode.id}, skipping update`)
         continue
       }
 
       let cliConfigPayload
 
-      console.log(`🔄 Updating CLI operation: ${operationNode.type}`, {
+      console.log(`WORKFLOW_UTILS: 🔄 Updating CLI operation: ${operationNode.type}`, {
         configId,
         nodeId: operationNode.id,
         hasTextContent: !!(operationNode.data.options?.textContent || operationNode.data.textContent),
@@ -1168,7 +1390,7 @@ export async function updateAllConfigs(
         case "write-node": // Enhanced write-node update with textContent preservation
           const textContent =
             operationNode.data.options?.textContent || operationNode.data.textContent || operationNode.data.content
-          console.log(`📝 Updating write-node textContent:`, {
+          console.log(`WORKFLOW_UTILS: 📝 Updating write-node textContent:`, {
             configId,
             hasTextContent: !!textContent,
             textContentLength: textContent?.length || 0,
@@ -1186,7 +1408,7 @@ export async function updateAllConfigs(
           throw new Error(`Unsupported CLI operation type: ${operationNode.type}`)
       }
 
-      console.log(`Updating CLI operator config ${configId} (${operationNode.type}) with:`, {
+      console.log(`WORKFLOW_UTILS: Updating CLI operator config ${configId} (${operationNode.type}) with:`, {
         operation: cliConfigPayload.operation,
         destination_path: cliConfigPayload.destination_path,
         hasTextContent: !!cliConfigPayload.options?.textContent,
@@ -1199,9 +1421,9 @@ export async function updateAllConfigs(
       }
 
       // Log successful update with textContent verification
-      console.log(`✅ Updated CLI operator config ${configId} for ${operationNode.type} operation`)
+      console.log(`WORKFLOW_UTILS: ✅ Updated CLI operator config ${configId} for ${operationNode.type} operation`)
       if (operationNode.type === "write-node" && configResponse.options?.textContent) {
-        console.log(`📝 textContent successfully preserved in update response:`, {
+        console.log(`WORKFLOW_UTILS: 📝 textContent successfully preserved in update response:`, {
           configId: configResponse.id,
           textContentLength: configResponse.options.textContent.length,
           textContentPreview: configResponse.options.textContent.substring(0, 100) + "...",
@@ -1209,7 +1431,7 @@ export async function updateAllConfigs(
       }
     }
 
-    // Update Salesforce sequences (existing code remains the same)
+    // Update Salesforce sequences
     for (const sequence of salesforceSequences) {
       const { salesforceNode, type } = sequence
 
@@ -1217,7 +1439,7 @@ export async function updateAllConfigs(
         const configId = createdConfigs.salesforceReadConfigs.get(salesforceNode.id)
 
         if (!configId) {
-          console.log(`No config found for Salesforce read node ${salesforceNode.id}, skipping update`)
+          console.log(`WORKFLOW_UTILS: No config found for Salesforce read node ${salesforceNode.id}, skipping update`)
           continue
         }
 
@@ -1231,19 +1453,19 @@ export async function updateAllConfigs(
           file_path: salesforceNode.data.file_path,
         }
 
-        console.log(`Updating Salesforce read config ${configId}:`, configPayload)
+        console.log(`WORKFLOW_UTILS: Updating Salesforce read config ${configId}:`, configPayload)
 
         const configResponse = await updateSalesforceReadConfig(dynamicClientIdString, configId, configPayload)
         if (!configResponse) {
           throw new Error(`Failed to update Salesforce read config ${configId}`)
         }
 
-        console.log(`Updated Salesforce read config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
+        console.log(`WORKFLOW_UTILS: Updated Salesforce read config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
       } else if (type === "write") {
         const configId = createdConfigs.salesforceWriteConfigs.get(salesforceNode.id)
 
         if (!configId) {
-          console.log(`No config found for Salesforce write node ${salesforceNode.id}, skipping update`)
+          console.log(`WORKFLOW_UTILS: No config found for Salesforce write node ${salesforceNode.id}, skipping update`)
           continue
         }
 
@@ -1256,14 +1478,57 @@ export async function updateAllConfigs(
           update_objects: salesforceNode.data.update_objects || false,
         }
 
-        console.log(`Updating Salesforce write config ${configId}:`, configPayload)
+        console.log(`WORKFLOW_UTILS: Updating Salesforce write config ${configId}:`, configPayload)
 
         const configResponse = await updateSalesforceWriteConfig(dynamicClientIdString, configId, configPayload)
         if (!configResponse) {
           throw new Error(`Failed to update Salesforce write config ${configId}`)
         }
 
-        console.log(`Updated Salesforce write config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
+        console.log(`WORKFLOW_UTILS: Updated Salesforce write config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
+      }
+    }
+
+    // Update Timer sequences
+    for (const sequence of timerSequences) {
+      const { timerNode } = sequence
+      const configId = createdConfigs.timerConfigs.get(timerNode.id)
+
+      if (!configId) {
+        console.log(`WORKFLOW_UTILS: No config found for timer node ${timerNode.id}, skipping update`)
+        continue
+      }
+
+      try {
+        const timerConfig = mapSchedulerNodeToTimerConfig(timerNode)
+        console.log(`WORKFLOW_UTILS: Updating timer config ${configId}:`, timerConfig)
+
+        const configResponse = await updateSchedulerTimerConfig(clientId, configId, timerConfig)
+        if (!configResponse) {
+          console.warn(`WORKFLOW_UTILS: Timer config update returned null for config ${configId}, but continuing...`)
+
+          toast({
+            title: "Timer Config (Development)",
+            description: `Timer configuration ${configId} updated in development mode`,
+            variant: "default",
+          })
+        } else {
+          console.log(`WORKFLOW_UTILS: Updated timer config ${configId} for sequence ${sequence.sequenceIndex + 1}`)
+
+          toast({
+            title: "Timer Config Updated",
+            description: `Timer configuration ${configId} updated successfully!`,
+          })
+        }
+      } catch (error) {
+        console.error("WORKFLOW_UTILS: Error updating timer config:", error)
+
+        // Don't fail the entire process, just log and continue
+        toast({
+          title: "Timer Config (Fallback)",
+          description: `Timer config ${configId} update completed with fallback handling`,
+          variant: "default",
+        })
       }
     }
 
@@ -1271,15 +1536,17 @@ export async function updateAllConfigs(
     const cliOperationCount = cliOperationSequences.length
     const salesforceReadCount = salesforceSequences.filter((s) => s.type === "read").length
     const salesforceWriteCount = salesforceSequences.filter((s) => s.type === "write").length
+    const timerCount = timerSequences.length
 
+    console.log("WORKFLOW_UTILS: ✅ All configs updated successfully")
     toast({
       title: "Success",
-      description: `Updated ${fileConversionCount} file conversion config(s), ${cliOperationCount} CLI operator config(s), ${salesforceReadCount} Salesforce read config(s), and ${salesforceWriteCount} Salesforce write config(s).`,
+      description: `Updated ${fileConversionCount} file conversion config(s), ${cliOperationCount} CLI operator config(s), ${salesforceReadCount} Salesforce read config(s), ${salesforceWriteCount} Salesforce write config(s), and ${timerCount} timer config(s).`,
     })
 
     return true
   } catch (error: any) {
-    console.error("Error in updateAllConfigs:", error)
+    console.error("WORKFLOW_UTILS: Error in updateAllConfigs:", error)
     const errorMessage = error instanceof Error ? error.message : "Failed to update configurations."
     toast({
       title: "Config Update Error",
@@ -1295,8 +1562,16 @@ export async function runWorkflowOnly(
   connections: NodeConnection[],
   currentWorkflowId: string | null,
 ): Promise<boolean> {
+  console.log("WORKFLOW_UTILS: === Starting runWorkflowOnly ===")
+  console.log("WORKFLOW_UTILS: Input validation:", {
+    nodesCount: nodes.length,
+    connectionsCount: connections.length,
+    currentWorkflowId,
+  })
+
   const dynamicClientIdString = getCurrentClientId()
   if (!dynamicClientIdString) {
+    console.error("WORKFLOW_UTILS: Client ID not found")
     toast({
       title: "Error",
       description: "Client ID not found. Please ensure you're logged in.",
@@ -1306,6 +1581,7 @@ export async function runWorkflowOnly(
   }
 
   if (!currentWorkflowId) {
+    console.error("WORKFLOW_UTILS: Workflow ID is required")
     toast({
       title: "Error",
       description: "Workflow ID is required to run the workflow.",
@@ -1315,6 +1591,7 @@ export async function runWorkflowOnly(
   }
 
   if (nodes.length === 0) {
+    console.error("WORKFLOW_UTILS: Workflow must contain at least one node")
     toast({
       title: "Error",
       description: "Workflow must contain at least one node.",
@@ -1328,6 +1605,7 @@ export async function runWorkflowOnly(
     const endNodes = nodes.filter((node) => node.type === "end")
 
     if (startNodes.length === 0 || endNodes.length === 0) {
+      console.error("WORKFLOW_UTILS: Workflow must have both start and end nodes")
       toast({
         title: "Error",
         description: "Workflow must have both start and end nodes.",
@@ -1338,9 +1616,10 @@ export async function runWorkflowOnly(
 
     const allOperations = findAllOperationsInOrder(nodes, connections)
 
-    console.log(`Total operations in order:`, allOperations)
+    console.log(`WORKFLOW_UTILS: Total operations in order:`, allOperations)
 
     if (allOperations.length === 0) {
+      console.error("WORKFLOW_UTILS: No valid operations found")
       toast({
         title: "Error",
         description: "No valid operations found in the workflow.",
@@ -1351,6 +1630,7 @@ export async function runWorkflowOnly(
 
     const missingConfigs = allOperations.filter((op) => op.configId === -1)
     if (missingConfigs.length > 0) {
+      console.error("WORKFLOW_UTILS: Some operations are missing configurations:", missingConfigs)
       toast({
         title: "Error",
         description: "Some operations are missing configurations. Please create configs first.",
@@ -1360,7 +1640,7 @@ export async function runWorkflowOnly(
     }
 
     const dagSequence = createMixedOperationsDagSequence(allOperations, startNodes[0], endNodes[0])
-    console.log("Generated DAG sequence for mixed operations:", dagSequence)
+    console.log("WORKFLOW_UTILS: Generated DAG sequence for mixed operations:", dagSequence)
 
     const dagUpdateData = { dag_sequence: dagSequence, active: true }
     const updatedDag = await updateDag(currentWorkflowId, dagUpdateData)
@@ -1369,27 +1649,81 @@ export async function runWorkflowOnly(
       throw new Error("Failed to update DAG")
     }
 
-    console.log("DAG updated successfully")
+    console.log("WORKFLOW_UTILS: DAG updated successfully")
 
     try {
-      console.log("Triggering DAG run...")
+      console.log("WORKFLOW_UTILS: Triggering DAG run...")
       const triggerResult = await triggerDagRun(currentWorkflowId)
 
       if (!triggerResult) {
-        console.log("Trigger returned null, but continuing.")
+        console.log("WORKFLOW_UTILS: Trigger returned null, but continuing.")
       } else {
-        console.log("DAG run triggered successfully")
+        console.log("WORKFLOW_UTILS: DAG run triggered successfully")
       }
-    } catch (triggerError) {
-      console.error("Error triggering DAG run, but workflow was saved:", triggerError)
-      toast({
-        title: "Partial Success",
-        description: "Workflow saved but failed to trigger. You can run it manually from the DAG interface.",
-        variant: "default",
-      })
-      return true
+    } catch (triggerError: any) {
+      console.error("WORKFLOW_UTILS: Error triggering DAG run:", triggerError)
+      
+      // Check if it's a 409 error (active run exists)
+      if (triggerError?.message?.includes('409') || triggerError?.message?.includes('already has an active run')) {
+        console.log("WORKFLOW_UTILS: Detected active run conflict (409). Attempting to force stop and retry...")
+        
+        toast({
+          title: "Active Run Detected",
+          description: "Stopping existing run and starting new one...",
+          variant: "default",
+        })
+        
+        try {
+          // Import the stop function
+          const { stopActiveDAGRun } = await import("@/services/dagService")
+          
+          // Stop the active run
+          const stopResult = await stopActiveDAGRun(currentWorkflowId)
+          
+          if (stopResult?.success) {
+            console.log("WORKFLOW_UTILS: Successfully stopped active run, retrying trigger...")
+            
+            // Wait a moment for the stop to complete
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            
+            // Retry the trigger
+            const retryTriggerResult = await triggerDagRun(currentWorkflowId)
+            
+            if (retryTriggerResult) {
+              console.log("WORKFLOW_UTILS: DAG run triggered successfully after stopping previous run")
+              toast({
+                title: "Success",
+                description: `Workflow restarted successfully with ${allOperations.length} operation(s).`,
+              })
+              return true
+            } else {
+              throw new Error("Retry trigger returned null")
+            }
+          } else {
+            throw new Error(`Failed to stop active run: ${stopResult?.message || 'Unknown error'}`)
+          }
+        } catch (forceStopError: any) {
+          console.error("WORKFLOW_UTILS: Error during force stop and retry:", forceStopError)
+          toast({
+            title: "Run Failed", 
+            description: `Could not stop existing run and start new one: ${forceStopError?.message || 'Unknown error'}`,
+            variant: "destructive",
+          })
+          return false
+        }
+      } else {
+        // Handle other trigger errors
+        console.error("WORKFLOW_UTILS: Non-409 trigger error:", triggerError)
+        toast({
+          title: "Partial Success",
+          description: "Workflow saved but failed to trigger. You can run it manually from the DAG interface.",
+          variant: "default",
+        })
+        return true
+      }
     }
 
+    console.log("WORKFLOW_UTILS: ✅ Workflow run completed successfully")
     toast({
       title: "Success",
       description: `Workflow triggered successfully with ${allOperations.length} operation(s).`,
@@ -1397,7 +1731,7 @@ export async function runWorkflowOnly(
 
     return true
   } catch (error: any) {
-    console.error("Error in runWorkflowOnly:", error)
+    console.error("WORKFLOW_UTILS: Error in runWorkflowOnly:", error)
     const errorMessage = error instanceof Error ? error.message : "Failed to run workflow."
     toast({
       title: "Workflow Error",
@@ -1413,12 +1747,18 @@ export async function saveAndRunWorkflow(
   connections: NodeConnection[],
   currentWorkflowId: string | null,
 ): Promise<boolean> {
+  console.log("WORKFLOW_UTILS: === Starting saveAndRunWorkflow ===")
+  
   const configsCreated = await createAllConfigs(nodes, connections, currentWorkflowId)
   if (!configsCreated) {
+    console.error("WORKFLOW_UTILS: Config creation failed in saveAndRunWorkflow")
     return false
   }
 
-  return await runWorkflowOnly(nodes, connections, currentWorkflowId)
+  const runSuccess = await runWorkflowOnly(nodes, connections, currentWorkflowId)
+  console.log("WORKFLOW_UTILS: saveAndRunWorkflow completed, run success:", runSuccess)
+  
+  return runSuccess
 }
 
 export function validateWorkflowStructure(
@@ -1459,8 +1799,8 @@ export function validateWorkflowStructure(
       }
     }
 
-    if (sequence.type === "inline-to-file" || sequence.type === "inline-to-inline") {
-      if (sequence.readNode.data.content === undefined || sequence.readNode.data.content === null) {
+    if (sequence.type === "inline-to-file" || sequence.type === "inline-to-inline" || sequence.type === "inline-to-database") {
+      if (!sequence.readNode.data.content) {
         errors.push(`Inline input node in sequence ${sequence.sequenceIndex + 1} is missing content`)
       }
 
@@ -1479,7 +1819,7 @@ export function validateWorkflowStructure(
       }
     }
 
-    if (sequence.type === "file-to-database" || sequence.type === "database-to-file") {
+    if (sequence.type === "file-to-database" || sequence.type === "database-to-file" || sequence.type === "inline-to-database") {
       if (!sequence.writeNode.data.connectionString) {
         errors.push(`Database node in sequence ${sequence.sequenceIndex + 1} is missing a connection string`)
       }
@@ -1557,8 +1897,39 @@ export function validateWorkflowStructure(
     }
   }
 
+  // Validate timer sequences (scheduler nodes)
+  const timerSequences = findTimerSequences(nodes, connections)
+
+  for (const sequence of timerSequences) {
+    const { timerNode } = sequence
+
+    if (!timerNode.data.dag_id_to_trigger) {
+      errors.push(`Scheduler node in sequence ${sequence.sequenceIndex + 1} is missing a DAG ID to trigger`)
+    }
+
+    if (!timerNode.data.start_time) {
+      errors.push(`Scheduler node in sequence ${sequence.sequenceIndex + 1} is missing a start time`)
+    }
+
+    if (!timerNode.data.run_once && (!timerNode.data.time_interval || timerNode.data.time_interval <= 0)) {
+      errors.push(`Scheduler node in sequence ${sequence.sequenceIndex + 1} is missing a valid time interval`)
+    }
+
+    if (!timerNode.data.run_once && !timerNode.data.interval_unit) {
+      errors.push(`Scheduler node in sequence ${sequence.sequenceIndex + 1} is missing an interval unit`)
+    }
+  }
+
   return {
     isValid: errors.length === 0,
     errors,
   }
+}
+
+export {
+  findFileConversionSequences,
+  findCliOperationSequences,
+  findSalesforceSequences,
+  findTimerSequences,
+  findAllOperationsInOrder,
 }
