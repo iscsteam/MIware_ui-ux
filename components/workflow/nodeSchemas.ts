@@ -1,4 +1,4 @@
-//nodeSchemas.ts
+
 import type { NodeType, SchemaItem } from "@/services/interface"
 
 export interface NodeSchema {
@@ -46,6 +46,94 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
       },
     ],
     outputSchema: [],
+  },
+
+  scheduler: {
+    label: "Scheduler",
+    description: "Schedule workflow execution with timer configurations",
+    inputSchema: [
+      {
+        name: "dag_id_to_trigger",
+        datatype: "string",
+        description: "The DAG ID to trigger when the scheduler runs.",
+        required: true,
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "start_time",
+        datatype: "string",
+        description: "Start time in format 'YYYY-MM-DD HH:mm:ss' IST.",
+        required: true,
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "run_once",
+        datatype: "boolean",
+        description: "Whether to run only once or repeatedly.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "time_interval",
+        datatype: "number",
+        description: "Time interval between runs.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "interval_unit",
+        datatype: "string",
+        description: "Unit for time interval (Minute, Hour, Day).",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "end_after_type",
+        datatype: "string",
+        description: "End condition type (always 'Occurrences').",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "end_after_value",
+        datatype: "number",
+        description: "Number of occurrences after which to end.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+    ],
+    outputSchema: [
+      {
+        name: "id",
+        datatype: "number",
+        description: "Timer configuration ID.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "next_run_at",
+        datatype: "string",
+        description: "Next scheduled run time.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "run_count",
+        datatype: "number",
+        description: "Number of times the scheduler has run.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+      {
+        name: "is_active",
+        datatype: "boolean",
+        description: "Whether the scheduler is currently active.",
+        sourceNodeId: "",
+        originalName: "",
+      },
+    ],
   },
 
   "create-file": {

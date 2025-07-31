@@ -49,4 +49,6 @@ export default function HomePage() {
       <LoginPage onLogin={handleLogin} />
     </ThemeProvider>
   );
-}
+};
+
+export default Index;
