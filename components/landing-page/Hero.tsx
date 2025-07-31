@@ -16,7 +16,7 @@ const Hero = () => {
 
       {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-6">
-        <div className="animate-pulse">
+        {/* <div className="animate-pulse"> */}
           <h1 className="font-bold text-2xl md:text-5xl leading-tight text-white mb-6">
             <span className="text-balance">miWare</span>
           </h1>
@@ -44,7 +44,7 @@ const Hero = () => {
               Free consultation • No commitment
             </p>
           </div>
-        </div>
+        {/* </div> */}
       </div>
 
       {/* Scroll Indicator */}
