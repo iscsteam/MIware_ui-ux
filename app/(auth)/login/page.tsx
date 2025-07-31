@@ -62,27 +62,23 @@ export default function AuthCard() {
     useState<CredentialOut | null>(null);
   const [error, setError] = useState("");
 
-  const [mounted, setMounted] = useState(false);
-
   useEffect(() => {
-    setMounted(true);
-    
     // Check if user is already logged in and redirect
-    // const savedCredentials = localStorage?.getItem("userCredentials");
-    // if (savedCredentials) {
-    //   try {
-    //     const parsed = JSON.parse(savedCredentials);
-    //     // If user has valid credentials, redirect to studio
-    //     if (parsed.user && parsed.user.is_active) {
-    //       router.push("/studio");
-    //       return;
-    //     }
-    //   } catch (error) {
-    //     console.error("Failed to parse saved credentials:", error);
-    //     // Clear invalid credentials
-    //     localStorage?.removeItem("userCredentials");
-    //   }
-    // }
+    const savedCredentials = localStorage?.getItem("userCredentials");
+    if (savedCredentials) {
+      try {
+        const parsed = JSON.parse(savedCredentials);
+        // If user has valid credentials, redirect to dashboard
+        if (parsed.user && parsed.user.is_active) {
+          router.push("/dashboard");
+          return;
+        }
+      } catch (error) {
+        console.error("Failed to parse saved credentials:", error);
+        // Clear invalid credentials
+        localStorage?.removeItem("userCredentials");
+      }
+    }
     
     // Forms remain empty - no auto-population
   }, [router]);
@@ -148,14 +144,12 @@ export default function AuthCard() {
         is_active: response.is_active,
       };
       
-      // localStorage?.setItem(
-      //   "userCredentials",
-      //   JSON.stringify({
-      //     email: formData.email.trim(),
-      //     password: formData.password,
-      //     user: userData,
-      //   })
-      // );
+      localStorage?.setItem(
+        "userCredentials",
+        JSON.stringify({
+          user: userData,
+        })
+      );
       
       router.push("/dashboard");
     } catch (error: any) {
@@ -171,8 +165,6 @@ export default function AuthCard() {
     }
   };
 
-  if (!mounted) return null;
-
   const handleCreateCredentials = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
@@ -183,7 +175,7 @@ export default function AuthCard() {
     }
 
     // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^@]+@[^@]+\.[^@]+$/;
     if (!emailRegex.test(formDataRegister.email)) {
       setError("Please enter a valid email address.");
       return;
@@ -204,6 +196,33 @@ export default function AuthCard() {
         throw new Error("Credential creation failed or didn't return an ID.");
       }
 
+      // Automatically log in the user after successful registration
+      const loginData = {
+        email: formDataRegister.email.trim(),
+        password: formDataRegister.password,
+      };
+      const response = await loginUser(loginData);
+
+      if (!response || !response.is_active) {
+        throw new Error("Login failed after account creation.");
+      }
+
+      const userData: UserData = {
+        id: response.id,
+        email: response.email,
+        name: response.email.split("@")[0],
+        unique_client_id: response.unique_client_id,
+        role: response.role,
+        is_active: response.is_active,
+      };
+
+      localStorage?.setItem(
+        "userCredentials",
+        JSON.stringify({
+          user: userData,
+        })
+      );
+
       setCreatedCredential(created);
       // Reset form
       setFormDataRegister({
@@ -212,12 +231,8 @@ export default function AuthCard() {
         role: "",
       });
       
-      // Show success message or redirect
-      // setError("Account created successfully! You can now sign in.");
-      // setIsLogin(true); // Switch to login mode
-      
-      // Clear login form as well when switching modes
-      router.push("/studio");
+      // Redirect to dashboard
+      router.push("/dashboard");
       setFormData({ email: "", password: "" });
     } catch (error: unknown) {
       console.error("Failed to create credentials:", error);

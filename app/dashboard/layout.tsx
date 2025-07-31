@@ -24,7 +24,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     const savedCredentials = localStorage.getItem('userCredentials');
     if (savedCredentials) {
-      setUser(JSON.parse(savedCredentials));
+      const credentials = JSON.parse(savedCredentials);
+      if (credentials && credentials.user) {
+        setUser(credentials.user);
+      } else {
+        router.push('/');
+      }
     } else {
       router.push('/');
     }

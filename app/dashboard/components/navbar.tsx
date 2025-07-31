@@ -45,7 +45,7 @@ export function Navbar({ user, onLogout }: NavbarProps) {
 
         <div className="flex items-center space-x-4">
           {/* Theme Toggle Button - Now functional! */}
-          <Button
+          {/* <Button
             variant="ghost"
             size="icon"
             onClick={toggleTheme} // <-- Attach the toggle function here
@@ -56,7 +56,7 @@ export function Navbar({ user, onLogout }: NavbarProps) {
               <Moon className="h-5 w-5" />
             )}
             <span className="sr-only">Toggle theme</span>
-          </Button>
+          </Button> */}
 
           {/* ... (Notification and User buttons are unchanged) ... */}
            <Button variant="ghost" size="icon" className="relative">
