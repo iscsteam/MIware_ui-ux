@@ -157,7 +157,7 @@ export default function AuthCard() {
       //   })
       // );
       
-      router.push("/studio");
+      router.push("/dashboard");
     } catch (error: any) {
       let errorMessage = "Login failed. Please try again.";
       if (error instanceof Error && error.message) {
