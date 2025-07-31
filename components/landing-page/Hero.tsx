@@ -3,54 +3,54 @@ import heroImage from "@/public/hero.jpg";
 
 const Hero = () => {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image */}
+    <section className="relative min-h-screen flex items-center text-center justify-center overflow-hidden">
+      {/* Background Image - Using a placeholder since we don't have the actual image */}
+
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${heroImage.src})` }} // <-- Fix here
       />
 
-      {/* Geometric Overlay */}
-      {/* <div className="geometric-bg">
-        <div className="geometric-shape w-32 h-32 top-20 left-20" style={{ animationDelay: '0s' }} />
-        <div className="geometric-shape w-24 h-24 top-40 right-32" style={{ animationDelay: '2s' }} />
-        <div className="geometric-shape w-20 h-20 bottom-32 left-40" style={{ animationDelay: '4s' }} />
-        <div className="geometric-shape w-28 h-28 bottom-20 right-20" style={{ animationDelay: '6s' }} />
-      </div> */}
+      {/* Dark overlay for better text readability */}
+      <div className="absolute inset-0 bg-black/40" />
 
-      {/* Gradient Overlay */}
-      {/* <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10" />
-       */}
       {/* Content */}
-      <div className="relative z-10 text-center max-w-5xl mx-auto px-6">
-        <div className="animate-slide-in-up">
-          <h1 className="font-poppins font-bold text-5xl md:text-7xl leading-tight text-foreground mb-6">
-            <span className="text-balance">
-              miWare Integration - 
-            </span>
-            <span className="block text-primary mt-2">
-             Cloud-Native Data Orchestration Platform 
-            </span>
+      <div className="relative z-10 max-w-5xl mx-auto px-6">
+        {/* <div className="animate-pulse"> */}
+          <h1 className="font-bold text-2xl md:text-5xl leading-tight text-white mb-6">
+            <span className="text-balance">miWare</span>
           </h1>
 
-          {/* <p className="font-inter text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto text-balance">
-            Out-of-the-box or custom – let us deliver the tools your business
-            needs.
-          </p> */}
+          <h4 className="font-bold text-3xl md:text-5xl leading-tight text-white mb-12">
+            <span className="block text-blue-400 mt-2">
+              Transform Data Integration Into Strategic Advantage
+            </span>
+          </h4>
 
-          {/* <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <button className="btn-hero">Talk to us</button>
-            <p className="text-sm text-muted-foreground font-medium">
+          <p className="text-gray-200 font-semibold text-xl md:text-2xl mb-8 max-w-4xl mx-auto">
+            <span>
+              The enterprise-grade, cloud-native platform that transforms weeks
+              of pipeline development into hours of streamlined automation.
+              Empower your teams with self-service data workflows and real-time
+              intelligence.
+            </span>
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <button className="px-8 py-3 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors duration-300 shadow-lg hover:shadow-xl">
+              Talk to us
+            </button>
+            <p className="text-lg text-gray-300 font-medium">
               Free consultation • No commitment
             </p>
-          </div> */}
-        </div>
+          </div>
+        {/* </div> */}
       </div>
 
       {/* Scroll Indicator */}
-      {/* <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-        <ChevronDown className="w-8 h-8 text-primary pulse-gentle" />
-      </div> */}
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+        <ChevronDown className="w-8 h-8 text-white opacity-70" />
+      </div>
     </section>
   );
 };

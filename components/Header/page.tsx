@@ -12,16 +12,18 @@ const Header = () => {
         <Link href="/">
           <div className="flex items-center gap-2">
             {/* <Image src={logo} alt="Mi-Ware Logo" width={40} height={40} /> */}
-            <span className="font-semibold text-lg text-foreground">Mi-Ware</span>
+            <span className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              miWare
+            </span>
           </div>
         </Link>
 
         {/* Login Button */}
         <Link
-          href="/login"
-          className="px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition"
+          href="/auth"
+          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-colors duration-200 flex items-center justify-center text-white"
         >
-          Login
+          Login/Register
         </Link>
       </div>
     </header>
