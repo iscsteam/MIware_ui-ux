@@ -55,6 +55,11 @@ export const DAG_ENDPOINTS = {
   DELETE_DAG: (dagId: string) => `/dags/${dagId}`,
 } as const
 
+// Reports API endpoints
+export const REPORTS_ENDPOINTS = {
+  GET_REPORTS: "/dashboard/reports",
+} as const
+
 // Helper function for MongoDB API calls
 export const mongoAPI = {
   insertOrUpdate: (data: any, dagId: string, collection?: string) => {
@@ -124,3 +129,16 @@ export const mongoAPI = {
     return mongoAPI.deleteByDagId(dagId, collection)
   },
 }
+
+// New API helper for reports
+export const reportsAPI = {
+  getReports: (params: { dag_id?: string; status?: string; limit: number; offset: number }) => {
+    const url = new URL(baseUrl(REPORTS_ENDPOINTS.GET_REPORTS));
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        url.searchParams.append(key, String(value));
+      }
+    });
+    return fetch(url.toString());
+  },
+};
