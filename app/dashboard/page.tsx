@@ -2,8 +2,8 @@
 'use client';
 
 // Update these import paths
-//import SystemStats from './components/stats/SystemStats';
-import ExecutionStats from './components/stats/ExecutionStats';
+import SystemStats from './components/stats/SystemStats';
+// import ExecutionStats from './components/stats/ExecutionStats';
 // import { ThemeProvider } from './components/ThemeProvider';
 // import { ThemeProvider } from '@/components/theme-provider';
 //import UserStats from './components/stats/UserStats';
@@ -20,9 +20,9 @@ export default function Home() {
       </div>
 
       <div className="space-y-6">
-        <ExecutionStats />
-        {/* <SystemStats />
-        
+        {/* <ExecutionStats /> */}
+        <SystemStats />
+        {/* 
         <UserStats />
         <NodeUsageStats /> */}
       </div>
