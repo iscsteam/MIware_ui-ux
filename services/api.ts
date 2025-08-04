@@ -60,6 +60,11 @@ export const REPORTS_ENDPOINTS = {
   GET_REPORTS: "/dashboard/reports",
 } as const
 
+// Dashboard API endpoints
+export const DASHBOARD_ENDPOINTS = {
+  GET_METRICS: "/dashboard/metrics",
+} as const
+
 // Helper function for MongoDB API calls
 export const mongoAPI = {
   insertOrUpdate: (data: any, dagId: string, collection?: string) => {
@@ -140,5 +145,12 @@ export const reportsAPI = {
       }
     });
     return fetch(url.toString());
+  },
+};
+
+// New API helper for dashboard metrics
+export const dashboardAPI = {
+  getMetrics: () => {
+    return fetch(baseUrl(DASHBOARD_ENDPOINTS.GET_METRICS));
   },
 };
