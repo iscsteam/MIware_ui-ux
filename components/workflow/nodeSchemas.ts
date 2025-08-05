@@ -1,4 +1,4 @@
-
+//nodeSchemas.ts
 import type { NodeType, SchemaItem } from "@/services/interface"
 
 export interface NodeSchema {
@@ -48,6 +48,29 @@ export const nodeSchemas: Record<NodeType, NodeSchema> = {
     outputSchema: [],
   },
 
+  "file-poller": {
+    label: "File Poller",
+    description: "Triggers when files change in a directory.",
+    inputSchema: [],
+    outputSchema: [
+      {
+        name: "event",
+        datatype: "string",
+        description: "Type of file event detected.",
+      },
+      {
+        name: "fileInfo",
+        datatype: "object",
+        description: "Information about the file that triggered the event.",
+      },
+      {
+        name: "timestamp",
+        datatype: "string",
+        description: "When the change was detected.",
+      },
+    ],
+  },
+  
   scheduler: {
     label: "Scheduler",
     description: "Schedule workflow execution with timer configurations",

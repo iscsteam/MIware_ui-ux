@@ -41,6 +41,7 @@ export type NodeType =
   | "code"
   | "read-node" // Added ReadNode type
   | "scheduler" // Added Scheduler type
+  | "file-poller"
 
 // Rest of the interface remains the same...
 // (Include all the existing interfaces from your original file)

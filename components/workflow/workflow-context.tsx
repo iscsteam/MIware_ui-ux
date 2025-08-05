@@ -150,6 +150,18 @@ export interface WorkflowNodeData {
     value?: number
   }
   is_active?: boolean
+
+  // File Poller specific fields
+  name?: string;
+  polling_interval_sec?: number;
+  poll_for_create_events?: boolean;
+  poll_for_modify_events?: boolean;
+  poll_for_delete_events?: boolean;
+  log_only_mode?: boolean;
+  description?: string;
+  include_sub_directories?: boolean;
+  include_timestamp?: boolean;
+
 }
 
 export interface WorkflowNode {
@@ -787,6 +799,53 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+
+   const parseFilePollerConfig = useCallback((dagNode: any, basePosition: NodePosition) => {
+    console.log("Parsing file_poller config for node:", dagNode.id, dagNode.config)
+
+    const config = dagNode.config
+    if (!config) {
+      console.warn("No config found for file_poller node:", dagNode.id)
+      return { nodes: [], connections: [], firstNodeId: null, lastNodeId: null }
+    }
+
+    const pollerNodeId = `file-poller_${dagNode.config_id || uuidv4()}`
+    console.log("Creating file-poller node from config:", pollerNodeId, config)
+
+    const pollerNode: WorkflowNode = {
+      id: pollerNodeId,
+      type: "file-poller",
+      position: basePosition,
+      data: {
+        label: "file-poller",
+        displayName: "File Poller",
+        config_id: dagNode.config_id,
+        dag_id_to_trigger: config.dag_id_to_trigger,
+        name: config.name,
+        filename: config.filename,
+        polling_interval_sec: config.polling_interval_sec,
+        include_timestamp: config.include_timestamp || false,
+        description: config.description,
+        poll_for_create_events: config.poll_for_create_events || false,
+        poll_for_modify_events: config.poll_for_modify_events || false,
+        poll_for_delete_events: config.poll_for_delete_events || false,
+        include_sub_directories: config.include_sub_directories || false,
+        mode: config.mode || "Only Files",
+        log_only_mode: config.log_only_mode || false,
+        is_active: config.is_active !== false,
+        active: true,
+      },
+      status: "configured",
+    }
+
+    return {
+      nodes: [pollerNode],
+      connections: [],
+      firstNodeId: pollerNodeId,
+      lastNodeId: pollerNodeId,
+    }
+  }, []);
+
   const convertDAGToWorkflow = useCallback(
     (dagData: DAG) => {
       console.log("=== Converting DAG to workflow ===");
@@ -978,7 +1037,36 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             newNodes.push(fallbackNode)
             dagNodeMapping.set(dagNode.id, { firstNodeId: fallbackNode.id, lastNodeId: fallbackNode.id })
           }
-        }  else if (dagNode.type === "read_salesforce" && dagNode.config) {
+        } else if (dagNode.type === "file_poller" && dagNode.config) {
+          const parsed = parseFilePollerConfig(dagNode, defaultPosition);
+          if (parsed.nodes.length > 0) {
+            newNodes.push(...parsed.nodes);
+            newConnections.push(...parsed.connections);
+            if (parsed.firstNodeId && parsed.lastNodeId)
+              dagNodeMapping.set(dagNode.id, { firstNodeId: parsed.firstNodeId, lastNodeId: parsed.lastNodeId });
+          } else {
+            console.warn("Failed to parse file_poller config for node:", dagNode.id, "Creating a fallback placeholder node.");
+            const fallbackNode: WorkflowNode = {
+              id: dagNode.id,
+              type: "file-poller",
+              position: defaultPosition,
+              data: {
+                label: "file-poller (Error)",
+                displayName: `${dagNode.id} (Error - Reconfigure)`,
+                active: true,
+              },
+              status: "error",
+            };
+            newNodes.push(fallbackNode);
+            dagNodeMapping.set(dagNode.id, {
+              firstNodeId: fallbackNode.id,
+              lastNodeId: fallbackNode.id,
+            });
+          }
+        } 
+        
+        
+        else if (dagNode.type === "read_salesforce" && dagNode.config) {
           console.log("Processing read_salesforce node:", dagNode.id);
           const salesforceNode: WorkflowNode = {
             id: dagNode.id,
@@ -1044,6 +1132,9 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
               break;
             case "end":
               nodeType = "end";
+              break;
+            case "file-poller":
+              nodeType = "file-poller";
               break;
             case "file_conversion":
               nodeType = "file";
@@ -1340,6 +1431,29 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         is_active: true,
       }
     }
+
+    if (type === "file-poller") {
+      const airflowDagId = getAirflowDagId();
+      newNode.data = {
+        ...newNode.data,
+        label: "file-poller",
+        displayName: "File Poller",
+        dag_id_to_trigger: airflowDagId || "",
+        name: `poller_${Math.floor(Math.random() * 10000)}`,
+        filename: "/app/data/mock_data/poller_raw/*",
+        polling_interval_sec: 60,
+        include_timestamp: false,
+        description: "",
+        poll_for_create_events: true,
+        poll_for_modify_events: true,
+        poll_for_delete_events: false,
+        include_sub_directories: true,
+        mode: "Only Files",
+        log_only_mode: false,
+        is_active: true,
+      };
+    }
+
 
     setNodes((prev) => [...prev, newNode])
     return newNode.id
@@ -1817,6 +1931,18 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
               success: true,
             }
             break
+          case "file-poller":
+          output = {
+            config_ready: true,
+            dag_id_to_trigger: nodeData.dag_id_to_trigger,
+            name: nodeData.name,
+            filename: nodeData.filename,
+            polling_interval_sec: nodeData.polling_interval_sec,
+            is_active: true,
+            message: "File Poller configuration ready for execution",
+            success: true,
+          }
+          break;
           case "end":
             output = { finalStatus: "completed", result: inputData };
             break;

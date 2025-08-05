@@ -20,7 +20,7 @@ import CopyFileNodeProperties from "@/components/node-properties/Fileoperations/
 import ReadFileNodeProperties from "@/components/node-properties/Fileoperations/ReadFileNodeProperties"
 import DeleteFileNodeProperties from "@/components/node-properties/Fileoperations/deletefilenodeproperties"
 import ListFilesNodeProperties from "@/components/node-properties/listfilesnodeproperties"
-import PollerFileNodeProperties from "@/components/node-properties/pollerfilenodeproperties"
+
 import WriteFileNodeProperties from "@/components/node-properties/Fileoperations/WriteFileNodeProperties"
 import ParseXMLNodeProperties from "../node-properties/ParseXMLNodeProperties"
 import RenderXMLNodeProperties from "../node-properties/RenderXMLNodeProperties"
@@ -45,7 +45,7 @@ import InlineInputNodeProperties from "@/components/node-properties/inline-opera
 import InlineOutputNodeProperties from "@/components/node-properties/inline-operations/inline-output-node-properties"
 import ReadNodeProperties from "@/components/node-properties/ReadNodeProperties"
 import SchedulerNodeProperties from "@/components/node-properties/SchedulerNodeProperties"
-
+import FilePollerNodeProperties from "@/components/node-properties/Fileoperations/filepollernodeproperties"
 import WriteNodeProperties, { writeNodeSchema } from "@/components/node-properties/Fileoperations/write-node-properties"
 
 const NodePropertyComponents: Record<string, React.FC<any>> = {
@@ -55,7 +55,7 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "rename-file": RenameFileNodeProperties,
   "delete-file": DeleteFileNodeProperties,
   "list-files": ListFilesNodeProperties,
-  "file-poller": PollerFileNodeProperties,
+  
   "write-file": WriteFileNodeProperties,
  "write-node": WriteNodeProperties,
 
@@ -81,10 +81,27 @@ const NodePropertyComponents: Record<string, React.FC<any>> = {
   "inline-output": InlineOutputNodeProperties,
   "read-node": ReadNodeProperties,
   scheduler: SchedulerNodeProperties,
+  "file-poller": FilePollerNodeProperties,
 }
 
 // Updated field definitions with separated end_after fields for scheduler
 const NODE_FIELD_DEFINITIONS: Record<string, Array<{ name: string; type: string; description: string }>> = {
+
+  "file-poller": [
+    { name: "dag_id_to_trigger", type: "string", description: "DAG ID to trigger when file changes are detected" },
+    { name: "name", type: "string", description: "Name for this file poller configuration" },
+    { name: "filename", type: "string", description: "File or directory path to monitor (supports wildcards)" },
+    { name: "polling_interval_sec", type: "number", description: "Polling interval in seconds" },
+    { name: "include_timestamp", type: "boolean", description: "Include timestamp in the triggered data" },
+    { name: "description", type: "string", description: "Description of what this poller does" },
+    { name: "poll_for_create_events", type: "boolean", description: "Monitor for file creation events" },
+    { name: "poll_for_modify_events", type: "boolean", description: "Monitor for file modification events" },
+    { name: "poll_for_delete_events", type: "boolean", description: "Monitor for file deletion events" },
+    { name: "include_sub_directories", type: "boolean", description: "Include subdirectories in monitoring" },
+    { name: "mode", type: "string", description: "Monitoring mode (Only Files, Only Directories, Both)" },
+    { name: "log_only_mode", type: "boolean", description: "Only log events without triggering workflows" },
+    { name: "is_active", type: "boolean", description: "Whether the file poller is active" },
+  ],
   "copy-file": [
     { name: "source_path", type: "string", description: "Source file path to copy from" },
     { name: "destination_path", type: "string", description: "Destination file path to copy to" },

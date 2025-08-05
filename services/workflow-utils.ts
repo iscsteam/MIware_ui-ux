@@ -32,7 +32,11 @@ import {
   updateSchedulerTimerConfig,
   mapSchedulerNodeToTimerConfig,
 } from "@/services/scheduler-service"
-
+import {
+  createFilePollerConfig,
+  updateFilePollerConfig,
+  mapFilePollerNodeToConfig,
+} from "@/services/file-poller-service"
 // Helper function to ensure Python-compatible IDs
 function makePythonSafeId(id: string): string {
   let safeId = id.replace(/[^a-zA-Z0-9_]/g, "_")
@@ -78,9 +82,15 @@ interface TimerSequence {
   sequenceIndex: number
 }
 
+// Interface for File Poller sequence
+interface FilePollerSequence {
+  pollerNode: WorkflowNode
+  sequenceIndex: number
+}
+
 // Interface for operation config - use "timer" internally for backend compatibility
 interface OperationConfig {
-  type: "file_conversion" | "cli_operator" | "read_salesforce" | "write_salesforce" | "timer"
+  type: "file_conversion" | "cli_operator" | "read_salesforce" | "write_salesforce" | "timer" | "file_poller"
   configId: number
   nodeId: string
   sequenceIndex: number
@@ -93,12 +103,14 @@ const createdConfigs: {
   salesforceReadConfigs: Map<string, number>
   salesforceWriteConfigs: Map<string, number>
   timerConfigs: Map<string, number>
+  filePollerConfigs: Map<string, number>
 } = {
   fileConversionConfigs: new Map(),
   cliOperatorConfigs: new Map(),
   salesforceReadConfigs: new Map(),
   salesforceWriteConfigs: new Map(),
   timerConfigs: new Map(),
+  filePollerConfigs: new Map(),
 }
 
 // Helper function to ensure proper empty structures for backend API
@@ -440,6 +452,14 @@ function findTimerSequences(nodes: WorkflowNode[], connections: NodeConnection[]
   return sequences
 }
 
+// Find all File Poller sequences
+function findFilePollerSequences(nodes: WorkflowNode[], connections: NodeConnection[]): FilePollerSequence[] {
+  const sequences: FilePollerSequence[] = [];
+  const pollerNodes = nodes.filter((node) => node.type === "file-poller");
+  pollerNodes.forEach((pollerNode, index) => sequences.push({ pollerNode, sequenceIndex: index }));
+  return sequences;
+}
+
 // Find all operations in workflow order (mixed file conversions, CLI operations, Salesforce, and Timer)
 function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnection[]): OperationConfig[] {
   const operations: OperationConfig[] = []
@@ -552,7 +572,13 @@ function findAllOperationsInOrder(nodes: WorkflowNode[], connections: NodeConnec
         sequenceIndex: operationIndex++,
       })
       currentNode = nextNode
-    } else {
+    } else if (nextNode.type === "file-poller") {
+      const configId = createdConfigs.filePollerConfigs.get(nextNode.id) || -1;
+      operations.push({ type: "file_poller", configId, nodeId: nextNode.id, sequenceIndex: operationIndex++ });
+      currentNode = nextNode;
+      operationProcessed = true;
+    }
+    else {
       currentNode = nextNode
     }
   }
@@ -582,7 +608,10 @@ function createMixedOperationsDagSequence(
     firstNodeId = `write_salesforce_${firstConfig.configId}`
   } else if (firstConfig.type === "timer") {
     firstNodeId = `timer_${firstConfig.configId}`
-  } else {
+  } else if (firstConfig.type === "file_poller") {
+    firstNodeId = `file_poller_${firstConfig.configId}`;
+  }
+  else {
     firstNodeId = `read_salesforce_${firstConfig.configId}`
   }
 
@@ -607,7 +636,10 @@ function createMixedOperationsDagSequence(
       nodeId = `write_salesforce_${config.configId}`
     } else if (config.type === "timer") {
       nodeId = `timer_${config.configId}`
-    } else {
+    } else if (config.type === "file_poller") {
+      nodeId = `file_poller_${config.configId}`;
+    }
+    else {
       nodeId = `read_salesforce_${config.configId}`
     }
 
@@ -621,7 +653,10 @@ function createMixedOperationsDagSequence(
         nextNodeId = [`write_salesforce_${nextConfig.configId}`]
       } else if (nextConfig.type === "timer") {
         nextNodeId = [`timer_${nextConfig.configId}`]
-      } else {
+      } else if (nextConfig.type === "file_poller") {
+        nextNodeId = [`file_poller_${nextConfig.configId}`]; 
+      }
+      else {
         nextNodeId = [`read_salesforce_${nextConfig.configId}`]
       }
     } else {
@@ -654,6 +689,7 @@ export function clearAllConfigs(): void {
   createdConfigs.salesforceReadConfigs.clear()
   createdConfigs.salesforceWriteConfigs.clear()
   createdConfigs.timerConfigs.clear()
+  createdConfigs.filePollerConfigs.clear()
 
   console.log("All config stores cleared")
   toast({
@@ -669,6 +705,7 @@ export function getConfigCounts(): {
   salesforceRead: number
   salesforceWrite: number
   timer: number
+  filePoller: number
 } {
   return {
     fileConversion: createdConfigs.fileConversionConfigs.size,
@@ -676,6 +713,7 @@ export function getConfigCounts(): {
     salesforceRead: createdConfigs.salesforceReadConfigs.size,
     salesforceWrite: createdConfigs.salesforceWriteConfigs.size,
     timer: createdConfigs.timerConfigs.size,
+    filePoller: createdConfigs.filePollerConfigs.size,
   }
 }
 
@@ -762,19 +800,22 @@ export async function createAllConfigs(
     const cliOperationSequences = findCliOperationSequences(nodes, connections)
     const salesforceSequences = findSalesforceSequences(nodes, connections)
     const timerSequences = findTimerSequences(nodes, connections)
+    const filePollerSequences = findFilePollerSequences(nodes, connections);
 
     console.log("WORKFLOW_UTILS: Found sequences:", {
       fileConversion: fileConversionSequences.length,
       cliOperation: cliOperationSequences.length,
       salesforce: salesforceSequences.length,
       timer: timerSequences.length,
+      filePoller: filePollerSequences.length,
     })
 
     if (
       fileConversionSequences.length === 0 &&
       cliOperationSequences.length === 0 &&
       salesforceSequences.length === 0 &&
-      timerSequences.length === 0
+      timerSequences.length === 0 &&
+      filePollerSequences.length === 0
     ) {
       console.error("WORKFLOW_UTILS: No valid sequences found")
       toast({
@@ -789,6 +830,7 @@ export async function createAllConfigs(
     console.log(`WORKFLOW_UTILS: Creating configs for ${cliOperationSequences.length} CLI operation sequences`)
     console.log(`WORKFLOW_UTILS: Creating configs for ${salesforceSequences.length} Salesforce sequences`)
     console.log(`WORKFLOW_UTILS: Creating configs for ${timerSequences.length} Timer sequences`)
+    console.log(`WORKFLOW_UTILS: Creating configs for ${filePollerSequences.length} File Poller sequences`)
 
     // Process file conversion sequences (including inline)
     for (const sequence of fileConversionSequences) {
@@ -1191,11 +1233,28 @@ export async function createAllConfigs(
       }
     }
 
+    // Process File Poller sequences
+    for (const sequence of filePollerSequences) {
+      const { pollerNode } = sequence;
+      if (!pollerNode.data.dag_id_to_trigger || !pollerNode.data.filename || !pollerNode.data.name) {
+        toast({ title: "Error", description: "File Poller node requires a DAG ID, a poller name, and a filename pattern.", variant: "destructive" });
+        return false;
+      }
+      const pollerConfig = mapFilePollerNodeToConfig(pollerNode);
+      const configResponse = await createFilePollerConfig(clientId, pollerConfig);
+      if (configResponse) {
+        createdConfigs.filePollerConfigs.set(pollerNode.id, configResponse.id);
+      } else {
+        throw new Error(`Failed to create File Poller config for node ${pollerNode.id}`);
+      }
+    }
+
     const fileConversionCount = fileConversionSequences.length
     const cliOperationCount = cliOperationSequences.length
     const salesforceReadCount = salesforceSequences.filter((s) => s.type === "read").length
     const salesforceWriteCount = salesforceSequences.filter((s) => s.type === "write").length
     const timerCount = timerSequences.length
+    const filePollerCount = filePollerSequences.length;
 
     console.log("WORKFLOW_UTILS: ✅ All configs created successfully")
     toast({
@@ -1256,7 +1315,8 @@ export async function updateAllConfigs(
     createdConfigs.cliOperatorConfigs.size === 0 &&
     createdConfigs.salesforceReadConfigs.size === 0 &&
     createdConfigs.salesforceWriteConfigs.size === 0 &&
-    createdConfigs.timerConfigs.size === 0
+    createdConfigs.timerConfigs.size === 0 &&
+    createdConfigs.filePollerConfigs.size === 0
   ) {
     console.error("WORKFLOW_UTILS: No configs found to update")
     toast({
@@ -1282,6 +1342,7 @@ export async function updateAllConfigs(
     const cliOperationSequences = findCliOperationSequences(nodes, connections)
     const salesforceSequences = findSalesforceSequences(nodes, connections)
     const timerSequences = findTimerSequences(nodes, connections)
+    const filePollerSequences = findFilePollerSequences(nodes, connections);
 
     console.log("WORKFLOW_UTILS: Found sequences for update:", {
       fileConversion: fileConversionSequences.length,
@@ -1294,6 +1355,7 @@ export async function updateAllConfigs(
     console.log(`WORKFLOW_UTILS: Updating configs for ${cliOperationSequences.length} CLI operation sequences`)
     console.log(`WORKFLOW_UTILS: Updating configs for ${salesforceSequences.length} Salesforce sequences`)
     console.log(`WORKFLOW_UTILS: Updating configs for ${timerSequences.length} Timer sequences`)
+    console.log(`WORKFLOW_UTILS: Updating configs for ${filePollerSequences.length} File Poller sequences`);
 
     // Update file conversion sequences (including inline) with proper filter normalization
     for (const sequence of fileConversionSequences) {
@@ -1532,11 +1594,27 @@ export async function updateAllConfigs(
       }
     }
 
+    // Update File Poller sequences
+    for (const sequence of filePollerSequences) {
+      const { pollerNode } = sequence;
+      const configId = createdConfigs.filePollerConfigs.get(pollerNode.id);
+      if (!configId) {
+        console.warn(`No stored config ID for file poller node ${pollerNode.id}, skipping update.`);
+        continue;
+      }
+      const pollerConfig = mapFilePollerNodeToConfig(pollerNode);
+      const configResponse = await updateFilePollerConfig(clientId, configId, pollerConfig);
+      if (!configResponse) {
+        throw new Error(`Failed to update File Poller config ${configId}`);
+      }
+    }
+
     const fileConversionCount = fileConversionSequences.length
     const cliOperationCount = cliOperationSequences.length
     const salesforceReadCount = salesforceSequences.filter((s) => s.type === "read").length
     const salesforceWriteCount = salesforceSequences.filter((s) => s.type === "write").length
     const timerCount = timerSequences.length
+    const filePollerCount = filePollerSequences.length;
 
     console.log("WORKFLOW_UTILS: ✅ All configs updated successfully")
     toast({
@@ -1920,6 +1998,21 @@ export function validateWorkflowStructure(
     }
   }
 
+  // Validate File Poller sequences
+  const filePollerSequences = findFilePollerSequences(nodes, connections);
+  for (const sequence of filePollerSequences) {
+    const { pollerNode } = sequence;
+    if (!pollerNode.data.name) {
+      errors.push(`File Poller node in sequence ${sequence.sequenceIndex + 1} is missing a name.`);
+    }
+    if (!pollerNode.data.filename) {
+      errors.push(`File Poller node in sequence ${sequence.sequenceIndex + 1} is missing a filename pattern.`);
+    }
+    if (!pollerNode.data.polling_interval_sec || pollerNode.data.polling_interval_sec <= 0) {
+      errors.push(`File Poller node in sequence ${sequence.sequenceIndex + 1} has an invalid polling interval.`);
+    }
+  }
+
   return {
     isValid: errors.length === 0,
     errors,
@@ -1931,5 +2024,6 @@ export {
   findCliOperationSequences,
   findSalesforceSequences,
   findTimerSequences,
+  findFilePollerSequences,
   findAllOperationsInOrder,
 }

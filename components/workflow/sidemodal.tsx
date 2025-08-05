@@ -31,6 +31,7 @@ import {
   FileInput,
   FileOutput,
   ScanText,
+  FileSearch
 } from "lucide-react"
 
 import type { NodeType } from "@/services/interface"
@@ -54,10 +55,18 @@ interface NodeTypeDefinition {
     | "salesforceoperations"
     | "inlineoperations"
     | "scheduler" 
+    | "file-poller"
 }
 
 const nodeTypes: NodeTypeDefinition[] = [
 
+  {
+    type: "file-poller",
+    label: "File Poller",
+    icon: <FileSearch className="h-5 w-5 text-cyan-600" />,
+    description: "Monitors a file or directory for changes",
+    category: "file",
+  },
   {
     type: "scheduler",
     label: "Scheduler",
@@ -141,13 +150,6 @@ const nodeTypes: NodeTypeDefinition[] = [
     label: "List Files",
     icon: <Files className="h-5 w-5 text-teal-600" />,
     description: "Lists files in a directory",
-    category: "file",
-  },
-  {
-    type: "file-poller",
-    label: "File Poller",
-    icon: <Clock className="h-5 w-5 text-cyan-600" />,
-    description: "Monitors a file or directory for changes",
     category: "file",
   },
   // Add ReadNode to the list

@@ -13,6 +13,7 @@ import {
   FilePenLine,
   ScanText,
   Timer,
+  FileSearch,
 } from "lucide-react"
 
 import type { NodeType } from "@/services/interface";
@@ -85,6 +86,8 @@ export function getNodeIcon(type: NodeType) {
       return <FilePenLine className="h-10 w-10 text-slate-800" />;
     case "filter":
       return <Filter className="h-10 w-10 text-orange-500" />;
+    case "file-poller":
+      return <FileSearch className="h-10 w-10 text-lime-600" />
     default:
       return <Filter className="h-10 w-10 text-slate-800" />;
   }
