@@ -1,10 +1,17 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
+/* body {
   font-family: Arial, Helvetica, sans-serif;
+} */
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.6;
+  /* background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 100%); */
+  /* color: #ffffff; */
+  overflow-x: hidden;
 }
 
 @layer utilities {
@@ -106,8 +113,6 @@ body {
   }
 }
 
-
-
 .scroll-container {
   position: relative;
   width: 100%;
@@ -115,4 +120,29 @@ body {
   overflow: auto;
   background-color: #f0f0f0; /* Optional: canvas background */
   border: 1px solid #ccc;
+}
+
+.perspective {
+  perspective: 1000px;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+.group:hover .group-hover\:rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+.perspective {
+  perspective: 1000px;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
 }

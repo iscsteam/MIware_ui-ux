@@ -1,135 +1,175 @@
-import React from "react";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+"use client"
 
-interface Props {
-  formData: Record<string, any>;
-  onChange: (name: string, value: any) => void;
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
+import { Button } from "@/components/ui/button"
+import { useState } from "react"
+import { useWorkflow } from "../workflow/workflow-context"
+
+export interface SchemaItem {
+  name: string
+  datatype: string
+  description: string
+  required?: boolean
 }
 
-const inputStyles = ["text", "binary", "dynamic"];
+export interface NodeSchema {
+  inputSchema: SchemaItem[]
+  outputSchema: SchemaItem[]
+}
+
+export const parseXMLSchema: NodeSchema = {
+  inputSchema: [
+    {
+      name: "xmlInput",
+      datatype: "string",
+      description: "The XML content to parse as a string.",
+      required: true,
+    },
+    {
+      name: "inputStyle",
+      datatype: "string",
+      description: "The style of the input: string or binary.",
+    },
+    {
+      name: "encoding",
+      datatype: "string",
+      description: "The encoding type used in the XML (e.g., UTF-8).",
+    },
+  ],
+  outputSchema: [
+    {
+      name: "parsedData",
+      datatype: "object",
+      description: "The result of the parsed XML as a JSON object.",
+    },
+    {
+      name: "isValid",
+      datatype: "boolean",
+      description: "Whether the XML content is valid.",
+    },
+  ],
+}
+
+interface Props {
+  formData: Record<string, any>
+  onChange: (name: string, value: any) => void
+}
 
 export default function ParseXMLNodeProperties({ formData, onChange }: Props) {
-  const inputStyle = formData.inputStyle || "text";
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const { updateNode, selectedNodeId } = useWorkflow()
+
+  const schema = parseXMLSchema
+
+  const handleSubmit = async () => {
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const response = await fetch("http://localhost:5000/api/xml/parse", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSuccess("XML parsed successfully.")
+        if (selectedNodeId) {
+          updateNode(selectedNodeId, {
+            status: "success",
+            output: data,
+          })
+        }
+      } else {
+        setError(data.message || "Failed to parse XML.")
+        if (selectedNodeId) {
+          updateNode(selectedNodeId, {
+            status: "error",
+            error: data.message,
+            output: data,
+          })
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Error connecting to the server."
+      setError(errorMessage)
+      if (selectedNodeId) {
+        updateNode(selectedNodeId, {
+          status: "error",
+          error: errorMessage,
+          output: { error: errorMessage },
+        })
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
-      {/* Name (Label) */}
+      {/* Display Name */}
       <div className="space-y-2">
-        <Label htmlFor="name">Node Label</Label>
+        <Label htmlFor="displayName">Node Name</Label>
         <Input
-          id="name"
+          id="displayName"
+          value={formData.displayName || ""}
           placeholder="Parse XML"
-          value={formData.label || ""}
-          onChange={(e) => onChange("label", e.target.value)}
+          onChange={(e) => onChange("displayName", e.target.value)}
+        />
+      </div>
+
+      {/* XML Input */}
+      <div className="space-y-2">
+        <Label htmlFor="xmlInput">XML Input</Label>
+        <Input
+          id="xmlInput"
+          value={formData.xmlInput || ""}
+          placeholder="<root><item>value</item></root>"
+          onChange={(e) => onChange("xmlInput", e.target.value)}
         />
       </div>
 
       {/* Input Style */}
       <div className="space-y-2">
         <Label htmlFor="inputStyle">Input Style</Label>
-        <Select
-          value={inputStyle}
-          onValueChange={(v) => onChange("inputStyle", v)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select input style" />
-          </SelectTrigger>
-          <SelectContent>
-            {inputStyles.map((style) => (
-              <SelectItem key={style} value={style}>
-                {style.charAt(0).toUpperCase() + style.slice(1)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* XML String Input (Text mode) */}
-      {inputStyle === "text" && (
-        <div className="space-y-2">
-          <Label htmlFor="xmlString">XML String</Label>
-          <Textarea
-            id="xmlString"
-            value={formData.xmlString || ""}
-            placeholder="<root><item>Hello</item></root>"
-            onChange={(e) => onChange("xmlString", e.target.value)}
-            className="resize-y"
-          />
-        </div>
-      )}
-
-      {/* Binary XML Input (Binary mode) */}
-      {inputStyle === "binary" && (
-        <>
-          <div className="space-y-2">
-            <Label htmlFor="xmlBinaryBytes">XML Binary (bytes)</Label>
-            <Textarea
-              id="xmlBinaryBytes"
-              value={formData.xmlBinaryBytes || ""}
-              placeholder="Paste base64-encoded XML content here"
-              onChange={(e) => onChange("xmlBinaryBytes", e.target.value)}
-              className="resize-y"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="forceEncoding">Force Encoding (optional)</Label>
-            <Input
-              id="forceEncoding"
-              value={formData.forceEncoding || ""}
-              placeholder="e.g. UTF-8"
-              onChange={(e) => onChange("forceEncoding", e.target.value)}
-            />
-          </div>
-        </>
-      )}
-
-      {/* Dynamic Input */}
-      {inputStyle === "dynamic" && (
-        <div className="space-y-2">
-          <Label htmlFor="dynamicInput">Dynamic XML Input</Label>
-          <Textarea
-            id="dynamicInput"
-            value={formData.dynamicInput || ""}
-            placeholder="XML string or base64 binary content"
-            onChange={(e) => onChange("dynamicInput", e.target.value)}
-            className="resize-y"
-          />
-        </div>
-      )}
-
-      {/* Validate Output */}
-      <div className="flex items-center space-x-2">
-        <Switch
-          id="validateOutput"
-          checked={formData.validateOutput || false}
-          onCheckedChange={(v) => onChange("validateOutput", v)}
+        <Input
+          id="inputStyle"
+          value={formData.inputStyle || ""}
+          placeholder="string or binary"
+          onChange={(e) => onChange("inputStyle", e.target.value)}
         />
-        <Label htmlFor="validateOutput" className="cursor-pointer">
-          Validate Output
-        </Label>
       </div>
 
-      {/* Description */}
+      {/* Encoding */}
       <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={formData.description || ""}
-          placeholder="Describe this activity..."
-          onChange={(e) => onChange("description", e.target.value)}
-          className="resize-y"
+        <Label htmlFor="encoding">Encoding</Label>
+        <Input
+          id="encoding"
+          value={formData.encoding || ""}
+          placeholder="UTF-8"
+          onChange={(e) => onChange("encoding", e.target.value)}
         />
       </div>
+
+      {/* Submit Button */}
+      <div>
+        <Button onClick={handleSubmit} disabled={loading} className="bg-blue-500 hover:bg-blue-600 text-white">
+          {loading ? "Parsing..." : "Parse XML"}
+        </Button>
+      </div>
+
+      {/* Success/Error Messages */}
+      {success && <p className="text-green-500">{success}</p>}
+      {error && <p className="text-red-500">{error}</p>}
     </div>
-  );
+  )
 }
