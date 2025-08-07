@@ -2,17 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
-/* body {
-  font-family: Arial, Helvetica, sans-serif;
-} */
+/* Force light theme regardless of system preferences */
+:root {
+  color-scheme: light !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: light !important;
+  }
+}
 
 body {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.6;
-  /* background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 100%); */
   background-color: white !important;
-  /* color: #ffffff; */
+  color: #000000 !important;
   overflow-x: hidden;
+}
+
+/* Only apply dark styles when explicitly set by your app */
+html.dark body {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 @layer utilities {
@@ -57,6 +69,7 @@ body {
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+  
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
@@ -99,6 +112,7 @@ body {
   }
 }
 
+/* Animation styles */
 .connection-line {
   stroke-dasharray: 8;
   stroke-dashoffset: 0;
@@ -111,15 +125,17 @@ body {
   }
 }
 
+/* Layout styles */
 .scroll-container {
   position: relative;
   width: 100%;
-  height: 80vh; /* Or whatever fits your layout */
+  height: 80vh;
   overflow: auto;
-  background-color: #f0f0f0; /* Optional: canvas background */
+  background-color: #f0f0f0;
   border: 1px solid #ccc;
 }
 
+/* 3D transform styles */
 .perspective {
   perspective: 1000px;
 }
@@ -135,12 +151,4 @@ body {
 
 .group:hover .group-hover\:rotate-y-180 {
   transform: rotateY(180deg);
-}
-
-.perspective {
-  perspective: 1000px;
-}
-
-.backface-hidden {
-  backface-visibility: hidden;
 }
