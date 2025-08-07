@@ -19,12 +19,12 @@ const Header = () => {
         </Link>
 
         {/* Login Button */}
-        <Link
+        {/* <Link
           href="/auth"
           className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-colors duration-200 flex items-center justify-center text-white"
         >
           Login/Register
-        </Link>
+        </Link> */}
       </div>
     </header>
   );
