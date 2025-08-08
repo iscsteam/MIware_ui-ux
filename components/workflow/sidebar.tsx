@@ -32,16 +32,11 @@ export function Sidebar({
   activeView: string
   setActiveView: (view: string) => void
 }) {
-  const [isProjectOpen, setIsProjectOpen] = useState(true)
   const [isWorkflowsOpen, setIsWorkflowsOpen] = useState(false)
-  const [isModuleOpen, setIsModuleOpen] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [projectCreated, setProjectCreated] = useState(false)
-  const [projectName, setProjectName] = useState("")
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
   const [workflows, setWorkflows] = useState<DAG[]>([])
   const { toast } = useToast()
 
@@ -187,48 +182,14 @@ export function Sidebar({
     }
   }
 
-  useEffect(() => {
-    const savedProject = localStorage.getItem("currentProject")
-    if (savedProject) {
-      const projectData = JSON.parse(savedProject)
-      setProjectName(projectData.name)
-      setProjectCreated(true)
-      setIsProjectOpen(true)
-    }
-  }, [])
+  
 
-  const handleWorkflowCreated = () => {
-    window.dispatchEvent(new CustomEvent("refreshCollections"))
-    setIsWorkflowsOpen(true)
-  }
-
-  const openProjectModal = () => {
-    setIsProjectModalOpen(true)
-  }
-
-  const closeProjectModal = () => {
-    setIsProjectModalOpen(false)
-  }
-
-  const handleSaveProjectName = (name: string) => {
-    setProjectName(name)
-    setProjectCreated(true)
-
-    const projectData = {
-      name: name,
-      created_at: new Date().toISOString(),
-    }
-    localStorage.setItem("currentProject", JSON.stringify(projectData))
-
-    closeProjectModal()
-    setIsProjectOpen(true)
-  }
+  
 
   useEffect(() => {
     if (isCollapsed) {
       setIsProjectOpen(false)
       setIsWorkflowsOpen(false)
-      setIsModuleOpen(false)
       setIsHelpOpen(false)
     }
   }, [isCollapsed])
@@ -341,206 +302,69 @@ export function Sidebar({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-
-          {!isCollapsed ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 hover:border-white/30 transition-all duration-300 shadow-lg rounded-xl relative z-10 group"
-                    onClick={openProjectModal}
-                  >
-                    <Plus className="h-5 w-5 text-purple group-hover:scale-110 transition-transform duration-200" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={5}>
-                  Create Project
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : null}
         </div>
 
         {/* Sidebar Body */}
         <div className="flex-1 flex flex-col min-h-0">
           <ScrollArea className="flex-1">
             <div className="pt-6 pb-4 px-4 space-y-2 custom-scrollbar">
-              {/* Project Name section */}
-              {projectCreated && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        onClick={() => !isCollapsed && setIsProjectOpen(!isProjectOpen)}
-                        className={cn(
-                          "w-full flex items-center justify-between px-4 py-3 text-slate-700 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-700 hover:shadow-lg rounded-xl transition-all duration-300 font-semibold border border-transparent hover:border-indigo-200/50 group",
-                          isCollapsed && "justify-center px-2",
-                        )}
-                      >
-                        <span className="flex items-center gap-3">
-                          <div className="relative">
-                            <Folder className="h-5 w-5 text-indigo-500 group-hover:text-indigo-600 transition-colors duration-200" />
-                            <div className="absolute inset-0 bg-indigo-400/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                          </div>
-                          {!isCollapsed && <span className="truncate">{projectName}</span>}
-                        </span>
-                        {!isCollapsed && (
-                          <ChevronDown
-                            className={`h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-all duration-300 ${
-                              isProjectOpen ? "rotate-180" : ""
-                            }`}
-                          />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={5}>
-                      {isCollapsed ? projectName : ""}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
+              
 
-              {/* Project content */}
-              {!isCollapsed && isProjectOpen && projectCreated && (
-                <div className="space-y-1 animate-in slide-in-from-top-2 duration-300">
-                  {/* Projects */}
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setIsWorkflowsOpen(!isWorkflowsOpen)
-                      if (!isWorkflowsOpen) {
-                        window.dispatchEvent(new CustomEvent("refreshCollections"))
-                      }
-                    }}
-                    className="w-full flex items-center justify-between pl-8 pr-4 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200 font-medium"
-                  >
-                    <span className="flex items-center gap-3">
-                      <ActivitySquare className="h-5 w-5 text-rose-500" />
-                      <span>Projects</span>
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <div
-                        className="h-7 w-7 hover:bg-emerald-100 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 group/add"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setIsCreateCollectionModalOpen(true)
-                        }}
-                      >
-                        <Plus className="h-4 w-4 text-emerald-500 group-hover/add:text-emerald-600 group-hover/add:scale-110 transition-all duration-200" />
-                      </div>
-                      <ChevronDown
-                        className={`h-4 w-4 text-slate-400 group-hover:text-emerald-500 transition-all duration-300 ${
-                          isWorkflowsOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </div>
-                  </Button>
-
-                  {/* Projects content - Collections and Workflows */}
-                  {isWorkflowsOpen && (
-                    <div className="pl-8 pr-2">
-                      <CollectionsSection
-                        setActiveView={setActiveView}
-                        onEditWorkflow={(workflow: DAG, collection: string) => {
-                          setEditingWorkflow(workflow)
-                          setEditWorkflowName(workflow.name)
-                          setEditWorkflowSchedule(workflow.schedule || "")
-                          setEditingCollection(collection)
-                          setIsEditWorkflowModalOpen(true)
-                        }}
-                        onDelete={handleOpenDeleteModal}
-                      />
-                    </div>
-                  )}
-
-                  {/* Other sections */}
-                  {[
-                    { label: "Service Descriptors", icon: FileText, color: "rose" },
-                    { label: "Resources", icon: Folder, color: "amber" },
-                    { label: "Schemas", icon: Layers, color: "violet" },
-                    { label: "Policies", icon: Shield, color: "orange" },
-                  ].map((item, idx) => (
-                    <Button
-                      key={idx}
-                      variant="ghost"
-                      className={`w-full flex items-center pl-8 py-3 text-slate-700 hover:bg-gradient-to-r hover:from-${item.color}-50 hover:to-${item.color}-100/50 hover:text-${item.color}-700 hover:shadow-lg rounded-xl font-medium transition-all duration-300 border border-transparent hover:border-${item.color}-200/50 group`}
+              <div className="space-y-1 animate-in slide-in-from-top-2 duration-300">
+                {/* Projects */}
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setIsWorkflowsOpen(!isWorkflowsOpen)
+                    if (!isWorkflowsOpen) {
+                      window.dispatchEvent(new CustomEvent("refreshCollections"))
+                    }
+                  }}
+                  className="w-full flex items-center justify-between pl-8 pr-4 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200 font-medium"
+                >
+                  <span className="flex items-center gap-3">
+                    <ActivitySquare className="h-5 w-5 text-rose-500" />
+                    <span>Projects</span>
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <div
+                      className="h-7 w-7 hover:bg-emerald-100 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 group/add"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setIsCreateCollectionModalOpen(true)
+                      }}
                     >
-                      <div className="relative">
-                        <item.icon
-                          className={`h-5 w-5 text-${item.color}-500 group-hover:text-${item.color}-600 mr-3 transition-colors duration-200`}
-                        />
-                        <div
-                          className={`absolute inset-0 bg-${item.color}-400/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
-                        ></div>
-                      </div>
-                      <span>{item.label}</span>
-                    </Button>
-                  ))}
-
-                  <Button
-                    variant="ghost"
-                    onClick={() => setIsModuleOpen(!isModuleOpen)}
-                    className="w-full flex items-center justify-between pl-8 py-3 text-slate-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700 hover:shadow-lg rounded-xl transition-all duration-300 font-medium border border-transparent hover:border-purple-200/50 group"
-                  >
-                    <span className="flex items-center gap-3">
-                      <div className="relative">
-                        <Folder className="h-5 w-5 text-purple-500 group-hover:text-purple-600 mr-3 transition-colors duration-200" />
-                        <div className="absolute inset-0 bg-purple-400/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      </div>
-                      <span>Module Descriptors</span>
-                    </span>
+                      <Plus className="h-4 w-4 text-emerald-500 group-hover/add:text-emerald-600 group-hover/add:scale-110 transition-all duration-200" />
+                    </div>
                     <ChevronDown
-                      className={`h-4 w-4 text-slate-400 group-hover:text-purple-500 transition-all duration-300 ${
-                        isModuleOpen ? "rotate-180" : ""
+                      className={`h-4 w-4 text-slate-400 group-hover:text-emerald-500 transition-all duration-300 ${
+                        isWorkflowsOpen ? "rotate-180" : ""
                       }`}
                     />
-                  </Button>
-
-                  {isModuleOpen && (
-                    <div className="pl-14 space-y-1 animate-in slide-in-from-top-2 duration-300">
-                      {[
-                        { label: "Overview", icon: FileText, color: "blue" },
-                        { label: "Module Properties", icon: Settings, color: "green" },
-                        { label: "Dependencies", icon: Plug, color: "red" },
-                        { label: "Components", icon: Puzzle, color: "yellow" },
-                        { label: "Shared Variables", icon: Variable, color: "indigo" },
-                      ].map((item, idx) => (
-                        <Button
-                          key={idx}
-                          variant="ghost"
-                          className={`w-full flex items-center pl-8 pr-4 py-2.5 text-slate-700 hover:bg-gradient-to-r hover:from-${item.color}-50 hover:to-${item.color}-100/50 hover:text-${item.color}-700 hover:shadow-md rounded-lg transition-all duration-300 group`}
-                        >
-                          <div className="relative">
-                            <item.icon
-                              className={`h-4 w-4 text-${item.color}-500 group-hover:text-${item.color}-600 mr-3 transition-colors duration-200`}
-                            />
-                            <div
-                              className={`absolute inset-0 bg-${item.color}-400/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
-                            ></div>
-                          </div>
-                          {item.label}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* No project created view */}
-              {!projectCreated && !isCollapsed && (
-                <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 rounded-2xl border border-slate-200/50 shadow-sm">
-                  <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-                    <Folder className="h-8 w-8 text-indigo-400" />
                   </div>
-                  <h3 className="text-gray-600 font-medium mb-2">No Project Created</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">
-                    Click the + button above to create a new project and start building workflows
-                  </p>
-                </div>
-              )}
+                </Button>
+
+                {/* Projects content - Collections and Workflows */}
+                {isWorkflowsOpen && (
+                  <div className="pl-8 pr-2">
+                    <CollectionsSection
+                      setActiveView={setActiveView}
+                      onEditWorkflow={(workflow: DAG, collection: string) => {
+                        setEditingWorkflow(workflow)
+                        setEditWorkflowName(workflow.name)
+                        setEditWorkflowSchedule(workflow.schedule || "")
+                        setEditingCollection(collection)
+                        setIsEditWorkflowModalOpen(true)
+                      }}
+                      onDelete={handleOpenDeleteModal}
+                    />
+                  </div>
+                )}
+              </div>
+
+              
+
+              
             </div>
           </ScrollArea>
 
@@ -638,48 +462,6 @@ export function Sidebar({
       </div>
 
       {/* MODALS */}
-
-      {/* Enhanced Project Name Modal */}
-      {isProjectModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-300">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-96 transform transition-all animate-in zoom-in-95 duration-300 border border-slate-200">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
-                <Folder className="h-5 w-5 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-slate-800">Create New Project</h3>
-            </div>
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Project Name</label>
-              <input
-                type="text"
-                id="projectName"
-                className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm"
-                placeholder="Enter project name"
-              />
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={closeProjectModal}
-                className="px-6 py-2.5 text-sm font-medium text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all duration-200 hover:shadow-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const input = document.getElementById("projectName") as HTMLInputElement
-                  if (input && input.value.trim()) {
-                    handleSaveProjectName(input.value.trim())
-                  }
-                }}
-                className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl hover:from-indigo-600 hover:to-purple-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                Create Project
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Enhanced Edit Workflow Modal */}
       {isEditWorkflowModalOpen && (
