@@ -261,29 +261,25 @@ export function Sidebar({
 
       <div
         className={cn(
-          "border-r border-slate-200/60 bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 flex flex-col h-full shadow-xl shadow-slate-900/5 transition-all duration-500 ease-out overflow-hidden backdrop-blur-sm",
-          isCollapsed ? "w-16" : "w-72",
+          "border-r border-gray-200 bg-gray-50 flex flex-col h-full shadow-lg transition-all duration-300 ease-in-out",
+          isCollapsed ? "w-20" : "w-72",
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-200/60 bg-white flex-shrink-0 relative overflow-hidden">
-          {/* Background glow effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-teal-600/20 blur-xl"></div>
-
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white flex-shrink-0">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className={cn("flex items-center gap-3 relative z-10", isCollapsed && "justify-center")}>
+                <div className={cn("flex items-center gap-3", isCollapsed && "justify-center")}>
                   <div className="relative">
-                    <div className="absolute inset-0 bg-white/20 rounded-xl blur-md"></div>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      width={isCollapsed ? "28" : "36"}
-                      height={isCollapsed ? "26" : "34"}
-                      className="relative z-10 drop-shadow-lg"
+                      width={isCollapsed ? "28" : "32"}
+                      height={isCollapsed ? "28" : "32"}
+                      className="text-blue-600 drop-shadow-sm"
                     >
                       <path
-                        fill="purple"
+                        fill="currentColor"
                         fillRule="evenodd"
                         d="M27.2 16.4a3.2 3.2 0 0 1-3.1-2.4h-3.667a1.6 1.6 0 0 0-1.578 1.337l-.132.79A3.2 3.2 0 0 1 17.683 18a3.2 3.2 0 0 1 1.04 1.874l.132.789A1.6 1.6 0 0 0 20.433 22h.468a3.201 3.201 0 0 1 6.299.8 3.2 3.2 0 0 1-6.3.8h-.467a3.2 3.2 0 0 1-3.156-2.674l-.132-.789a1.6 1.6 0 0 0-1.578-1.337h-1.268a3.201 3.201 0 0 1-6.198 0H6.299A3.201 3.201 0 0 1 0 18a3.2 3.2 0 0 1 6.3-.8h1.8a3.201 3.201 0 0 1 6.2 0h1.267a1.6 1.6 0 0 0 1.578-1.337l.132-.79a3.2 3.2 0 0 1 3.156-2.673h3.668a3.201 3.201 0 0 1 6.299.8 3.2 3.2 0 0 1-3.2 3.2m0-1.6a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2m-24 4.8a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2m9.6-1.6a1.6 1.6 0 1 1-3.2 0 1.6 1.6 0 0 1 3.2 0m12.8 4.8a1.6 1.6 0 1 1-3.2 0 1.6 1.6 0 0 1 3.2 0"
                         clipRule="evenodd"
@@ -291,13 +287,11 @@ export function Sidebar({
                     </svg>
                   </div>
                   {!isCollapsed && (
-                    <div className="relative z-10">
-                      <div className="font-bold text-xl tracking-wide drop-shadow-lg text-black">MI-WARE</div>
-                    </div>
+                    <div className="font-bold text-xl tracking-wide text-gray-800">MI-WARE</div>
                   )}
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={5}>
+              <TooltipContent side="right" sideOffset={5} className="bg-gray-800 text-gray-50 border-gray-700">
                 {isCollapsed ? "MI-WARE" : ""}
               </TooltipContent>
             </Tooltip>
@@ -310,43 +304,31 @@ export function Sidebar({
             <div className="pt-6 pb-4 px-4 space-y-2 custom-scrollbar">
               
 
-              <div className="space-y-1 animate-in slide-in-from-top-2 duration-300">
+              <div className="space-y-2 px-2">
                 {/* Projects */}
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setIsWorkflowsOpen(!isWorkflowsOpen)
-                    if (!isWorkflowsOpen) {
-                      window.dispatchEvent(new CustomEvent("refreshCollections"))
-                    }
-                  }}
-                  className="w-full flex items-center justify-between pl-8 pr-4 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200 font-medium"
-                >
-                  <span className="flex items-center gap-3">
-                    <ActivitySquare className="h-5 w-5 text-rose-500" />
-                    <span>Projects</span>
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <div
-                      className="h-7 w-7 hover:bg-emerald-100 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 group/add"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setIsCreateCollectionModalOpen(true)
-                      }}
-                    >
-                      <Plus className="h-4 w-4 text-emerald-500 group-hover/add:text-emerald-600 group-hover/add:scale-110 transition-all duration-200" />
+                <div>
+                  <div
+                    className="w-full flex items-center justify-between py-2 px-3 text-gray-700 rounded-md transition-all duration-200 font-semibold"
+                  >
+                    <span className="flex items-center gap-3">
+                      <ActivitySquare className="h-5 w-5 text-blue-500" />
+                      <span>Projects</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-7 w-7 hover:bg-green-100 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 group/add"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setIsCreateCollectionModalOpen(true)
+                        }}
+                      >
+                        <Plus className="h-4 w-4 text-green-500 group-hover/add:text-green-600" />
+                      </div>
                     </div>
-                    <ChevronDown
-                      className={`h-4 w-4 text-slate-400 group-hover:text-emerald-500 transition-all duration-300 ${
-                        isWorkflowsOpen ? "rotate-180" : ""
-                      }`}
-                    />
                   </div>
-                </Button>
 
-                {/* Projects content - Collections and Workflows */}
-                {isWorkflowsOpen && (
-                  <div className="pl-8 pr-2">
+                  {/* Projects content - Collections and Workflows */}
+                  <div className="pl-4 pr-2 pt-2">
                     <CollectionsSection
                       setActiveView={setActiveView}
                       onEditWorkflow={(workflow: DAG, collection: string) => {
@@ -359,7 +341,7 @@ export function Sidebar({
                       onDelete={handleOpenDeleteModal}
                     />
                   </div>
-                )}
+                </div>
               </div>
 
               
@@ -369,57 +351,51 @@ export function Sidebar({
           </ScrollArea>
 
           {/* Help Section */}
-          <div className="border-t border-slate-200/60 bg-gradient-to-r from-slate-50 to-white flex-shrink-0">
+          <div className="border-t border-gray-200 bg-gray-50 p-2">
             {isCollapsed ? (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="w-full flex items-center justify-center px-2 py-4 text-slate-700 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 hover:text-amber-600 transition-all duration-300 group"
+                      className="w-full flex items-center justify-center py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-all duration-200 group"
                     >
-                      <div className="relative">
-                        <HelpCircle className="h-5 w-5 text-amber-500 group-hover:text-amber-600 transition-colors duration-200" />
-                        <div className="absolute inset-0 bg-amber-400/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      </div>
+                      <HelpCircle className="h-5 w-5 text-blue-500" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={5}>
+                  <TooltipContent side="right" sideOffset={5} className="bg-gray-800 text-gray-50 border-gray-700">
                     Help & Support
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             ) : (
-              <div>
+              <div className="bg-white rounded-lg shadow-md p-2">
                 <Button
                   variant="ghost"
                   onClick={() => setIsHelpOpen(!isHelpOpen)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-slate-700 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 hover:text-amber-700 transition-all duration-300 group"
+                  className="w-full flex items-center justify-between py-2 px-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-all duration-200 font-semibold"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <HelpCircle className="h-5 w-5 text-amber-500 group-hover:text-amber-600 transition-colors duration-200" />
-                      <div className="absolute inset-0 bg-amber-400/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    </div>
-                    <span className="font-medium">Help & Support</span>
+                    <HelpCircle className="h-5 w-5 text-blue-500" />
+                    <span>Help & Support</span>
                   </div>
                   <ChevronDown
-                    className={`h-4 w-4 text-slate-400 group-hover:text-amber-500 transition-all duration-300 ${
+                    className={`h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-all duration-300 ${
                       isHelpOpen ? "rotate-180" : ""
                     }`}
                   />
                 </Button>
                 {isHelpOpen && (
-                  <div className="animate-in slide-in-from-top-2 duration-300 px-4 py-3 bg-gradient-to-r from-amber-50/50 to-orange-50/50 text-sm text-slate-600 space-y-2">
+                  <div className="pt-2 space-y-1">
                     <Button
                       variant="ghost"
-                      className="w-full justify-start text-left pl-10 py-2.5 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200 hover:text-amber-700"
+                      className="w-full justify-start text-left px-3 py-2 hover:bg-gray-100 rounded-md transition-all duration-200 text-gray-600"
                     >
                       Documentation
                     </Button>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start text-left pl-10 py-2.5 hover:bg-white hover:shadow-md rounded-lg text-amber-600 font-medium transition-all duration-200 hover:text-amber-700"
+                      className="w-full justify-start text-left px-3 py-2 hover:bg-gray-100 rounded-md font-medium text-blue-600 transition-all duration-200"
                     >
                       Contact Support
                     </Button>
@@ -435,29 +411,25 @@ export function Sidebar({
       <div
         onClick={handleCollapse}
         className={cn(
-          "absolute top-1/2 transform -translate-y-1/2 h-20 flex items-center cursor-pointer z-10 transition-all duration-300",
-          isCollapsed ? "right-0" : "right-0",
+          "absolute top-1/2 -translate-y-1/2 h-20 flex items-center cursor-pointer z-10 transition-all duration-300",
+          isCollapsed ? "-right-4" : "-right-4",
         )}
       >
-        <div className="relative group">
-          <div className="absolute top-0 left-0 bottom-0 w-px bg-gradient-to-b from-transparent via-indigo-300/60 to-transparent"></div>
-          <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-indigo-500 via-purple-500 to-teal-500 rounded-full shadow-lg transform translate-x-2 hover:shadow-xl transition-all duration-300 group-hover:scale-110 backdrop-blur-sm border border-white/20">
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 via-purple-400 to-teal-400 rounded-full blur opacity-50 group-hover:opacity-70 transition-opacity duration-300"></div>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={cn("text-white transition-transform duration-300", isCollapsed ? "rotate-180" : "")}
-            >
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </div>
+        <div className="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-gray-100 transition-all duration-300">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={cn("text-gray-600 transition-transform duration-300", isCollapsed ? "rotate-180" : "")}
+          >
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
         </div>
       </div>
 
@@ -795,10 +767,10 @@ const CollectionsSection = ({
                 <Button
                   variant="ghost"
                   onClick={() => toggleCollection(collection)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200"
+                  className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-gray-100 hover:text-gray-900 hover:shadow-sm rounded-lg transition-all duration-200"
                 >
                   <span className="flex items-center gap-2">
-                    <Folder className="h-4 w-4 text-rose-500" />
+                    <Folder className="h-4 w-4 text-black" />
                     <span className="font-medium">{collection}</span>
                   </span>
                   <ChevronDown
@@ -837,18 +809,18 @@ const CollectionsSection = ({
 
               {/* Workflows in collection */}
               {expandedCollections[collection] && (
-                <div className="pl-4 mt-1 border-l border-rose-200 ml-2">
+                <div className="pl-2 mt-1 border-l border-gray-200">
                   {collectionWorkflows[collection] && collectionWorkflows[collection].length > 0 ? (
                     <div className="space-y-1 max-h-40 overflow-y-auto workflow-scrollbar">
                       {collectionWorkflows[collection].map((workflow) => (
                         <div key={workflow.dag_id} className="group relative">
                           <Button
                             variant="ghost"
-                            className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm rounded-lg transition-all duration-200 text-sm"
+                            className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-gray-100 hover:text-gray-900 hover:shadow-sm rounded-lg transition-all duration-200 text-sm"
                             onClick={() => loadWorkflow(collection, workflow)}
                           >
                             <div className="flex items-center gap-2">
-                              <FileText className="h-3.5 w-3.5 text-rose-500" />
+                              <FileText className="h-3.5 w-3.5 text-black" />
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
